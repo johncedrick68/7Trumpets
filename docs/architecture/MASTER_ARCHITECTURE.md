@@ -56,7 +56,7 @@ restricted to trusted server infrastructure and is never browser-safe.
 
 - `product-images`: public read and trusted write
 - `payment-receipts`: private
-- `return-proofs`: private
+- `return-proofs`: private when the returns workflow is introduced; deferred from Phase 1
 
 Private objects require authorized, short-lived signed URLs. Uploads require
 owner, purpose, type, size, and path validation.
@@ -82,6 +82,7 @@ and pushes require explicit authorization where applicable.
 
 ## Phase Boundary
 
-Phase 0.5B creates documentation and AI harness configuration only. It creates
-no application scaffold, schema, migration, bucket, infrastructure, or
-production connection. Phase 1 has not started.
+Phase 0.5 created documentation and AI harness configuration only. Phase 1A
+locked the database design in `docs/phases/PHASE_1_DATABASE_DESIGN.md`; Phase 1B
+has not started. No application scaffold, database, migration, storage bucket,
+hosted Supabase link, or production connection has been created.

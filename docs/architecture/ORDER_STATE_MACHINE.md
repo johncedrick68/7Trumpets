@@ -25,6 +25,12 @@ Cancellation, failed or rejected payment evidence, delivery exceptions,
 returns, and refunds are not successful timeline stages. Present them as
 separate states with explicit reasons and authorization.
 
+A normal Manual GCash proof rejection does not itself cancel the order or
+release an active reservation while the retry deadline remains valid. The order
+stays `CONFIRMED`, payment becomes `REJECTED`, prior evidence remains immutable,
+and corrected evidence creates a new submission. Final cancellation/release
+requires a separate trusted, locked, revalidated, and audited resolution.
+
 ## Independence
 
 The timeline must be operable manually and without maps, GPS, or courier APIs.
