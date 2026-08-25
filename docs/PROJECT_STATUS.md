@@ -24,7 +24,9 @@ PHASE 2A: APPLICATION FOUNDATION VERIFIED
 
 PHASE 2B: SUPABASE SSR CLIENTS & REGENERATED TYPES VERIFIED
 
-PHASE 2C: NOT STARTED
+PHASE 2C: CUSTOMER AUTHENTICATION & PROFILE VERIFIED
+
+PHASE 2D: NOT STARTED
 
 LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
 
@@ -48,4 +50,6 @@ Phase 1D is complete and closed: 10 migrations replay cleanly, the database test
 
 Phase 2A established the minimal Next.js App Router application foundation, strict TypeScript, flat ESLint configuration, modern `.env.example` placeholders, accessible CSS tokens, clean build, and foundational quality test gates.
 
-Phase 2B established `@supabase/supabase-js` and `@supabase/ssr` client integration, browser/server client helpers, Next.js proxy session refresh integration, freshly regenerated database types from the 10-migration schema, and environment key isolation. Customer auth flows and business mutations remain deferred.
+Phase 2B established `@supabase/supabase-js` and `@supabase/ssr` client integration, browser/server client helpers, Next.js proxy session refresh integration, freshly regenerated database types from the 10-migration schema, and environment key isolation.
+
+Phase 2C established customer authentication with server-side actions, token-hash verification routes (`/auth/confirm`), password reset, password update, sign in, sign out, and owner-isolated profile updates (`/account`). Product catalog, cart, and checkout mutations remain deferred.

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Reset Your Password</title>
+</head>
+<body style="font-family: sans-serif; line-height: 1.5; color: #1b2320; background: #f4f0e7; padding: 2rem;">
+  <table role="presentation" style="max-width: 600px; margin: 0 auto; background: #fffdf8; border: 1px solid #c9c0af; border-radius: 8px; padding: 2rem;">
+    <tr>
+      <td>
+        <h1 style="color: #8a3f2b; margin-top: 0;">Reset Your Password</h1>
+        <p>We received a request to reset your password for your 7Trumpets account.</p>
+        <p style="margin: 2rem 0;">
+          <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/update-password"
+             style="background: #8a3f2b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+            Reset Password
+          </a>
+        </p>
+        <p style="color: #56645d; font-size: 0.9rem;">If you did not request a password reset, you can safely ignore this email.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

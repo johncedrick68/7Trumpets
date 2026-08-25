@@ -5,7 +5,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("required foundation and Phase 2B Supabase client files exist", () => {
+test("required foundation and Phase 2B/2C auth files exist", () => {
   assert.ok(existsSync(".env.example"), ".env.example must exist");
   assert.ok(existsSync(".gitignore"), ".gitignore must exist");
   assert.ok(existsSync("package.json"), "package.json must exist");
@@ -20,17 +20,27 @@ test("required foundation and Phase 2B Supabase client files exist", () => {
   assert.ok(existsSync("src/lib/supabase/server.ts"), "src/lib/supabase/server.ts must exist");
   assert.ok(existsSync("src/lib/supabase/proxy.ts"), "src/lib/supabase/proxy.ts must exist");
   assert.ok(existsSync("src/proxy.ts"), "src/proxy.ts must exist");
+
+  // Phase 2C auth files
+  assert.ok(existsSync("src/lib/auth/actions.ts"), "auth actions must exist in 2C");
+  assert.ok(existsSync("src/lib/auth/redirect.ts"), "auth redirect helper must exist in 2C");
+  assert.ok(existsSync("src/app/login/page.tsx"), "login route must exist in 2C");
+  assert.ok(existsSync("src/app/signup/page.tsx"), "signup route must exist in 2C");
+  assert.ok(existsSync("src/app/account/page.tsx"), "account route must exist in 2C");
+  assert.ok(existsSync("src/app/auth/confirm/route.ts"), "auth confirm route must exist in 2C");
+  assert.ok(existsSync("src/app/auth/error/page.tsx"), "auth error page must exist in 2C");
+  assert.ok(existsSync("src/app/forgot-password/page.tsx"), "forgot-password route must exist in 2C");
+  assert.ok(existsSync("src/app/update-password/page.tsx"), "update-password route must exist in 2C");
+  assert.ok(existsSync("supabase/templates/confirmation.html"), "confirmation template must exist in 2C");
+  assert.ok(existsSync("supabase/templates/recovery.html"), "recovery template must exist in 2C");
 });
 
-test("Phase 2C auth routes and actions do not exist in Phase 2B", () => {
-  assert.strictEqual(existsSync("src/lib/auth/actions.ts"), false, "auth actions must not exist in 2B");
-  assert.strictEqual(existsSync("src/lib/auth/redirect.ts"), false, "auth redirect helper must not exist in 2B");
-  assert.strictEqual(existsSync("src/app/login"), false, "login route must not exist in 2B");
-  assert.strictEqual(existsSync("src/app/signup"), false, "signup route must not exist in 2B");
-  assert.strictEqual(existsSync("src/app/account"), false, "account route must not exist in 2B");
-  assert.strictEqual(existsSync("src/app/auth"), false, "auth routes must not exist in 2B");
-  assert.strictEqual(existsSync("src/app/forgot-password"), false, "forgot-password route must not exist in 2B");
-  assert.strictEqual(existsSync("src/app/update-password"), false, "update-password route must not exist in 2B");
+test("Phase 2D catalog and Phase 2E-2H business features do not exist in Phase 2C", () => {
+  assert.strictEqual(existsSync("src/app/products"), false, "products route must not exist in 2C");
+  assert.strictEqual(existsSync("src/app/cart"), false, "cart route must not exist in 2C");
+  assert.strictEqual(existsSync("src/app/checkout"), false, "checkout route must not exist in 2C");
+  assert.strictEqual(existsSync("src/app/orders"), false, "orders route must not exist in 2C");
+  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2C");
 });
 
 test("package.json includes approved Supabase packages", async () => {
@@ -87,7 +97,6 @@ test("Supabase client helpers use modern env keys and never expose secrets to br
 test("generated database types contain the 22-table schema and Phase 1D RPC definitions", async () => {
   const typesContent = await read("src/types/database.ts");
 
-  // Table spot checks from 22 tables
   assert.match(typesContent, /profiles: \{/);
   assert.match(typesContent, /categories: \{/);
   assert.match(typesContent, /products: \{/);
@@ -103,7 +112,6 @@ test("generated database types contain the 22-table schema and Phase 1D RPC defi
   assert.match(typesContent, /inventory_movements: \{/);
   assert.match(typesContent, /inventory_reservations: \{/);
 
-  // Functions spot checks
   assert.match(typesContent, /checkout_order: \{/);
   assert.match(typesContent, /transition_order: \{/);
   assert.match(typesContent, /manage_user_role: \{/);
