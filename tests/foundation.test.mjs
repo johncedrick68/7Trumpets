@@ -5,7 +5,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("required foundation and Phase 2B/2C auth files exist", () => {
+test("required foundation and Phase 2B/2C/2D files exist", () => {
   assert.ok(existsSync(".env.example"), ".env.example must exist");
   assert.ok(existsSync(".gitignore"), ".gitignore must exist");
   assert.ok(existsSync("package.json"), "package.json must exist");
@@ -33,14 +33,19 @@ test("required foundation and Phase 2B/2C auth files exist", () => {
   assert.ok(existsSync("src/app/update-password/page.tsx"), "update-password route must exist in 2C");
   assert.ok(existsSync("supabase/templates/confirmation.html"), "confirmation template must exist in 2C");
   assert.ok(existsSync("supabase/templates/recovery.html"), "recovery template must exist in 2C");
+
+  // Phase 2D catalog files
+  assert.ok(existsSync("src/lib/catalog/queries.ts"), "catalog queries helper must exist in 2D");
+  assert.ok(existsSync("src/app/products/page.tsx"), "products route must exist in 2D");
+  assert.ok(existsSync("src/app/products/[slug]/page.tsx"), "product detail route must exist in 2D");
+  assert.ok(existsSync("src/app/categories/[slug]/page.tsx"), "category products route must exist in 2D");
 });
 
-test("Phase 2D catalog and Phase 2E-2H business features do not exist in Phase 2C", () => {
-  assert.strictEqual(existsSync("src/app/products"), false, "products route must not exist in 2C");
-  assert.strictEqual(existsSync("src/app/cart"), false, "cart route must not exist in 2C");
-  assert.strictEqual(existsSync("src/app/checkout"), false, "checkout route must not exist in 2C");
-  assert.strictEqual(existsSync("src/app/orders"), false, "orders route must not exist in 2C");
-  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2C");
+test("Phase 2E-2H cart, checkout, and admin features do not exist in Phase 2D", () => {
+  assert.strictEqual(existsSync("src/app/cart"), false, "cart route must not exist in 2D");
+  assert.strictEqual(existsSync("src/app/checkout"), false, "checkout route must not exist in 2D");
+  assert.strictEqual(existsSync("src/app/orders"), false, "orders route must not exist in 2D");
+  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2D");
 });
 
 test("package.json includes approved Supabase packages", async () => {

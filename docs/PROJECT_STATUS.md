@@ -26,7 +26,9 @@ PHASE 2B: SUPABASE SSR CLIENTS & REGENERATED TYPES VERIFIED
 
 PHASE 2C: CUSTOMER AUTHENTICATION & PROFILE VERIFIED
 
-PHASE 2D: NOT STARTED
+PHASE 2D: PUBLIC CATALOG READ EXPERIENCE VERIFIED
+
+PHASE 2E: NOT STARTED
 
 LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
 
@@ -52,4 +54,6 @@ Phase 2A established the minimal Next.js App Router application foundation, stri
 
 Phase 2B established `@supabase/supabase-js` and `@supabase/ssr` client integration, browser/server client helpers, Next.js proxy session refresh integration, freshly regenerated database types from the 10-migration schema, and environment key isolation.
 
-Phase 2C established customer authentication with server-side actions, token-hash verification routes (`/auth/confirm`), password reset, password update, sign in, sign out, and owner-isolated profile updates (`/account`). Product catalog, cart, and checkout mutations remain deferred.
+Phase 2C established customer authentication with server-side actions, token-hash verification routes (`/auth/confirm`), password reset, password update, sign in, sign out, and owner-isolated profile updates (`/account`).
+
+Phase 2D established the public catalog read experience, including server-side query helpers (`src/lib/catalog/queries.ts`), responsive category/product listings (`/products`, `/categories/[slug]`), and detailed product view (`/products/[slug]`) supporting options, variants, and product images backed by the database schema. Cart and checkout mutations remain deferred.
