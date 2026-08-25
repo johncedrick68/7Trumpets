@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(160);
+select extensions.plan(175);
 
 -- Schema contract
 select extensions.set_eq(
@@ -1607,6 +1607,110 @@ set local role authenticated;
 select extensions.throws_ok(
   $$ update public.inventory_movements set actor_id = null where id = '52222222-2222-2222-2222-222222222222' $$,
   '42501', 'permission denied for table inventory_movements', 'customer still cannot update ledger actor fields'
+);
+reset role;
+
+-- Auth deletion preserves the final super_admin across direct and cascaded role deletes.
+insert into auth.users (
+  id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+) values
+  (
+    '81111111-1111-1111-1111-111111111111',
+    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    'delete-customer@example.test', '{}'::jsonb, '{}'::jsonb, now(), now()
+  ),
+  (
+    '82222222-2222-2222-2222-222222222222',
+    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    'delete-admin@example.test', '{}'::jsonb, '{}'::jsonb, now(), now()
+  ),
+  (
+    '83333333-3333-3333-3333-333333333333',
+    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    'delete-super@example.test', '{}'::jsonb, '{}'::jsonb, now(), now()
+  ),
+  (
+    '84444444-4444-4444-4444-444444444444',
+    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    'delete-rollback@example.test', '{}'::jsonb, '{}'::jsonb, now(), now()
+  );
+
+insert into private.user_roles (user_id, role) values
+  ('82222222-2222-2222-2222-222222222222', 'admin'),
+  ('83333333-3333-3333-3333-333333333333', 'super_admin');
+
+select extensions.lives_ok(
+  $$ delete from auth.users where id = '81111111-1111-1111-1111-111111111111' $$,
+  'ordinary Auth user deletion succeeds'
+);
+select extensions.is(
+  (select count(*) from public.profiles where id = '81111111-1111-1111-1111-111111111111')
+  + (select count(*) from private.user_roles where user_id = '81111111-1111-1111-1111-111111111111'),
+  0::bigint, 'ordinary user profile and roles cascade'
+);
+select extensions.lives_ok(
+  $$ delete from auth.users where id = '82222222-2222-2222-2222-222222222222' $$,
+  'admin Auth user deletion succeeds'
+);
+select extensions.is(
+  (select count(*) from public.profiles where id = '82222222-2222-2222-2222-222222222222')
+  + (select count(*) from private.user_roles where user_id = '82222222-2222-2222-2222-222222222222'),
+  0::bigint, 'admin profile and roles cascade'
+);
+select extensions.lives_ok(
+  $$ delete from auth.users where id = '33333333-3333-3333-3333-333333333333' $$,
+  'one super_admin may be deleted while another remains'
+);
+select extensions.is(
+  (select count(*) from auth.users where id = '33333333-3333-3333-3333-333333333333')
+  + (select count(*) from public.profiles where id = '33333333-3333-3333-3333-333333333333')
+  + (select count(*) from private.user_roles where user_id = '33333333-3333-3333-3333-333333333333'),
+  0::bigint, 'allowed super_admin deletion completes its cascades'
+);
+select extensions.ok(
+  exists (select 1 from auth.users where id = '83333333-3333-3333-3333-333333333333')
+  and exists (select 1 from public.profiles where id = '83333333-3333-3333-3333-333333333333')
+  and exists (select 1 from private.user_roles where user_id = '83333333-3333-3333-3333-333333333333' and role = 'super_admin'),
+  'the remaining super_admin identity survives'
+);
+select extensions.throws_ok(
+  $$ delete from auth.users where id = '83333333-3333-3333-3333-333333333333' $$,
+  '23514', 'LAST_SUPER_ADMIN_REQUIRED', 'sole super_admin Auth deletion is blocked'
+);
+select extensions.ok(
+  exists (select 1 from auth.users where id = '83333333-3333-3333-3333-333333333333'),
+  'blocked deletion retains the Auth identity'
+);
+select extensions.ok(
+  exists (select 1 from public.profiles where id = '83333333-3333-3333-3333-333333333333'),
+  'blocked deletion retains the profile'
+);
+select extensions.is(
+  (select count(*) from private.user_roles where user_id = '83333333-3333-3333-3333-333333333333'),
+  2::bigint, 'blocked deletion retains customer and super_admin roles'
+);
+select extensions.throws_ok(
+  $$ delete from private.user_roles where user_id = '83333333-3333-3333-3333-333333333333' and role = 'super_admin' $$,
+  '23514', 'LAST_SUPER_ADMIN_REQUIRED', 'direct role deletion cannot remove the final super_admin'
+);
+select extensions.throws_ok(
+  $$ delete from auth.users where id in ('83333333-3333-3333-3333-333333333333', '84444444-4444-4444-4444-444444444444') $$,
+  '23514', 'LAST_SUPER_ADMIN_REQUIRED', 'multi-user deletion cannot include the final super_admin'
+);
+select extensions.ok(
+  exists (select 1 from auth.users where id = '84444444-4444-4444-4444-444444444444')
+  and exists (select 1 from public.profiles where id = '84444444-4444-4444-4444-444444444444')
+  and exists (select 1 from private.user_roles where user_id = '84444444-4444-4444-4444-444444444444' and role = 'customer'),
+  'failed multi-user deletion rolls ordinary-user cascades back'
+);
+
+select pg_catalog.set_config('request.jwt.claim.sub', '83333333-3333-3333-3333-333333333333', true);
+select pg_catalog.set_config('request.jwt.claims', '{"sub":"83333333-3333-3333-3333-333333333333","role":"authenticated","aal":"aal2"}', true);
+set local role authenticated;
+select extensions.throws_ok(
+  $$ select public.manage_user_role('83333333-3333-3333-3333-333333333333', 'super_admin', false) $$,
+  '23514', 'cannot remove the last super_admin', 'role management still blocks final super_admin removal'
 );
 reset role;
 

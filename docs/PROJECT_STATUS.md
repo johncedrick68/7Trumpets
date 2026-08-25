@@ -1,6 +1,6 @@
 # Project Status
 
-CURRENT PHASE: 1C
+CURRENT PHASE: 1D (CLOSED)
 
 PHASE 0: APPROVED
 
@@ -16,20 +16,26 @@ PHASE 1B: LOCAL SUPABASE INITIALIZED
 
 PHASE 1C: LOCAL MIGRATIONS AUTHORED / VERIFIED
 
-LOCAL SUPABASE: INITIALIZED / VERIFIED
+PHASE 1D: HOSTED DEVELOPMENT VERIFIED / CLOSED
 
-HOSTED SUPABASE: NOT CREATED / NOT LINKED
+LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
 
-DATABASE SCHEMA: 22-TABLE CONTRACT AUTHORED / LOCALLY VERIFIED
+HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — VERIFIED
 
-PRODUCTION: NOT MUTATED
+DATABASE SCHEMA: 22-TABLE CONTRACT AUTHORED / LOCALLY & REMOTELY VERIFIED
 
-GIT BASELINE: INITIALIZED
+MIGRATIONS LEDGER:
+- Original canonical migrations: 8
+- Additive Phase 1D corrections: 2
+- Total migrations: 10
 
-REMOTE: github.com/johncedrick68/7Trumpets
+PRODUCTION: NOT CREATED / UNTOUCHED
 
-The locked Phase 1 database contract is
-`docs/phases/PHASE_1_DATABASE_DESIGN.md`. Phase 1C is complete locally: eight
-migrations replay cleanly, the database tests pass, and the 22-table schema and
-two approved storage buckets are verified. Hosted Supabase and production were
-not created, linked, or mutated.
+PHASE 2: NOT STARTED
+
+PUBLIC SIGNUP SMOKE: PLATFORM-LIMITED (Rate limit / platform constraint recorded)
+
+LEAKED-PASSWORD PROTECTION: PRE-PRODUCTION CONFIGURATION ACTION REQUIRED (to be enabled before launch)
+
+The locked Phase 1 database contract is `docs/phases/PHASE_1_DATABASE_DESIGN.md`.
+Phase 1D is complete and closed: 10 migrations replay cleanly, the database test suite (175/175) passes, concurrency harnesses pass locally and remotely, the 22-table schema and approved storage buckets are verified, and remote security/role invariants are strictly enforced on hosted development. Hosted Supabase (7trumpets-dev) is verified. Production has not been created, linked, or mutated.
