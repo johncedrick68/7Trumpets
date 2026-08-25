@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatMinorUnitsToPHP, getProductBySlug } from "@/lib/catalog/queries";
+import { addToCart } from "@/lib/cart/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -65,11 +66,20 @@ export default async function ProductDetailPage({
                 <ul className="variant-list">
                   {product.variants.map((variant) => (
                     <li key={variant.id} className="variant-item">
-                      <span className="variant-title">{variant.name || variant.sku}</span>
-                      <span className="variant-sku">SKU: {variant.sku}</span>
-                      <span className="variant-price">
-                        {formatMinorUnitsToPHP(variant.price_minor)}
-                      </span>
+                      <div className="variant-info">
+                        <span className="variant-title">{variant.name || variant.sku}</span>
+                        <span className="variant-sku">SKU: {variant.sku}</span>
+                        <span className="variant-price">
+                          {formatMinorUnitsToPHP(variant.price_minor)}
+                        </span>
+                      </div>
+                      <form action={addToCart} className="variant-add-form">
+                        <input type="hidden" name="variant_id" value={variant.id} />
+                        <input type="hidden" name="quantity" value="1" />
+                        <button type="submit" className="button-link small-btn">
+                          Add to Cart
+                        </button>
+                      </form>
                     </li>
                   ))}
                 </ul>

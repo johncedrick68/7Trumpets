@@ -5,7 +5,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("required foundation and Phase 2B/2C/2D files exist", () => {
+test("required foundation and Phase 2B-2E files exist", () => {
   assert.ok(existsSync(".env.example"), ".env.example must exist");
   assert.ok(existsSync(".gitignore"), ".gitignore must exist");
   assert.ok(existsSync("package.json"), "package.json must exist");
@@ -39,13 +39,18 @@ test("required foundation and Phase 2B/2C/2D files exist", () => {
   assert.ok(existsSync("src/app/products/page.tsx"), "products route must exist in 2D");
   assert.ok(existsSync("src/app/products/[slug]/page.tsx"), "product detail route must exist in 2D");
   assert.ok(existsSync("src/app/categories/[slug]/page.tsx"), "category products route must exist in 2D");
+
+  // Phase 2E cart and address files
+  assert.ok(existsSync("src/lib/cart/actions.ts"), "cart actions must exist in 2E");
+  assert.ok(existsSync("src/lib/addresses/actions.ts"), "address actions must exist in 2E");
+  assert.ok(existsSync("src/app/cart/page.tsx"), "cart page must exist in 2E");
+  assert.ok(existsSync("src/app/account/addresses/page.tsx"), "addresses page must exist in 2E");
 });
 
-test("Phase 2E-2H cart, checkout, and admin features do not exist in Phase 2D", () => {
-  assert.strictEqual(existsSync("src/app/cart"), false, "cart route must not exist in 2D");
-  assert.strictEqual(existsSync("src/app/checkout"), false, "checkout route must not exist in 2D");
-  assert.strictEqual(existsSync("src/app/orders"), false, "orders route must not exist in 2D");
-  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2D");
+test("Phase 2F-2H checkout, payment, and admin features do not exist in Phase 2E", () => {
+  assert.strictEqual(existsSync("src/app/checkout"), false, "checkout route must not exist in 2E");
+  assert.strictEqual(existsSync("src/app/orders"), false, "orders route must not exist in 2E");
+  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2E");
 });
 
 test("package.json includes approved Supabase packages", async () => {

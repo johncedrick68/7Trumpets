@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { signOut, updateProfile } from "@/lib/auth/actions";
@@ -46,6 +47,15 @@ export default async function AccountPage({
         <p className="account-email">
           Signed in as <strong>{userData.user.email}</strong>
         </p>
+
+        <nav className="account-quick-links" aria-label="Account navigation">
+          <Link href="/account/addresses" className="category-pill">
+            Saved Addresses
+          </Link>
+          <Link href="/cart" className="category-pill">
+            View Cart
+          </Link>
+        </nav>
 
         {params.saved === "1" && (
           <p className="notice" role="status">
