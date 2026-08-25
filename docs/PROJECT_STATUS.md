@@ -1,6 +1,6 @@
 # Project Status
 
-CURRENT PHASE: 1D (CLOSED)
+CURRENT PHASE: 2 (IN PROGRESS)
 
 PHASE 0: APPROVED
 
@@ -18,6 +18,12 @@ PHASE 1C: LOCAL MIGRATIONS AUTHORED / VERIFIED
 
 PHASE 1D: HOSTED DEVELOPMENT VERIFIED / CLOSED
 
+PHASE 2: IN PROGRESS
+
+PHASE 2A: APPLICATION FOUNDATION VERIFIED
+
+PHASE 2B: NOT STARTED
+
 LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
 
 HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — VERIFIED
@@ -31,11 +37,11 @@ MIGRATIONS LEDGER:
 
 PRODUCTION: NOT CREATED / UNTOUCHED
 
-PHASE 2: NOT STARTED
-
 PUBLIC SIGNUP SMOKE: PLATFORM-LIMITED (Rate limit / platform constraint recorded)
 
 LEAKED-PASSWORD PROTECTION: PRE-PRODUCTION CONFIGURATION ACTION REQUIRED (to be enabled before launch)
 
 The locked Phase 1 database contract is `docs/phases/PHASE_1_DATABASE_DESIGN.md`.
 Phase 1D is complete and closed: 10 migrations replay cleanly, the database test suite (175/175) passes, concurrency harnesses pass locally and remotely, the 22-table schema and approved storage buckets are verified, and remote security/role invariants are strictly enforced on hosted development. Hosted Supabase (7trumpets-dev) is verified. Production has not been created, linked, or mutated.
+
+Phase 2A established the minimal Next.js App Router application foundation, strict TypeScript, flat ESLint configuration, modern `.env.example` placeholders, accessible CSS tokens, clean build, and foundational quality test gates. Supabase SSR clients, generated database types, auth flows, and business mutations remain deferred.

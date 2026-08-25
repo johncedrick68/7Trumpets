@@ -1,14 +1,36 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Testing / coverage
+coverage/
+playwright-report/
+test-results/
+
+# Production / Next.js
 .next/
 out/
 dist/
-coverage/
+build/
 
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment files
 .env
 .env.local
-.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
+# System
 .DS_Store
 Thumbs.db
