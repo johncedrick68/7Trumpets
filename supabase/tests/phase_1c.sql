@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(134);
+select extensions.plan(160);
 
 -- Schema contract
 select extensions.set_eq(
@@ -1393,6 +1393,221 @@ select extensions.ok(
   'customer cannot read the private role table'
 );
 
+reset role;
+
+-- Auth deletion may null only approved historical actor references.
+insert into auth.users (
+  id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+) values
+  (
+    '55555555-5555-5555-5555-555555555555',
+    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    'lifecycle@example.test', '{}'::jsonb, '{}'::jsonb, now(), now()
+  ),
+  (
+    '66666666-6666-6666-6666-666666666666',
+    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    'replacement@example.test', '{}'::jsonb, '{}'::jsonb, now(), now()
+  );
+
+update public.orders
+set user_id = '55555555-5555-5555-5555-555555555555'
+where id = 'c1111111-1111-1111-1111-111111111111';
+
+insert into public.order_status_history (
+  id, order_id, from_status, to_status, note, source, changed_by, idempotency_key
+) values (
+  '51111111-1111-1111-1111-111111111111',
+  'c1111111-1111-1111-1111-111111111111', 'CONFIRMED', 'CANCELLED',
+  'Lifecycle snapshot', 'lifecycle-test',
+  '55555555-5555-5555-5555-555555555555', 'lifecycle-history'
+);
+
+insert into public.inventory_movements (
+  id, variant_id, movement_type, on_hand_delta, reserved_delta,
+  on_hand_after, reserved_after, actor_id, idempotency_key, reason
+)
+select
+  '52222222-2222-2222-2222-222222222222', i.variant_id, 'adjustment',
+  1, 0, i.on_hand + 1, i.reserved,
+  '55555555-5555-5555-5555-555555555555', 'lifecycle-inventory',
+  'Lifecycle snapshot'
+from public.inventory as i
+where i.variant_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+insert into public.payment_submissions (
+  id, payment_id, submitted_by, claimed_amount_minor, reference_number,
+  receipt_storage_path, review_status, reviewed_by, reviewed_at,
+  rejection_reason, idempotency_key
+) values (
+  '56666666-6666-6666-6666-666666666666',
+  'd1111111-1111-1111-1111-111111111111',
+  '55555555-5555-5555-5555-555555555555', 20000, 'LIFECYCLE',
+  'lifecycle/rejected.webp', 'REJECTED',
+  '55555555-5555-5555-5555-555555555555', now(), 'Lifecycle rejection',
+  'lifecycle-submission'
+);
+
+insert into public.payment_events (
+  id, payment_id, submission_id, event_type, from_status, to_status,
+  actor_id, reason, idempotency_key
+) values (
+  '53333333-3333-3333-3333-333333333333',
+  'd1111111-1111-1111-1111-111111111111',
+  '56666666-6666-6666-6666-666666666666', 'PROOF_REJECTED',
+  'VERIFYING', 'REJECTED', '55555555-5555-5555-5555-555555555555',
+  'Lifecycle snapshot', 'lifecycle-payment-event'
+);
+
+insert into public.audit_logs (
+  id, actor_id, actor_role, action, entity, entity_id, metadata
+) values (
+  '54444444-4444-4444-4444-444444444444',
+  '55555555-5555-5555-5555-555555555555', 'customer',
+  'lifecycle.snapshot', 'lifecycle',
+  '55555555-5555-5555-5555-555555555555', '{"preserved":true}'::jsonb
+);
+
+create temp table lifecycle_snapshots (relation_name text primary key, row_data jsonb);
+insert into lifecycle_snapshots values
+  ('order_status_history', (select to_jsonb(h) from public.order_status_history as h where id = '51111111-1111-1111-1111-111111111111')),
+  ('inventory_movements', (select to_jsonb(m) from public.inventory_movements as m where id = '52222222-2222-2222-2222-222222222222')),
+  ('payment_events', (select to_jsonb(e) from public.payment_events as e where id = '53333333-3333-3333-3333-333333333333')),
+  ('audit_logs', (select to_jsonb(a) from public.audit_logs as a where id = '54444444-4444-4444-4444-444444444444')),
+  ('payment_submissions', (select to_jsonb(s) from public.payment_submissions as s where id = '56666666-6666-6666-6666-666666666666')),
+  ('order', (select to_jsonb(o) from public.orders as o where id = 'c1111111-1111-1111-1111-111111111111')),
+  ('payment', (select to_jsonb(p) from public.payments as p where id = 'd1111111-1111-1111-1111-111111111111'));
+
+select extensions.throws_ok(
+  $$ update public.order_status_history set changed_by = '66666666-6666-6666-6666-666666666666' where id = '51111111-1111-1111-1111-111111111111' $$,
+  '55000', 'order_status_history is append-only', 'historical actor UUID cannot be replaced'
+);
+select extensions.throws_ok(
+  $$ update public.inventory_movements set actor_id = null, reason = 'Tampered' where id = '52222222-2222-2222-2222-222222222222' $$,
+  '55000', 'inventory_movements is append-only', 'actor nullification cannot include another ledger mutation'
+);
+select extensions.throws_ok(
+  $$ update public.payment_submissions set submitted_by = '66666666-6666-6666-6666-666666666666' where id = '56666666-6666-6666-6666-666666666666' $$,
+  '55000', 'payment submission evidence is immutable', 'payment submitter UUID cannot be replaced'
+);
+select extensions.throws_ok(
+  $$ update public.payment_submissions set submitted_by = null, claimed_amount_minor = 1 where id = '56666666-6666-6666-6666-666666666666' $$,
+  '55000', 'payment submission evidence is immutable', 'actor nullification cannot alter payment evidence'
+);
+
+select extensions.lives_ok(
+  $$ delete from auth.users where id = '55555555-5555-5555-5555-555555555555' $$,
+  'auth user deletion succeeds with retained commerce history'
+);
+select extensions.is(
+  (select count(*) from public.profiles where id = '55555555-5555-5555-5555-555555555555')
+  + (select count(*) from private.user_roles where user_id = '55555555-5555-5555-5555-555555555555'),
+  0::bigint, 'identity-adjacent profile and roles cascade on auth deletion'
+);
+select extensions.ok(
+  (select changed_by is null and to_jsonb(h) - 'changed_by' = s.row_data - 'changed_by'
+   from public.order_status_history as h cross join lifecycle_snapshots as s
+   where h.id = '51111111-1111-1111-1111-111111111111' and s.relation_name = 'order_status_history'),
+  'order history survives with only changed_by nullified'
+);
+select extensions.ok(
+  (select actor_id is null and to_jsonb(m) - 'actor_id' = s.row_data - 'actor_id'
+   from public.inventory_movements as m cross join lifecycle_snapshots as s
+   where m.id = '52222222-2222-2222-2222-222222222222' and s.relation_name = 'inventory_movements'),
+  'inventory movement survives with only actor_id nullified'
+);
+select extensions.ok(
+  (select actor_id is null and to_jsonb(e) - 'actor_id' = s.row_data - 'actor_id'
+   from public.payment_events as e cross join lifecycle_snapshots as s
+   where e.id = '53333333-3333-3333-3333-333333333333' and s.relation_name = 'payment_events'),
+  'payment event survives with only actor_id nullified'
+);
+select extensions.ok(
+  (select actor_id is null and to_jsonb(a) - 'actor_id' = s.row_data - 'actor_id'
+   from public.audit_logs as a cross join lifecycle_snapshots as s
+   where a.id = '54444444-4444-4444-4444-444444444444' and s.relation_name = 'audit_logs'),
+  'audit row survives with only actor_id nullified'
+);
+select extensions.ok(
+  (select submitted_by is null and reviewed_by is null
+     and to_jsonb(ps) - array['submitted_by', 'reviewed_by']
+         = s.row_data - array['submitted_by', 'reviewed_by']
+   from public.payment_submissions as ps cross join lifecycle_snapshots as s
+   where ps.id = '56666666-6666-6666-6666-666666666666' and s.relation_name = 'payment_submissions'),
+  'payment submission survives with only actor references nullified'
+);
+select extensions.ok(
+  (select o.user_id is null and o.status = s.row_data ->> 'status'
+     and o.total_minor = (s.row_data ->> 'total_minor')::bigint
+   from public.orders as o cross join lifecycle_snapshots as s
+   where o.id = 'c1111111-1111-1111-1111-111111111111' and s.relation_name = 'order'),
+  'order snapshot and financial total survive auth deletion'
+);
+select extensions.ok(
+  (select p.status = s.row_data ->> 'status'
+     and p.amount_minor = (s.row_data ->> 'amount_minor')::bigint
+   from public.payments as p cross join lifecycle_snapshots as s
+   where p.id = 'd1111111-1111-1111-1111-111111111111' and s.relation_name = 'payment'),
+  'payment status and amount survive auth deletion'
+);
+
+select extensions.throws_ok(
+  $$ update public.order_status_history set note = 'Tampered' where id = '51111111-1111-1111-1111-111111111111' $$,
+  '55000', 'order_status_history is append-only', 'order history remains append-only'
+);
+select extensions.throws_ok(
+  $$ update public.inventory_movements set reason = 'Tampered' where id = '52222222-2222-2222-2222-222222222222' $$,
+  '55000', 'inventory_movements is append-only', 'inventory movements remain append-only'
+);
+select extensions.throws_ok(
+  $$ update public.payment_events set reason = 'Tampered' where id = '53333333-3333-3333-3333-333333333333' $$,
+  '55000', 'payment_events is append-only', 'payment events remain append-only'
+);
+select extensions.throws_ok(
+  $$ update public.audit_logs set action = 'tampered' where id = '54444444-4444-4444-4444-444444444444' $$,
+  '55000', 'audit_logs is append-only', 'audit logs remain append-only'
+);
+select extensions.throws_ok(
+  $$ update public.order_status_history set changed_by = '66666666-6666-6666-6666-666666666666' where id = '51111111-1111-1111-1111-111111111111' $$,
+  '55000', 'order_status_history is append-only', 'null actor cannot be rewritten to a UUID'
+);
+select extensions.throws_ok(
+  $$ update public.payment_submissions set submitted_by = '66666666-6666-6666-6666-666666666666' where id = '56666666-6666-6666-6666-666666666666' $$,
+  '55000', 'payment submission evidence is immutable', 'null submitter cannot be rewritten to a UUID'
+);
+select extensions.throws_ok(
+  $$ update public.payment_submissions set receipt_storage_path = 'tampered.webp' where id = '56666666-6666-6666-6666-666666666666' $$,
+  '55000', 'payment submission evidence is immutable', 'payment evidence remains immutable'
+);
+select extensions.throws_ok(
+  $$ delete from public.order_status_history where id = '51111111-1111-1111-1111-111111111111' $$,
+  '55000', 'order_status_history is append-only', 'order history cannot be deleted'
+);
+select extensions.throws_ok(
+  $$ delete from public.inventory_movements where id = '52222222-2222-2222-2222-222222222222' $$,
+  '55000', 'inventory_movements is append-only', 'inventory movement cannot be deleted'
+);
+select extensions.throws_ok(
+  $$ delete from public.payment_events where id = '53333333-3333-3333-3333-333333333333' $$,
+  '55000', 'payment_events is append-only', 'payment event cannot be deleted'
+);
+select extensions.throws_ok(
+  $$ delete from public.audit_logs where id = '54444444-4444-4444-4444-444444444444' $$,
+  '55000', 'audit_logs is append-only', 'audit log cannot be deleted'
+);
+select extensions.throws_ok(
+  $$ delete from public.payment_submissions where id = '56666666-6666-6666-6666-666666666666' $$,
+  '55000', 'payment submissions cannot be deleted', 'payment submission cannot be deleted'
+);
+
+select pg_catalog.set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', true);
+select pg_catalog.set_config('request.jwt.claims', '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated","aal":"aal1"}', true);
+set local role authenticated;
+select extensions.throws_ok(
+  $$ update public.inventory_movements set actor_id = null where id = '52222222-2222-2222-2222-222222222222' $$,
+  '42501', 'permission denied for table inventory_movements', 'customer still cannot update ledger actor fields'
+);
 reset role;
 
 set local role service_role;
