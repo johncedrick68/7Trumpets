@@ -74,6 +74,9 @@ export function formatMinorUnitsToPHP(minorUnits: number): string {
 }
 
 function productImageUrl(path: string): string {
+  if (path.startsWith("/") || path.startsWith("http")) {
+    return path;
+  }
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!baseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");

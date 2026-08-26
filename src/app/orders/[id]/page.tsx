@@ -98,13 +98,15 @@ export default async function OrderConfirmationPage({
   return (
     <main className="catalog-main">
       <div className="catalog-container">
-        <header className="catalog-header">
-          <div className="breadcrumb">
-            <Link href="/orders">← Back to Order History</Link>
+        <header className="admin-page-header">
+          <div style={{ marginBottom: "0.5rem" }}>
+            <Link href="/orders" style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
+              &larr; Back to Order History
+            </Link>
           </div>
           <p className="eyebrow">Order Details</p>
-          <h1>Order #{order.order_number}</h1>
-          <p className="summary">
+          <h1 style={{ fontSize: "2rem", fontWeight: 800 }}>Order #{order.order_number}</h1>
+          <p style={{ color: "var(--muted)", margin: "0.25rem 0 0" }}>
             Placed on{" "}
             {new Date(order.placed_at).toLocaleDateString("en-PH", {
               year: "numeric",
@@ -135,69 +137,85 @@ export default async function OrderConfirmationPage({
         )}
 
         {/* Fulfillment Tracking Stepper */}
-        <section className="tracking-stepper-card" aria-labelledby="tracking-heading">
-          <h2 id="tracking-heading">Fulfillment Progress: <span className="status-badge">{stageInfo.label}</span></h2>
-          <p className="stage-description">{stageInfo.description}</p>
+        <section style={{ width: "100%", maxWidth: "none", background: "var(--surface-card)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.75rem", marginBottom: "2rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>
+              Fulfillment Status: <span className="status-pill status-confirmed">{stageInfo.label}</span>
+            </h2>
+          </div>
+          <p style={{ color: "var(--muted)", margin: "0 0 1.5rem" }}>{stageInfo.description}</p>
 
           {!stageInfo.isException ? (
-            <div className="stepper-track">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.5rem" }}>
               {[
                 { name: "Confirmed", step: 1 },
                 { name: "Preparing", step: 2 },
                 { name: "Shipping", step: 3 },
                 { name: "Arriving", step: 4 },
                 { name: "Delivered", step: 5 },
-              ].map((s) => (
-                <div
-                  key={s.step}
-                  className={`step-node ${
-                    stageInfo.stepIndex >= s.step
-                      ? stageInfo.stepIndex === s.step
-                        ? "current"
-                        : "completed"
-                      : "pending"
-                  }`}
-                >
-                  <div className="node-icon">{stageInfo.stepIndex > s.step ? "✓" : s.step}</div>
-                  <span className="node-label">{s.name}</span>
-                </div>
-              ))}
+              ].map((s) => {
+                const isPassed = stageInfo.stepIndex >= s.step;
+                const isCurrent = stageInfo.stepIndex === s.step;
+                return (
+                  <div
+                    key={s.step}
+                    style={{
+                      textAlign: "center",
+                      padding: "0.75rem 0.5rem",
+                      background: isCurrent ? "var(--surface-hover)" : isPassed ? "rgba(16, 185, 129, 0.08)" : "var(--surface)",
+                      border: "1px solid",
+                      borderColor: isCurrent ? "var(--accent-soft)" : isPassed ? "rgba(16, 185, 129, 0.3)" : "var(--line)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  >
+                    <div style={{ fontSize: "0.85rem", fontWeight: 700, color: isPassed ? "#34d399" : "var(--muted)", marginBottom: "0.25rem" }}>
+                      {isPassed && !isCurrent ? "✓" : s.step}
+                    </div>
+                    <div style={{ fontSize: "0.8rem", fontWeight: isCurrent ? 700 : 500, color: isCurrent ? "var(--ink)" : "var(--muted)" }}>
+                      {s.name}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <div className="exception-status-box">
-              <strong>Notice: </strong>
-              {stageInfo.description}
+            <div className="error" style={{ margin: 0 }}>
+              <strong>Notice: </strong> {stageInfo.description}
             </div>
           )}
         </section>
 
-        <div className="order-details-layout">
-          <div className="order-main-info">
-            {/* GCash Proof Submission & History */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem", alignItems: "start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            {/* GCash Proof Section */}
             {payment?.method === "MANUAL_GCASH" && (
-              <section className="gcash-proof-section" aria-labelledby="gcash-proof-heading">
-                <h2 id="gcash-proof-heading">Manual GCash Payment Verification</h2>
+              <section style={{ width: "100%", maxWidth: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: "0 0 1rem" }}>Manual GCash Payment Verification</h2>
 
                 {payment.status === "UNPAID" && (
-                  <div className="gcash-instructions-box">
-                    <h3>Payment Instructions</h3>
-                    <p>
+                  <div style={{ background: "rgba(56, 189, 248, 0.08)", border: "1px solid rgba(56, 189, 248, 0.25)", borderRadius: "var(--radius-sm)", padding: "1.25rem", marginBottom: "1.25rem" }}>
+                    <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#38bdf8", margin: "0 0 0.5rem" }}>Payment Instructions</h3>
+                    <p style={{ margin: "0 0 0.5rem", fontSize: "0.9rem" }}>
                       Please transfer <strong>{formatMinorUnitsToPHP(order.total_minor)}</strong> to our official GCash account:
                     </p>
-                    <p className="gcash-account-number">GCash: <strong>0917-7TRUMPETS (7Trumpets Devotional)</strong></p>
-                    <p className="small-note">After sending, upload your receipt/screenshot below.</p>
+                    <p style={{ fontSize: "1.05rem", fontWeight: 700, margin: "0 0 0.5rem" }}>
+                      GCash: <span style={{ color: "var(--ink)" }}>0917-1968-CLOTHING (1968 Clothing Official)</span>
+                    </p>
+                    <p style={{ fontSize: "0.8rem", color: "var(--muted)", margin: 0 }}>
+                      After sending, take a screenshot of your payment receipt and upload it below.
+                    </p>
                   </div>
                 )}
 
                 {payment.status === "SUBMITTED" && (
-                  <div className="notice" style={{ margin: "1rem 0" }}>
+                  <div className="notice" style={{ background: "rgba(245, 158, 11, 0.1)", borderColor: "rgba(245, 158, 11, 0.3)", color: "#fbbf24", margin: "1rem 0" }}>
                     <strong>Proof Under Review: </strong>
-                    We have received your GCash receipt and our staff is verifying the transaction.
+                    We have received your GCash receipt. Our team is verifying your payment.
                   </div>
                 )}
 
                 {payment.status === "PAID" && (
-                  <div className="notice" style={{ margin: "1rem 0", borderColor: "var(--success)" }}>
+                  <div className="notice" style={{ margin: "1rem 0" }}>
                     <strong>Payment Verified: </strong>
                     Your GCash payment has been approved and confirmed.
                   </div>
@@ -206,12 +224,12 @@ export default async function OrderConfirmationPage({
                 {payment.status === "REJECTED" && (
                   <div className="error" style={{ margin: "1rem 0" }}>
                     <strong>Payment Rejected: </strong>
-                    Previous payment submission was rejected. Please review the details and upload a corrected receipt.
+                    Previous payment submission was rejected. Please review details and upload a corrected receipt.
                   </div>
                 )}
 
                 {canSubmitProof && (
-                  <form action={submitGcashProof} className="proof-upload-form">
+                  <form action={submitGcashProof} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     <input type="hidden" name="order_id" value={order.id} />
 
                     <div>
@@ -233,22 +251,23 @@ export default async function OrderConfirmationPage({
                         name="receipt_file"
                         accept="image/jpeg,image/png,image/webp"
                         required
+                        style={{ marginTop: "0.5rem" }}
                       />
                     </div>
 
-                    <button type="submit" className="button-link">
-                      Submit GCash Proof
+                    <button type="submit" className="btn btn-primary">
+                      Submit GCash Proof &rarr;
                     </button>
                   </form>
                 )}
 
                 {/* Submissions Evidence History */}
                 {submissions.length > 0 && (
-                  <div className="submissions-history-list" style={{ marginTop: "1.5rem" }}>
-                    <h3>Payment Submission Evidence</h3>
+                  <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--line)", paddingTop: "1rem" }}>
+                    <h3 style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.75rem" }}>Payment Submission Evidence</h3>
                     {submissions.map((sub, idx) => (
-                      <div key={sub.id} className="submission-card">
-                        <p>
+                      <div key={sub.id} style={{ padding: "0.75rem", background: "var(--paper-bright)", borderRadius: "var(--radius-sm)", marginBottom: "0.5rem", fontSize: "0.85rem" }}>
+                        <div>
                           <strong>Submission #{submissions.length - idx}</strong> —{" "}
                           {new Date(sub.created_at).toLocaleDateString("en-PH", {
                             year: "numeric",
@@ -257,15 +276,15 @@ export default async function OrderConfirmationPage({
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
-                        </p>
-                        {sub.reference_number && <p className="ref-line">Ref: {sub.reference_number}</p>}
+                        </div>
+                        {sub.reference_number && <div style={{ color: "var(--muted)", marginTop: "0.2rem" }}>Ref: {sub.reference_number}</div>}
                         {idx === 0 && latestSignedUrl && (
-                          <div style={{ marginTop: "0.5rem" }}>
+                          <div style={{ marginTop: "0.4rem" }}>
                             <a
                               href={latestSignedUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="receipt-view-link"
+                              style={{ color: "var(--accent-soft)", textDecoration: "underline" }}
                             >
                               View Uploaded Receipt ↗
                             </a>
@@ -278,17 +297,18 @@ export default async function OrderConfirmationPage({
               </section>
             )}
 
-            <section className="order-items-section" aria-labelledby="order-items-heading">
-              <h2 id="order-items-heading">Purchased Items</h2>
-              <div className="order-items-list">
+            {/* Purchased Items */}
+            <section style={{ width: "100%", maxWidth: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: "0 0 1rem" }}>Purchased Items</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 {items.map((item) => (
-                  <article key={item.id} className="order-item-row">
+                  <article key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 0", borderBottom: "1px solid var(--line)" }}>
                     <div>
-                      <h3>{item.product_name}</h3>
-                      {item.variant_name && <p className="variant-label">{item.variant_name}</p>}
-                      <p className="sku-label">SKU: {item.sku} | Qty: {item.quantity}</p>
+                      <h3 style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.25rem" }}>{item.product_name}</h3>
+                      {item.variant_name && <p style={{ fontSize: "0.8rem", color: "var(--accent-soft)", margin: 0 }}>{item.variant_name}</p>}
+                      <p style={{ fontSize: "0.8rem", color: "var(--muted)", margin: 0 }}>SKU: {item.sku} | Qty: {item.quantity}</p>
                     </div>
-                    <span className="item-price">
+                    <span style={{ fontWeight: 700 }}>
                       {formatMinorUnitsToPHP(item.line_total_minor)}
                     </span>
                   </article>
@@ -296,9 +316,10 @@ export default async function OrderConfirmationPage({
               </div>
             </section>
 
-            <section className="delivery-snapshot-section" aria-labelledby="delivery-heading">
-              <h2 id="delivery-heading">Delivery Address</h2>
-              <p>
+            {/* Delivery Address */}
+            <section style={{ width: "100%", maxWidth: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: "0 0 0.75rem" }}>Delivery Address</h2>
+              <p style={{ fontSize: "0.9rem", color: "var(--ink)", margin: 0, lineHeight: 1.6 }}>
                 <strong>{order.recipient_name}</strong> ({order.recipient_phone})<br />
                 {order.address_line1}
                 {order.address_line2 && <>, {order.address_line2}</>}
@@ -308,39 +329,38 @@ export default async function OrderConfirmationPage({
             </section>
           </div>
 
-          <aside className="order-side-info">
-            <div className="cart-summary-card">
-              <h2>Payment Summary</h2>
-              <div className="summary-row">
-                <span>Method</span>
-                <strong>{payment?.method === "MANUAL_GCASH" ? "Manual GCash" : "Cash on Delivery (COD)"}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Payment Status</span>
-                <span className="payment-status-badge">{payment?.status ?? "UNPAID"}</span>
-              </div>
+          {/* Side Summary */}
+          <aside style={{ padding: "1.5rem", background: "var(--surface-card)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 1rem" }}>Payment Summary</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "0.75rem" }}>
+              <span style={{ color: "var(--muted)" }}>Method</span>
+              <strong>{payment?.method === "MANUAL_GCASH" ? "Manual GCash" : "Cash on Delivery (COD)"}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "1rem" }}>
+              <span style={{ color: "var(--muted)" }}>Payment Status</span>
+              <span className="status-pill status-confirmed">{payment?.status ?? "UNPAID"}</span>
+            </div>
 
-              <hr style={{ margin: "1rem 0", borderColor: "var(--line)" }} />
+            <hr style={{ margin: "1rem 0", borderColor: "var(--line)" }} />
 
-              <div className="summary-row">
-                <span>Subtotal</span>
-                <span>{formatMinorUnitsToPHP(order.subtotal_minor)}</span>
-              </div>
-              <div className="summary-row">
-                <span>Shipping</span>
-                <span>{formatMinorUnitsToPHP(order.shipping_minor)}</span>
-              </div>
-              <div className="summary-row total-row">
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "0.5rem" }}>
+              <span style={{ color: "var(--muted)" }}>Subtotal</span>
+              <span>{formatMinorUnitsToPHP(order.subtotal_minor)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "1rem" }}>
+              <span style={{ color: "var(--muted)" }}>Shipping</span>
+              <span>{formatMinorUnitsToPHP(order.shipping_minor)}</span>
+            </div>
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: "1rem", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.2rem" }}>
                 <span>Total Amount</span>
-                <span className="summary-amount">{formatMinorUnitsToPHP(order.total_minor)}</span>
-              </div>
-
-              <div style={{ marginTop: "1.5rem" }}>
-                <Link href="/orders" className="button-link secondary" style={{ width: "100%", textAlign: "center" }}>
-                  View All Orders
-                </Link>
+                <strong style={{ color: "var(--ink)" }}>{formatMinorUnitsToPHP(order.total_minor)}</strong>
               </div>
             </div>
+
+            <Link href="/orders" className="btn btn-secondary" style={{ width: "100%", justifyContent: "center" }}>
+              View All Orders
+            </Link>
           </aside>
         </div>
       </div>

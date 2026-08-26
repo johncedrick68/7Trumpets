@@ -1,5 +1,5 @@
 import Link from "next/link";
-
+import Image from "next/image";
 import { requireAdminAal2 } from "@/lib/admin/auth";
 
 export const dynamic = "force-dynamic";
@@ -12,50 +12,64 @@ export default async function AdminLayout({
   const adminCtx = await requireAdminAal2("/admin");
 
   return (
-    <div className="admin-container">
-      <aside className="admin-sidebar" aria-label="Admin Navigation">
-        <div className="admin-sidebar-header">
-          <Link href="/admin" className="admin-brand">
-            7Trumpets Admin
+    <div className="admin-container" style={{ display: "flex", minHeight: "100vh", background: "var(--paper)" }}>
+      <aside className="admin-sidebar" aria-label="Admin Navigation" style={{ width: "260px", background: "var(--surface)", borderRight: "1px solid var(--line)", padding: "1.5rem 1rem", display: "flex", flexDirection: "column" }}>
+        <div style={{ marginBottom: "1.5rem" }}>
+          <Link href="/admin" aria-label="1968 Operations Home">
+            <Image
+              src="/images/1968%20Clothing%20Logo%20transparent.webp"
+              alt="1968 Clothing"
+              width={130}
+              height={34}
+              style={{ height: "34px", width: "auto", objectFit: "contain", marginBottom: "0.75rem" }}
+            />
           </Link>
-          <div className="admin-user-pill">
-            <span className="admin-user-email">{adminCtx.email}</span>
-            <span className="admin-role-badge">
-              {adminCtx.role === "super_admin" ? "SUPER ADMIN" : "ADMIN"}
-            </span>
-            {adminCtx.aal === "aal2" && <span className="aal-badge">AAL2</span>}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <span style={{ fontSize: "0.8rem", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis" }}>{adminCtx.email}</span>
+            <div style={{ display: "flex", gap: "0.4rem" }}>
+              <span className="status-pill status-confirmed" style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}>
+                {adminCtx.role === "super_admin" ? "SUPER ADMIN" : "ADMIN"}
+              </span>
+              {adminCtx.aal === "aal2" && (
+                <span className="status-pill" style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem", background: "rgba(200, 196, 255, 0.15)", color: "var(--accent-soft)", borderColor: "rgba(200, 196, 255, 0.3)" }}>
+                  AAL2 MFA
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <nav className="admin-nav">
-          <Link href="/admin" className="admin-nav-link">
-            Dashboard
+        <nav style={{ display: "flex", flexDirection: "column", gap: "0.4rem", flex: 1 }}>
+          <Link href="/admin" className="nav-link" style={{ padding: "0.6rem 0.75rem" }}>
+            📊 Operations Dashboard
           </Link>
-          <Link href="/admin/orders" className="admin-nav-link">
-            Orders & Fulfillment
+          <Link href="/admin/orders" className="nav-link" style={{ padding: "0.6rem 0.75rem" }}>
+            📦 Orders &amp; Fulfillment
           </Link>
-          <Link href="/admin/payments" className="admin-nav-link">
-            Payment Verification
+          <Link href="/admin/payments" className="nav-link" style={{ padding: "0.6rem 0.75rem" }}>
+            💳 GCash Verification
           </Link>
-          <Link href="/admin/catalog" className="admin-nav-link">
-            Catalog Overview
+          <Link href="/admin/catalog" className="nav-link" style={{ padding: "0.6rem 0.75rem" }}>
+            🏷️ Catalog Overview
           </Link>
-          <Link href="/admin/audit" className="admin-nav-link">
-            Audit Logs
+          <Link href="/admin/audit" className="nav-link" style={{ padding: "0.6rem 0.75rem" }}>
+            🔒 Audit Logs
           </Link>
           {adminCtx.role === "super_admin" && (
-            <Link href="/admin/users" className="admin-nav-link">
-              Staff & Roles
+            <Link href="/admin/users" className="nav-link" style={{ padding: "0.6rem 0.75rem" }}>
+              👥 Staff &amp; Roles
             </Link>
           )}
-          <hr className="admin-divider" />
-          <Link href="/" className="admin-nav-link storefront-link">
-            &larr; Customer Storefront
-          </Link>
+
+          <div style={{ marginTop: "auto", borderTop: "1px solid var(--line)", paddingTop: "1rem" }}>
+            <Link href="/" className="nav-link" style={{ padding: "0.6rem 0.75rem", color: "var(--accent-soft)" }}>
+              &larr; Customer Storefront
+            </Link>
+          </div>
         </nav>
       </aside>
 
-      <main className="admin-main-content">{children}</main>
+      <main style={{ flex: 1, overflowY: "auto", padding: "2rem var(--pad)" }}>{children}</main>
     </div>
   );
 }

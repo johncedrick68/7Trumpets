@@ -5,6 +5,7 @@ import { getCustomerAddresses } from "@/lib/addresses/actions";
 import { getOrCreateCart } from "@/lib/cart/actions";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { processCheckout } from "@/lib/checkout/actions";
+import { ShieldCheckIcon, TruckIcon, CheckIcon, ArrowRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -27,18 +28,18 @@ export default async function CheckoutPage({
     redirect("/account/addresses?error=address_required_for_checkout");
   }
 
-  // Generate a stable cryptographically random idempotency key for this rendered checkout instance
+  // Stable cryptographically random idempotency key
   const checkoutIdempotencyKey = `checkout_${cart.id}_${randomUUID().replace(/-/g, "")}`;
 
-  // Estimated authoritative shipping fee: ₱150.00 (15000 minor units)
+  // Authoritative shipping fee: ₱150.00
   const shippingMinor = 15000;
   const grandTotalMinor = cart.subtotal_minor + shippingMinor;
 
   return (
     <main className="catalog-main">
       <div className="catalog-container">
-        <header className="catalog-header">
-          <p className="eyebrow">Checkout</p>
+        <header className="admin-page-header">
+          <p className="eyebrow">Secure Checkout</p>
           <h1>Complete Your Order</h1>
         </header>
 
@@ -57,24 +58,32 @@ export default async function CheckoutPage({
           </p>
         )}
 
-        <form action={processCheckout} className="checkout-layout">
+        <form action={processCheckout} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem", alignItems: "start" }}>
           <input type="hidden" name="idempotency_key" value={checkoutIdempotencyKey} />
-          <div className="checkout-main-column">
-            <section className="checkout-section" aria-labelledby="shipping-addr-title">
-              <h2 id="shipping-addr-title">1. Shipping Address</h2>
-              <div className="checkout-address-list">
+
+          {/* Left Column: Details */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            {/* 1. Shipping Address */}
+            <section style={{ width: "100%", maxWidth: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                <TruckIcon size={20} style={{ color: "var(--accent-soft)" }} />
+                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>1. Shipping Address</h2>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 {addresses.map((addr, idx) => (
-                  <label key={addr.id} className="checkout-address-option">
+                  <label key={addr.id} style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--paper-bright)", border: "1px solid var(--line)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                     <input
                       type="radio"
                       name="address_id"
                       value={addr.id}
                       defaultChecked={addr.is_default || idx === 0}
                       required
+                      style={{ marginTop: "0.25rem", width: "auto" }}
                     />
-                    <div className="address-option-details">
+                    <div>
                       <strong>{addr.recipient_name}</strong> ({addr.phone})
-                      <p>
+                      <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0.25rem 0 0" }}>
                         {addr.address_line1}
                         {addr.address_line2 && <>, {addr.address_line2}</>}
                         {addr.barangay && <>, Brgy. {addr.barangay}</>}
@@ -85,98 +94,96 @@ export default async function CheckoutPage({
                   </label>
                 ))}
               </div>
+
               <div style={{ marginTop: "1rem" }}>
-                <Link href="/account/addresses" className="button-link secondary small-btn">
-                  + Add New Address
+                <Link href="/account/addresses" className="btn btn-secondary small-btn">
+                  + Manage Addresses
                 </Link>
               </div>
             </section>
 
-            <section className="checkout-section" aria-labelledby="payment-method-title">
-              <h2 id="payment-method-title">2. Payment Method</h2>
-              <div className="payment-options-list">
-                <label className="payment-option-card">
+            {/* 2. Payment Method */}
+            <section style={{ width: "100%", maxWidth: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                <ShieldCheckIcon size={20} style={{ color: "var(--accent-soft)" }} />
+                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>2. Payment Method</h2>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <label style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--paper-bright)", border: "1px solid var(--line)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                   <input
                     type="radio"
                     name="payment_method"
                     value="MANUAL_GCASH"
                     defaultChecked
                     required
+                    style={{ marginTop: "0.25rem", width: "auto" }}
                   />
-                  <div className="payment-option-info">
-                    <strong>Manual GCash</strong>
-                    <p>
-                      Transfer payment to our official GCash account and keep your reference number / receipt proof for verification.
+                  <div>
+                    <strong style={{ color: "#38bdf8" }}>Manual GCash Transfer</strong>
+                    <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0.25rem 0 0" }}>
+                      Scan QR or send to GCash number upon checkout. Fast approval within 30 minutes.
                     </p>
                   </div>
                 </label>
 
-                <label className="payment-option-card">
+                <label style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--paper-bright)", border: "1px solid var(--line)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                   <input
                     type="radio"
                     name="payment_method"
-                    value="COD"
+                    value="CASH_ON_DELIVERY"
                     required
+                    style={{ marginTop: "0.25rem", width: "auto" }}
                   />
-                  <div className="payment-option-info">
+                  <div>
                     <strong>Cash on Delivery (COD)</strong>
-                    <p>Pay in cash upon doorstep delivery to the courier.</p>
+                    <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0.25rem 0 0" }}>
+                      Pay cash directly to the courier upon doorstep delivery.
+                    </p>
                   </div>
                 </label>
               </div>
             </section>
-
-            <section className="checkout-section" aria-labelledby="notes-title">
-              <h2 id="notes-title">3. Order Notes (Optional)</h2>
-              <label htmlFor="customer_note" className="sr-only">Special Delivery Instructions</label>
-              <textarea
-                id="customer_note"
-                name="customer_note"
-                rows={3}
-                placeholder="Special delivery instructions, landmarks, or preferred schedule..."
-                maxLength={500}
-                className="checkout-notes-input"
-              />
-            </section>
           </div>
 
-          <aside className="checkout-summary-column">
-            <div className="cart-summary-card">
-              <h2>Order Summary</h2>
-              
-              <div className="checkout-items-preview">
-                {cart.items.map((item) => (
-                  <div key={item.id} className="preview-line">
-                    <span className="preview-title">
-                      {item.product_name} ({item.quantity}x)
-                    </span>
-                    <span className="preview-price">
-                      {formatMinorUnitsToPHP(item.line_total_minor)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          {/* Right Column: Order Review */}
+          <aside style={{ padding: "1.5rem", background: "var(--surface-card)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 1rem" }}>Order Summary</h2>
 
-              <hr style={{ margin: "1rem 0", borderColor: "var(--line)" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", borderBottom: "1px solid var(--line)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+              {cart.items.map((item) => (
+                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                  <span>{item.product_name} &times; {item.quantity}</span>
+                  <span style={{ fontWeight: 600 }}>{formatMinorUnitsToPHP(item.line_total_minor)}</span>
+                </div>
+              ))}
+            </div>
 
-              <div className="summary-row">
-                <span>Subtotal</span>
-                <span>{formatMinorUnitsToPHP(cart.subtotal_minor)}</span>
-              </div>
-              <div className="summary-row">
-                <span>Shipping (Standard)</span>
-                <span>{formatMinorUnitsToPHP(shippingMinor)}</span>
-              </div>
-              <div className="summary-row total-row">
-                <span>Total Amount</span>
-                <span className="summary-amount">
-                  {formatMinorUnitsToPHP(grandTotalMinor)}
-                </span>
-              </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "0.5rem" }}>
+              <span style={{ color: "var(--muted)" }}>Subtotal</span>
+              <strong>{formatMinorUnitsToPHP(cart.subtotal_minor)}</strong>
+            </div>
 
-              <button type="submit" className="button-link checkout-btn">
-                Place Order
-              </button>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "1rem" }}>
+              <span style={{ color: "var(--muted)" }}>Standard Shipping</span>
+              <span>{formatMinorUnitsToPHP(shippingMinor)}</span>
+            </div>
+
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: "1rem", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.25rem" }}>
+                <span>Grand Total</span>
+                <strong style={{ color: "var(--ink)" }}>{formatMinorUnitsToPHP(grandTotalMinor)}</strong>
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", gap: "0.4rem", padding: "0.9rem" }}>
+              <span>Place Order Now</span>
+              <ArrowRightIcon size={18} />
+            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", color: "var(--muted)", fontSize: "0.8rem", justifyContent: "center" }}>
+              <CheckIcon size={16} style={{ color: "#34d399" }} />
+              <span>Safe &amp; Encrypted Checkout</span>
             </div>
           </aside>
         </form>

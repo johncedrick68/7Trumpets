@@ -4,6 +4,7 @@ import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { deriveCustomerFulfillmentStage } from "@/lib/orders/status";
 import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
+import { PackageIcon, ArrowRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -31,34 +32,36 @@ export default async function OrderHistoryPage() {
   return (
     <main className="catalog-main">
       <div className="catalog-container">
-        <header className="catalog-header">
+        <header className="admin-page-header">
           <p className="eyebrow">My Account</p>
           <h1>Order History</h1>
-          <p className="summary">View and track all your 7Trumpets devotional orders.</p>
+          <p style={{ color: "var(--muted)", margin: "0.25rem 0 0" }}>View and track all your 1968 Clothing streetwear orders.</p>
         </header>
 
         {orderList.length === 0 ? (
-          <section className="catalog-empty">
-            <h2>No orders found</h2>
-            <p>You haven&apos;t placed any orders yet.</p>
-            <div className="hero-actions" style={{ justifyContent: "center" }}>
-              <Link href="/products" className="button-link">
-                Explore Products
-              </Link>
+          <div style={{ textAlign: "center", padding: "4rem 1.5rem", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
+            <div style={{ display: "inline-flex", justifyContent: "center", marginBottom: "1rem", color: "var(--muted)" }}>
+              <PackageIcon size={44} />
             </div>
-          </section>
+            <h2>No orders found</h2>
+            <p style={{ color: "var(--muted)", margin: "0.5rem 0 1.5rem" }}>You haven&apos;t placed any orders yet.</p>
+            <Link href="/products" className="btn btn-primary" style={{ gap: "0.5rem" }}>
+              <span>Explore Collection</span>
+              <ArrowRightIcon size={16} />
+            </Link>
+          </div>
         ) : (
-          <div className="order-history-list">
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {orderList.map((order) => {
               const stageInfo = deriveCustomerFulfillmentStage(order.status);
               return (
-                <article key={order.id} className="order-history-card">
-                  <div className="order-history-header">
+                <article key={order.id} style={{ padding: "1.5rem", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
                     <div>
-                      <h2 className="order-history-number">
+                      <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: "0 0 0.25rem" }}>
                         <Link href={`/orders/${order.id}`}>Order #{order.order_number}</Link>
                       </h2>
-                      <p className="order-history-date">
+                      <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: 0 }}>
                         Placed on{" "}
                         {new Date(order.placed_at).toLocaleDateString("en-PH", {
                           year: "numeric",
@@ -67,26 +70,23 @@ export default async function OrderHistoryPage() {
                         })}
                       </p>
                     </div>
-                    <div className="order-history-status-badge">
-                      <span className={`status-pill ${stageInfo.isException ? "exception" : ""}`}>
-                        {stageInfo.label}
-                      </span>
-                    </div>
+                    <span className="status-pill status-confirmed">
+                      {stageInfo.label}
+                    </span>
                   </div>
 
-                  <div className="order-history-body">
-                    <p className="order-stage-desc">{stageInfo.description}</p>
-                  </div>
+                  <p style={{ fontSize: "0.9rem", color: "var(--muted)", margin: "0 0 1.25rem" }}>{stageInfo.description}</p>
 
-                  <div className="order-history-footer">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
                     <div>
-                      <span className="order-total-label">Total Amount: </span>
-                      <strong className="order-total-val">
+                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Total: </span>
+                      <strong style={{ fontSize: "1.1rem" }}>
                         {formatMinorUnitsToPHP(order.total_minor)}
                       </strong>
                     </div>
-                    <Link href={`/orders/${order.id}`} className="button-link secondary small-btn">
-                      View Order Details &amp; Tracking
+                    <Link href={`/orders/${order.id}`} className="btn btn-secondary small-btn" style={{ gap: "0.4rem" }}>
+                      <span>View Order Details &amp; Tracking</span>
+                      <ArrowRightIcon size={14} />
                     </Link>
                   </div>
                 </article>

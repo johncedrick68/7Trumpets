@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { formatMinorUnitsToPHP, getCategories, getProducts } from "@/lib/catalog/queries";
+import { SearchIcon, ArrowRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,7 @@ export default async function ProductsPage(props: {
   const sort = searchParams?.sort || "newest";
 
   const categories = await getCategories();
-  const activeCategory = categorySlug ? categories.find(c => c.slug === categorySlug) : undefined;
+  const activeCategory = categorySlug ? categories.find((c) => c.slug === categorySlug) : undefined;
 
   const products = await getProducts({
     categoryId: activeCategory?.id,
@@ -23,90 +25,99 @@ export default async function ProductsPage(props: {
   return (
     <main className="catalog-main">
       <div className="catalog-container">
-        <header className="catalog-header">
-          <p className="eyebrow">7Trumpets Catalog</p>
-          <h1>{activeCategory ? activeCategory.name : "All Products"}</h1>
-          <p className="summary">
-            {activeCategory?.description || "Faith-driven garments, accessories, and devotional items."}
+        <header className="admin-page-header" style={{ marginBottom: "2rem" }}>
+          <p className="eyebrow">1968 Clothing Collection</p>
+          <h1 style={{ fontSize: "clamp(2rem, 4vw, 2.6rem)", fontWeight: 800 }}>
+            {activeCategory ? activeCategory.name : "All Streetwear Pieces"}
+          </h1>
+          <p style={{ color: "var(--muted)", maxWidth: "600px", margin: "0.5rem 0 0" }}>
+            {activeCategory?.description || "Independent Filipino streetwear. Limited releases, made to be worn."}
           </p>
         </header>
 
-        {/* Search and Sort controls */}
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "1rem", marginBottom: "1.5rem" }}>
-          <form method="GET" action="/products" style={{ display: "flex", gap: "0.5rem", flex: 1, maxWidth: "400px" }}>
-            {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
-            <input
-              type="text"
-              name="q"
-              defaultValue={search}
-              placeholder="Search products..."
-              style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
-            />
-            <button type="submit" className="button button-primary" style={{ padding: "0.5rem 1rem" }}>
-              Search
-            </button>
-          </form>
-
-          <form method="GET" action="/products" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {search && <input type="hidden" name="q" value={search} />}
-            {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
-            <label htmlFor="sort-select" className="small-text">Sort by:</label>
-            <select
-              id="sort-select"
-              name="sort"
-              defaultValue={sort}
-              style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
-            >
-              <option value="newest">Newest</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-            </select>
-            <button type="submit" className="button button-secondary">Apply</button>
-          </form>
-        </div>
-
-        {categories.length > 0 && (
-          <nav className="category-nav" aria-label="Product categories" style={{ marginBottom: "1.5rem" }}>
-            <Link href="/products" className={`category-pill ${!categorySlug ? "active" : ""}`}>
-              All
+        {/* Collection Controls */}
+        <div className="collection-tools">
+          <div className="filter-tabs" role="group" aria-label="Category filters">
+            <Link href="/products" className={`filter-tab ${!categorySlug ? "active" : ""}`}>
+              All ({products.length})
             </Link>
             {categories.map((cat) => (
               <Link
                 key={cat.id}
                 href={`/products?category=${cat.slug}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
-                className={`category-pill ${categorySlug === cat.slug ? "active" : ""}`}
+                className={`filter-tab ${categorySlug === cat.slug ? "active" : ""}`}
               >
                 {cat.name}
               </Link>
             ))}
-          </nav>
-        )}
+          </div>
+
+          <form method="GET" action="/products" className="search-form">
+            {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
+            <div style={{ position: "relative", width: "100%", display: "flex", alignItems: "center" }}>
+              <div style={{ position: "absolute", left: "12px", color: "var(--muted)", pointerEvents: "none" }}>
+                <SearchIcon size={16} />
+              </div>
+              <input
+                type="search"
+                name="q"
+                defaultValue={search}
+                placeholder="Search pieces..."
+                aria-label="Search products"
+                style={{ paddingLeft: "36px" }}
+              />
+            </div>
+          </form>
+        </div>
 
         {products.length === 0 ? (
-          <section className="catalog-empty">
-            <p>No products found matching your selection.</p>
-          </section>
+          <div style={{ textAlign: "center", padding: "4rem 1rem", background: "var(--surface)", borderRadius: "var(--radius)" }}>
+            <p className="subtle-text">No pieces found matching your criteria.</p>
+            <Link href="/products" className="btn btn-secondary small-btn" style={{ marginTop: "1rem" }}>
+              Reset Filters
+            </Link>
+          </div>
         ) : (
           <section className="product-grid" aria-label="Products">
-            {products.map((product) => (
-              <article key={product.id} className="product-card">
-                {product.primary_image_path && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={product.primary_image_path} alt="" className="product-card-image" />
-                )}
-                <div className="product-card-body">
-                  <h2 className="product-title">
-                    <Link href={`/products/${product.slug}`}>{product.name}</Link>
-                  </h2>
-                  {product.description && (
-                    <p className="product-description">{product.description}</p>
-                  )}
-                  <p className="product-price">
-                    {formatMinorUnitsToPHP(product.min_price_minor)}
-                  </p>
-                </div>
-              </article>
-            ))}
+            {products.map((product) => {
+              const imagePath = product.primary_image_path || "/images/1968%20CLOTHING%20V1.webp";
+
+              return (
+                <article key={product.id} className="product-card">
+                  <Link href={`/products/${product.slug}`} className="product-image-wrap" tabIndex={-1} aria-hidden="true">
+                    <Image
+                      src={imagePath}
+                      alt={product.name}
+                      width={400}
+                      height={400}
+                      loading="lazy"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                    <span className="badge new">New</span>
+                  </Link>
+
+                  <div className="product-card-body">
+                    <h2 className="product-card-title">
+                      <Link href={`/products/${product.slug}`}>{product.name}</Link>
+                    </h2>
+                    {product.description && (
+                      <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0 0 1rem", flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {product.description}
+                      </p>
+                    )}
+                    <div className="product-card-prices">
+                      <span className="price-current">
+                        {formatMinorUnitsToPHP(product.min_price_minor)}
+                      </span>
+                    </div>
+                    <Link href={`/products/${product.slug}`} className="btn btn-secondary small-btn" style={{ width: "100%", justifyContent: "center", gap: "0.4rem" }}>
+                      <span>Select Size</span>
+                      <ArrowRightIcon size={14} />
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
           </section>
         )}
       </div>

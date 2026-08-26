@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { safeRedirectPath } from "@/lib/auth/redirect";
@@ -71,6 +72,32 @@ export async function signIn(formData: FormData) {
   }
 
   redirect(safeRedirectPath(next, "/account"));
+}
+
+/**
+ * Initiates Google OAuth authentication flow with redirect back to /auth/confirm.
+ */
+export async function signInWithGoogle(formData?: FormData) {
+  const next = formData ? text(formData, "next") : "";
+  const headerList = await headers();
+  const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
+  const proto = headerList.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+  const origin = `${proto}://${host}`;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(safeRedirectPath(next, "/account"))}`,
+    },
+  });
+
+  if (error || !data?.url) {
+    logServerError("auth.google_oauth", "oauth_initiation_failure");
+    redirect("/login?error=oauth");
+  }
+
+  redirect(data.url);
 }
 
 export async function requestPasswordReset(formData: FormData) {
