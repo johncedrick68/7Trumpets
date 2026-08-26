@@ -30,7 +30,9 @@ PHASE 2D: PUBLIC CATALOG READ EXPERIENCE VERIFIED
 
 PHASE 2E: CUSTOMER CART & SAVED ADDRESSES VERIFIED
 
-PHASE 2F: NOT STARTED
+PHASE 2F: CHECKOUT & TRUSTED ORDER CREATION VERIFIED
+
+PHASE 2G: NOT STARTED
 
 LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
 
@@ -60,4 +62,6 @@ Phase 2C established customer authentication with server-side actions, token-has
 
 Phase 2D established the public catalog read experience, including server-side query helpers (`src/lib/catalog/queries.ts`), responsive category/product listings (`/products`, `/categories/[slug]`), and detailed product view (`/products/[slug]`) supporting options, variants, and product images backed by the database schema.
 
-Phase 2E established authenticated customer cart management (`/cart`), item add/quantity update/remove actions with server-authoritative pricing (`src/lib/cart/actions.ts`), and saved address management (`/account/addresses`, `src/lib/addresses/actions.ts`) enforcing one-default-address semantics and owner-isolated RLS. Checkout and payment mutations remain deferred.
+Phase 2E established authenticated customer cart management (`/cart`), item add/quantity update/remove actions with server-authoritative pricing (`src/lib/cart/actions.ts`), and saved address management (`/account/addresses`, `src/lib/addresses/actions.ts`) enforcing one-default-address semantics and owner-isolated RLS.
+
+Phase 2F established authenticated checkout (`/checkout`) and order confirmation (`/orders/[id]`), executing atomic order creation, authoritative repricing, inventory reservation, and payment initiation strictly via canonical database RPC `public.checkout_order`. Admin payment verification and courier tracking remain deferred.

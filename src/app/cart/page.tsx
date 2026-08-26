@@ -112,7 +112,10 @@ export default async function CartPage() {
                 Shipping and taxes calculated during checkout.
               </p>
               <div className="cart-checkout-actions">
-                <Link href="/products" className="button-link secondary">
+                <Link href="/checkout" className="button-link" style={{ textAlign: "center" }}>
+                  Proceed to Checkout
+                </Link>
+                <Link href="/products" className="button-link secondary" style={{ textAlign: "center" }}>
                   Continue Shopping
                 </Link>
               </div>

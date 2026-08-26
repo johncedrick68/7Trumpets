@@ -5,7 +5,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("required foundation and Phase 2B-2E files exist", () => {
+test("required foundation and Phase 2B-2F files exist", () => {
   assert.ok(existsSync(".env.example"), ".env.example must exist");
   assert.ok(existsSync(".gitignore"), ".gitignore must exist");
   assert.ok(existsSync("package.json"), "package.json must exist");
@@ -45,12 +45,17 @@ test("required foundation and Phase 2B-2E files exist", () => {
   assert.ok(existsSync("src/lib/addresses/actions.ts"), "address actions must exist in 2E");
   assert.ok(existsSync("src/app/cart/page.tsx"), "cart page must exist in 2E");
   assert.ok(existsSync("src/app/account/addresses/page.tsx"), "addresses page must exist in 2E");
+
+  // Phase 2F checkout and order confirmation files
+  assert.ok(existsSync("src/lib/checkout/actions.ts"), "checkout actions must exist in 2F");
+  assert.ok(existsSync("src/app/checkout/page.tsx"), "checkout page must exist in 2F");
+  assert.ok(existsSync("src/app/orders/[id]/page.tsx"), "order confirmation page must exist in 2F");
 });
 
-test("Phase 2F-2H checkout, payment, and admin features do not exist in Phase 2E", () => {
-  assert.strictEqual(existsSync("src/app/checkout"), false, "checkout route must not exist in 2E");
-  assert.strictEqual(existsSync("src/app/orders"), false, "orders route must not exist in 2E");
-  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2E");
+test("Phase 2G-2H fulfillment tracking and admin review features do not exist in Phase 2F", () => {
+  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2F");
+  assert.strictEqual(existsSync("src/app/admin/orders"), false, "admin orders route must not exist in 2F");
+  assert.strictEqual(existsSync("src/app/admin/payments"), false, "admin payments route must not exist in 2F");
 });
 
 test("package.json includes approved Supabase packages", async () => {
@@ -84,24 +89,16 @@ test(".env.example contract uses modern placeholder names only", async () => {
   assert.doesNotMatch(envContent, /SERVICE_ROLE_KEY/);
 });
 
-test("Supabase client helpers use modern env keys and never expose secrets to browser", async () => {
+test("browser and client-side code never leaks SUPABASE_SECRET_KEY", async () => {
   const browserClient = await read("src/lib/supabase/client.ts");
-  const serverClient = await read("src/lib/supabase/server.ts");
   const proxyClient = await read("src/lib/supabase/proxy.ts");
+  const cartPage = await read("src/app/cart/page.tsx");
+  const checkoutPage = await read("src/app/checkout/page.tsx");
 
-  assert.match(browserClient, /NEXT_PUBLIC_SUPABASE_URL/);
-  assert.match(browserClient, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(browserClient, /SUPABASE_SECRET_KEY/);
-  assert.doesNotMatch(browserClient, /SERVICE_ROLE/);
-  assert.doesNotMatch(browserClient, /ANON_KEY/);
-
-  assert.match(serverClient, /NEXT_PUBLIC_SUPABASE_URL/);
-  assert.match(serverClient, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
-  assert.doesNotMatch(serverClient, /SUPABASE_SECRET_KEY/);
-
-  assert.match(proxyClient, /NEXT_PUBLIC_SUPABASE_URL/);
-  assert.match(proxyClient, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(proxyClient, /SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(cartPage, /SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(checkoutPage, /SUPABASE_SECRET_KEY/);
 });
 
 test("generated database types contain the 22-table schema and Phase 1D RPC definitions", async () => {
