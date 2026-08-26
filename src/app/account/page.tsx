@@ -58,6 +58,9 @@ export default async function AccountPage({
           <Link href="/cart" className="category-pill">
             View Cart
           </Link>
+          <Link href="/update-password" className="category-pill">
+            Security &amp; Password
+          </Link>
         </nav>
 
         {params.saved === "1" && (

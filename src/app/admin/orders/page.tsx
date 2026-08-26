@@ -8,15 +8,26 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminOrdersListPage() {
+interface SearchParams {
+  status?: string;
+}
+
+export default async function AdminOrdersListPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
   const adminCtx = await getAdminAuthContext();
   if (!adminCtx) {
     redirect("/login?next=/admin/orders");
   }
 
+  const params = searchParams ? await searchParams : {};
+  const statusFilter = params.status?.toUpperCase();
+
   const serviceClient = createServiceClient();
 
-  const { data: orders, error: ordersError } = await serviceClient
+  let query = serviceClient
     .from("orders")
     .select(`
       id,
@@ -34,6 +45,20 @@ export default async function AdminOrdersListPage() {
     .order("placed_at", { ascending: false })
     .limit(100);
 
+  if (statusFilter) {
+    if (statusFilter === "PROCESSING") {
+      query = query.in("status", ["PROCESSING", "PACKING"]);
+    } else if (statusFilter === "IN_TRANSIT") {
+      query = query.in("status", ["SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY"]);
+    } else if (statusFilter === "COMPLETED") {
+      query = query.in("status", ["DELIVERED", "COMPLETED"]);
+    } else {
+      query = query.eq("status", statusFilter);
+    }
+  }
+
+  const { data: orders, error: ordersError } = await query;
+
   if (ordersError) {
     logServerError("admin.orders.list", "database_failure");
     throw new Error("ADMIN_ORDERS_UNAVAILABLE");
@@ -43,16 +68,43 @@ export default async function AdminOrdersListPage() {
   return (
     <div className="admin-page">
       <header className="admin-page-header">
-        <h1>Orders & Fulfillment</h1>
+        <h1>Orders &amp; Fulfillment</h1>
         <p className="subtle-text">Operational order management and status transitions.</p>
       </header>
 
+      {/* Filter Tabs */}
+      <nav aria-label="Order status filter" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem" }}>
+        <Link href="/admin/orders" className={`category-pill ${!statusFilter ? "active" : ""}`}>
+          All Orders
+        </Link>
+        <Link href="/admin/orders?status=CONFIRMED" className={`category-pill ${statusFilter === "CONFIRMED" ? "active" : ""}`}>
+          Confirmed
+        </Link>
+        <Link href="/admin/orders?status=PROCESSING" className={`category-pill ${statusFilter === "PROCESSING" ? "active" : ""}`}>
+          Processing / Packing
+        </Link>
+        <Link href="/admin/orders?status=READY_FOR_SHIPMENT" className={`category-pill ${statusFilter === "READY_FOR_SHIPMENT" ? "active" : ""}`}>
+          Ready for Shipment
+        </Link>
+        <Link href="/admin/orders?status=IN_TRANSIT" className={`category-pill ${statusFilter === "IN_TRANSIT" ? "active" : ""}`}>
+          In Transit / Out for Delivery
+        </Link>
+        <Link href="/admin/orders?status=DELIVERY_FAILED" className={`category-pill ${statusFilter === "DELIVERY_FAILED" ? "active" : ""}`}>
+          Delivery Failed
+        </Link>
+        <Link href="/admin/orders?status=COMPLETED" className={`category-pill ${statusFilter === "COMPLETED" ? "active" : ""}`}>
+          Delivered / Completed
+        </Link>
+      </nav>
+
       <div className="admin-card">
-        <h2>All Orders ({orderList.length})</h2>
+        <h2>
+          {statusFilter ? `${statusFilter} Orders` : "All Orders"} ({orderList.length})
+        </h2>
 
         {orderList.length === 0 ? (
           <p className="subtle-text" style={{ padding: "1.5rem 0" }}>
-            No orders found in database.
+            No orders found matching the filter criteria.
           </p>
         ) : (
           <div className="admin-table-wrapper">

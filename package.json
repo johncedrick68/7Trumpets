@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/admin-foundation.test.mjs tests/auth.test.mjs tests/cart-address.test.mjs tests/catalog.test.mjs tests/checkout.test.mjs tests/foundation.test.mjs tests/orders-tracking.test.mjs tests/phase_4_5.test.mjs tests/phase_6_10.test.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
