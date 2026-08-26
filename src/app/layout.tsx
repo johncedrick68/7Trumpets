@@ -34,40 +34,42 @@ export default function RootLayout({
         </div>
 
         <header className="site-header">
-          <Link href="/" className="brand-logo" aria-label="1968 Clothing Home">
-            <Image
-              src="/images/1968%20Clothing%20Logo%20transparent.webp"
-              alt="1968 Clothing"
-              width={130}
-              height={32}
-              priority
-              style={{ height: "32px", width: "auto", objectFit: "contain" }}
-            />
-          </Link>
-
-          <nav className="primary-nav" aria-label="Main Navigation">
-            <Link href="/products" className="nav-link">
-              Collection
-            </Link>
-            <Link href="/#story" className="nav-link">
-              Story
-            </Link>
-            <Link href="/orders" className="nav-link">
-              Orders
-            </Link>
-          </nav>
-
-          <div className="header-actions">
-            <Link href="/account" className="nav-link" aria-label="Account Profile" style={{ minHeight: "40px" }}>
-              <UserIcon size={16} />
-              <span>Account</span>
+          <div className="header-inner">
+            <Link href="/" className="brand-logo" aria-label="1968 Clothing Home">
+              <Image
+                src="/images/1968%20Clothing%20Logo%20transparent.webp"
+                alt="1968 Clothing"
+                width={125}
+                height={32}
+                priority
+                style={{ height: "32px", width: "auto", objectFit: "contain" }}
+              />
             </Link>
 
-            <Link href="/cart" className="bag-btn" aria-label="Shopping Bag">
-              <BagIcon size={16} />
-              <span>Bag</span>
-              <span className="bag-count">0</span>
-            </Link>
+            <nav className="primary-nav" aria-label="Main Navigation">
+              <Link href="/products" className="nav-link">
+                Collection
+              </Link>
+              <Link href="/#story" className="nav-link">
+                Story
+              </Link>
+              <Link href="/orders" className="nav-link">
+                Orders
+              </Link>
+            </nav>
+
+            <div className="header-actions">
+              <Link href="/account" className="nav-link" aria-label="Account Profile" style={{ minHeight: "40px" }}>
+                <UserIcon size={16} />
+                <span>Account</span>
+              </Link>
+
+              <Link href="/cart" className="bag-btn" aria-label="Shopping Bag">
+                <BagIcon size={15} />
+                <span>Bag</span>
+                <span className="bag-count">0</span>
+              </Link>
+            </div>
           </div>
         </header>
 

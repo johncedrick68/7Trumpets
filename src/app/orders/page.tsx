@@ -31,23 +31,48 @@ export default async function OrderHistoryPage() {
 
   return (
     <main className="catalog-main">
-      <div className="catalog-container">
-        <header className="admin-page-header">
-          <p className="eyebrow">My Account</p>
-          <h1>Order History</h1>
-          <p style={{ color: "var(--muted)", margin: "0.25rem 0 0" }}>View and track all your 1968 Clothing streetwear orders.</p>
+      <div className="catalog-container" style={{ maxWidth: "860px" }}>
+        <header style={{ marginBottom: "1.75rem" }}>
+          <p className="eyebrow">Customer Account</p>
+          <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: "0 0 0.25rem", letterSpacing: "-0.02em" }}>
+            Order History
+          </h1>
+          <p style={{ color: "var(--ink-secondary)", fontSize: "14px", margin: 0 }}>
+            View and track your 1968 Clothing archival orders.
+          </p>
         </header>
 
+        {/* Account Sub-Navigation Tabs */}
+        <nav className="account-tabs" aria-label="Account navigation">
+          <Link href="/account" className="account-tab">
+            Profile Settings
+          </Link>
+          <Link href="/orders" className="account-tab active">
+            Order History
+          </Link>
+          <Link href="/account/addresses" className="account-tab">
+            Saved Addresses
+          </Link>
+          <Link href="/update-password" className="account-tab">
+            Password &amp; Security
+          </Link>
+          <Link href="/cart" className="account-tab">
+            Shopping Bag
+          </Link>
+        </nav>
+
         {orderList.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "4rem 1.5rem", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
-            <div style={{ display: "inline-flex", justifyContent: "center", marginBottom: "1rem", color: "var(--muted)" }}>
-              <PackageIcon size={44} />
+          <div className="card-surface" style={{ textAlign: "center", padding: "4rem 1.5rem" }}>
+            <div style={{ display: "inline-flex", justifyContent: "center", marginBottom: "1rem", color: "var(--ink-muted)" }}>
+              <PackageIcon size={40} />
             </div>
-            <h2>No orders found</h2>
-            <p style={{ color: "var(--muted)", margin: "0.5rem 0 1.5rem" }}>You haven&apos;t placed any orders yet.</p>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "0 0 0.5rem" }}>No orders placed yet</h2>
+            <p style={{ color: "var(--ink-secondary)", margin: "0 0 1.5rem", fontSize: "14px" }}>
+              Explore our current Drop 01 streetwear releases.
+            </p>
             <Link href="/products" className="btn btn-primary" style={{ gap: "0.5rem" }}>
               <span>Explore Collection</span>
-              <ArrowRightIcon size={16} />
+              <ArrowRightIcon size={14} />
             </Link>
           </div>
         ) : (
@@ -55,13 +80,15 @@ export default async function OrderHistoryPage() {
             {orderList.map((order) => {
               const stageInfo = deriveCustomerFulfillmentStage(order.status);
               return (
-                <article key={order.id} style={{ padding: "1.5rem", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+                <article key={order.id} className="card-surface" style={{ padding: "1.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.85rem" }}>
                     <div>
-                      <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: "0 0 0.25rem" }}>
-                        <Link href={`/orders/${order.id}`}>Order #{order.order_number}</Link>
+                      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 0.25rem" }}>
+                        <Link href={`/orders/${order.id}`} style={{ textDecoration: "underline" }}>
+                          Order #{order.order_number}
+                        </Link>
                       </h2>
-                      <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: 0 }}>
+                      <p style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--ink-muted)", margin: 0 }}>
                         Placed on{" "}
                         {new Date(order.placed_at).toLocaleDateString("en-PH", {
                           year: "numeric",
@@ -75,18 +102,20 @@ export default async function OrderHistoryPage() {
                     </span>
                   </div>
 
-                  <p style={{ fontSize: "0.9rem", color: "var(--muted)", margin: "0 0 1.25rem" }}>{stageInfo.description}</p>
+                  <p style={{ fontSize: "13px", color: "var(--ink-secondary)", margin: "0 0 1.25rem" }}>
+                    {stageInfo.description}
+                  </p>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
                     <div>
-                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Total: </span>
-                      <strong style={{ fontSize: "1.1rem" }}>
+                      <span style={{ fontSize: "12px", color: "var(--ink-muted)", fontFamily: "var(--font-mono)" }}>TOTAL: </span>
+                      <strong style={{ fontSize: "1.1rem", fontFamily: "var(--font-mono)" }}>
                         {formatMinorUnitsToPHP(order.total_minor)}
                       </strong>
                     </div>
                     <Link href={`/orders/${order.id}`} className="btn btn-secondary small-btn" style={{ gap: "0.4rem" }}>
                       <span>View Order Details &amp; Tracking</span>
-                      <ArrowRightIcon size={14} />
+                      <ArrowRightIcon size={12} />
                     </Link>
                   </div>
                 </article>

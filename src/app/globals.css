@@ -1,51 +1,55 @@
-/* 1968 Clothing — Master Editorial & Streetwear Design Language
+/* 1968 Clothing — Master Luxury Streetwear Design Language
    Inspired by bryl-minimal, taste-skill, and ui-ux-pro-max
-   Monochrome, typography-driven, zero AI slop, precision spacing, mobile-first
+   Monochrome luxury graphite palette, precision alignment, mobile ergonomics
 */
 
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap');
 
 :root {
-  /* True Dark Monochrome Ramp */
-  --bg: #09090b;
-  --bg-subtle: #121215;
-  --surface: #18181c;
-  --surface-hover: #202026;
-  --surface-active: #27272e;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --border-focus: rgba(255, 255, 255, 0.35);
+  /* Rich Dark Graphite Luxury Palette */
+  --bg: #0d0e12;
+  --bg-subtle: #13141a;
+  --surface: #181a22;
+  --surface-hover: #21232e;
+  --surface-active: #282b38;
+  --surface-card: #161820;
 
-  /* Text & Inks */
-  --ink: #f4f4f6;
-  --ink-secondary: #a1a1aa;
-  --ink-muted: #71717a;
-  --ink-faint: #52525b;
-  --ink-inverted: #09090b;
+  /* Borders & Hairlines */
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --border-focus: #ffffff;
 
-  /* Accent & Semantic (Subtle, strictly restrained) */
+  /* Text Inks */
+  --ink: #f4f4f7;
+  --ink-secondary: #b0b4c6;
+  --ink-muted: #7a7f96;
+  --ink-faint: #565a6e;
+  --ink-inverted: #000000;
+
+  /* Accent & Feedback */
   --accent: #ffffff;
+  --accent-soft: #c8cad8;
   --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.1);
-  --success-border: rgba(16, 185, 129, 0.25);
+  --success-bg: rgba(16, 185, 129, 0.12);
+  --success-border: rgba(16, 185, 129, 0.3);
   --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.1);
-  --warning-border: rgba(245, 158, 11, 0.25);
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --warning-border: rgba(245, 158, 11, 0.3);
   --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.1);
-  --danger-border: rgba(239, 68, 68, 0.25);
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-border: rgba(239, 68, 68, 0.3);
 
-  /* Geometry & Radius */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  /* Radius & Geometry */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
   --radius-pill: 9999px;
 
-  /* Spacing Rhythm */
-  --pad-page: clamp(16px, 4vw, 48px);
-  --max-width: 1240px;
-  --max-reading: 720px;
+  /* Spacing */
+  --pad-page: clamp(16px, 4vw, 32px);
+  --max-width: 1200px;
+  --max-reading: 700px;
 
   /* Typography */
   --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -114,15 +118,11 @@ img {
 
 .mono-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--ink-muted);
-}
-
-.mono-label.bright {
-  color: var(--ink-secondary);
 }
 
 .eyebrow {
@@ -139,18 +139,18 @@ img {
 }
 
 /* ==========================================================================
-   Global Announcement Bar & Top Header
+   Header & Clean Center Navigation
    ========================================================================== */
 
 .announcement-bar {
   background: var(--bg-subtle);
   border-bottom: 1px solid var(--border);
-  padding: 0.5rem var(--pad-page);
+  padding: 0.45rem var(--pad-page);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  color: var(--ink-muted);
+  letter-spacing: 0.08em;
+  color: var(--ink-secondary);
   text-align: center;
   text-transform: uppercase;
 }
@@ -159,45 +159,53 @@ img {
   position: sticky;
   top: 0;
   z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem var(--pad-page);
-  background: rgba(9, 9, 11, 0.88);
+  background: rgba(13, 14, 18, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
+  padding: 0.75rem var(--pad-page);
+}
+
+.header-inner {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
 }
 
 .brand-logo img {
   height: 32px;
   width: auto;
   object-fit: contain;
-  transition: opacity 0.2s ease;
-}
-
-.brand-logo:hover img {
-  opacity: 0.85;
 }
 
 .primary-nav {
   display: flex;
   align-items: center;
-  gap: 1.75rem;
+  justify-content: center;
+  gap: 2rem;
 }
 
 .nav-link {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-secondary);
-  padding: 0.4rem 0.2rem;
+  padding: 0.4rem 0.3rem;
   transition: color 0.15s ease;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .nav-link:hover, .nav-link.active {
@@ -207,6 +215,7 @@ img {
 .header-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
 }
 
@@ -214,7 +223,7 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.45rem 0.85rem;
+  padding: 0.45rem 0.9rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
@@ -244,11 +253,26 @@ img {
   color: var(--ink-inverted);
   border-radius: var(--radius-pill);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  .header-inner {
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem;
+  }
+  .primary-nav {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    gap: 1.25rem;
+    overflow-x: auto;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--border);
+  }
 }
 
 /* ==========================================================================
-   Buttons & Links
+   Buttons
    ========================================================================== */
 
 .btn, .button-link {
@@ -262,7 +286,7 @@ img {
   border-radius: var(--radius-xs);
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   min-height: 44px;
@@ -273,9 +297,10 @@ img {
 }
 
 .btn:hover, .button-link:hover {
-  background: #e4e4e7;
-  border-color: #e4e4e7;
+  background: #ffffff;
+  border-color: #ffffff;
   color: var(--ink-inverted);
+  transform: translateY(-1px);
 }
 
 .btn-secondary, .button-link.secondary {
@@ -287,6 +312,7 @@ img {
 .btn-secondary:hover, .button-link.secondary:hover {
   background: var(--surface-hover);
   border-color: var(--border-strong);
+  color: var(--ink);
 }
 
 .small-btn {
@@ -296,24 +322,160 @@ img {
 }
 
 /* ==========================================================================
-   Hero & Editorial Presentation
+   Inputs & Form Elements
+   ========================================================================== */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+}
+
+label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-secondary);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="search"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #111217;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-xs);
+  color: var(--ink);
+  font-size: 14px;
+  min-height: 44px;
+  transition: all 0.15s ease;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--ink-muted);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+  background: #14161f;
+}
+
+.notice, .error {
+  padding: 0.85rem 1.15rem;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+.notice {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success);
+}
+
+.error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+/* ==========================================================================
+   Account Dashboard Navigation Tabs
+   ========================================================================== */
+
+.account-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+.account-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-secondary);
+  transition: all 0.15s ease;
+  min-height: 40px;
+}
+
+.account-tab:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+.account-tab.active {
+  background: var(--ink);
+  color: var(--ink-inverted);
+  border-color: var(--ink);
+}
+
+/* ==========================================================================
+   Cards & Surfaces
+   ========================================================================== */
+
+.card-surface {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.auth-card {
+  width: min(100%, 30rem);
+  margin: 3rem auto;
+  padding: 2.25rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.account-card {
+  width: min(100%, 46rem);
+  margin: 2rem auto;
+  padding: 2.25rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* ==========================================================================
+   Hero & Editorial Layout
    ========================================================================== */
 
 .hero {
   position: relative;
-  padding: clamp(3rem, 7vw, 6rem) var(--pad-page);
+  padding: clamp(3rem, 6vw, 5.5rem) var(--pad-page);
   text-align: center;
   border-bottom: 1px solid var(--border);
-  background: radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.03), transparent 70%);
-}
-
-.hero-banner-img {
-  max-width: min(100%, 580px);
-  margin: 0 auto 1.5rem;
+  background: radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.04), transparent 70%);
 }
 
 .hero-title {
-  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.035em;
@@ -322,7 +484,7 @@ img {
 }
 
 .hero-intro {
-  max-width: 580px;
+  max-width: 560px;
   margin: 0 auto 2rem;
   font-size: clamp(1rem, 1.8vw, 1.15rem);
   color: var(--ink-secondary);
@@ -337,7 +499,7 @@ img {
 }
 
 /* ==========================================================================
-   Trust & Qualities Strip (Halftone-Divided)
+   Trust Strip
    ========================================================================== */
 
 .trust-strip {
@@ -373,7 +535,7 @@ img {
 }
 
 /* ==========================================================================
-   Catalog, Grid, and Product Cards
+   Catalog & Product Grid
    ========================================================================== */
 
 main.catalog-main {
@@ -421,7 +583,7 @@ main.catalog-main {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--surface);
+  background: var(--surface-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -437,7 +599,7 @@ main.catalog-main {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  background: #0d0e12;
+  background: #111217;
   overflow: hidden;
 }
 
@@ -466,11 +628,6 @@ main.catalog-main {
   border-radius: var(--radius-xs);
   background: var(--ink);
   color: var(--ink-inverted);
-}
-
-.badge.sale {
-  background: #ffffff;
-  color: #000000;
 }
 
 .product-card-body {
@@ -502,265 +659,9 @@ main.catalog-main {
   color: var(--ink);
 }
 
-.price-old {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-muted);
-  text-decoration: line-through;
-}
-
 /* ==========================================================================
-   Filter Tabs & Minimal Search Bar
+   Status Pills
    ========================================================================== */
-
-.collection-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 0.85rem 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-
-.filter-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.category-pill, .filter-tab {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.4rem 0.75rem;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-xs);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.category-pill:hover, .filter-tab:hover {
-  color: var(--ink);
-  background: var(--surface-hover);
-}
-
-.category-pill.active, .filter-tab.active {
-  background: var(--ink);
-  color: var(--ink-inverted);
-}
-
-.search-form {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: min(100%, 280px);
-}
-
-.search-form input {
-  width: 100%;
-  padding: 0.45rem 0.85rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  color: var(--ink);
-  font-size: 13px;
-  min-height: 38px;
-}
-
-.search-form input:focus {
-  outline: none;
-  border-color: var(--border-focus);
-}
-
-/* ==========================================================================
-   Product Detail Layout
-   ========================================================================== */
-
-.product-detail-layout {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: clamp(2rem, 5vw, 4rem);
-  margin-top: 1.5rem;
-}
-
-.gallery-main-wrap {
-  width: 100%;
-  aspect-ratio: 1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.gallery-main-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.size-selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.85rem 0 1.25rem;
-}
-
-.size-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.size-pill:hover {
-  border-color: var(--border-strong);
-}
-
-.size-pill.active {
-  background: var(--ink);
-  color: var(--ink-inverted);
-  border-color: var(--ink);
-}
-
-/* ==========================================================================
-   Auth Cards & Forms
-   ========================================================================== */
-
-.auth-card, .account-card, .checkout-card {
-  width: min(100%, 32rem);
-  margin: 3rem auto;
-  padding: 2.25rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-}
-
-.account-card {
-  width: min(100%, 46rem);
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-muted);
-  margin-bottom: -0.5rem;
-}
-
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="tel"],
-input[type="number"],
-input[type="search"],
-select,
-textarea {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  color: var(--ink);
-  font-size: 14px;
-  min-height: 44px;
-  transition: border-color 0.15s ease;
-}
-
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--border-focus);
-}
-
-.notice, .error {
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-xs);
-  font-size: 13px;
-  margin-bottom: 1rem;
-  line-height: 1.5;
-}
-
-.notice {
-  background: var(--success-bg);
-  border: 1px solid var(--success-border);
-  color: var(--success);
-}
-
-.error {
-  background: var(--danger-bg);
-  border: 1px solid var(--danger-border);
-  color: var(--danger);
-}
-
-/* ==========================================================================
-   Admin Dashboard & Operations Layout
-   ========================================================================== */
-
-.admin-page-header h1 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.35rem;
-}
-
-.admin-grid-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.admin-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1.25rem;
-}
-
-.metric-card h3 {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
-  margin: 0;
-}
-
-.metric-value {
-  font-family: var(--font-mono);
-  font-size: 2rem;
-  font-weight: 800;
-  margin: 0.5rem 0 0.75rem;
-  color: var(--ink);
-}
 
 .status-pill {
   display: inline-flex;

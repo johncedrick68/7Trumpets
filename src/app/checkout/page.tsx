@@ -38,9 +38,11 @@ export default async function CheckoutPage({
   return (
     <main className="catalog-main">
       <div className="catalog-container">
-        <header className="admin-page-header">
+        <header style={{ marginBottom: "1.75rem" }}>
           <p className="eyebrow">Secure Checkout</p>
-          <h1>Complete Your Order</h1>
+          <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: "0 0 0.25rem", letterSpacing: "-0.02em" }}>
+            Complete Your Order
+          </h1>
         </header>
 
         {params.error === "missing_fields" && (
@@ -64,26 +66,26 @@ export default async function CheckoutPage({
           {/* Left Column: Details */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {/* 1. Shipping Address */}
-            <section style={{ width: "100%", maxWidth: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+            <section className="card-surface">
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                <TruckIcon size={20} style={{ color: "var(--accent-soft)" }} />
-                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>1. Shipping Address</h2>
+                <TruckIcon size={18} />
+                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>1. Select Delivery Address</h2>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 {addresses.map((addr, idx) => (
-                  <label key={addr.id} style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--paper-bright)", border: "1px solid var(--line)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
+                  <label key={addr.id} style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                     <input
                       type="radio"
                       name="address_id"
                       value={addr.id}
                       defaultChecked={addr.is_default || idx === 0}
                       required
-                      style={{ marginTop: "0.25rem", width: "auto" }}
+                      style={{ marginTop: "0.25rem", width: "auto", minHeight: "auto" }}
                     />
                     <div>
                       <strong>{addr.recipient_name}</strong> ({addr.phone})
-                      <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0.25rem 0 0" }}>
+                      <p style={{ fontSize: "13px", color: "var(--ink-secondary)", margin: "0.25rem 0 0", lineHeight: 1.5 }}>
                         {addr.address_line1}
                         {addr.address_line2 && <>, {addr.address_line2}</>}
                         {addr.barangay && <>, Brgy. {addr.barangay}</>}
@@ -103,41 +105,41 @@ export default async function CheckoutPage({
             </section>
 
             {/* 2. Payment Method */}
-            <section style={{ width: "100%", maxWidth: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+            <section className="card-surface">
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                <ShieldCheckIcon size={20} style={{ color: "var(--accent-soft)" }} />
-                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>2. Payment Method</h2>
+                <ShieldCheckIcon size={18} />
+                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>2. Select Payment Method</h2>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                <label style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--paper-bright)", border: "1px solid var(--line)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
+                <label style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                   <input
                     type="radio"
                     name="payment_method"
                     value="MANUAL_GCASH"
                     defaultChecked
                     required
-                    style={{ marginTop: "0.25rem", width: "auto" }}
+                    style={{ marginTop: "0.25rem", width: "auto", minHeight: "auto" }}
                   />
                   <div>
-                    <strong style={{ color: "#38bdf8" }}>Manual GCash Transfer</strong>
-                    <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0.25rem 0 0" }}>
-                      Scan QR or send to GCash number upon checkout. Fast approval within 30 minutes.
+                    <strong style={{ color: "var(--ink)" }}>Manual GCash Transfer</strong>
+                    <p style={{ fontSize: "13px", color: "var(--ink-secondary)", margin: "0.25rem 0 0" }}>
+                      Send payment to official GCash number and upload receipt on order confirmation.
                     </p>
                   </div>
                 </label>
 
-                <label style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--paper-bright)", border: "1px solid var(--line)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
+                <label style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                   <input
                     type="radio"
                     name="payment_method"
                     value="CASH_ON_DELIVERY"
                     required
-                    style={{ marginTop: "0.25rem", width: "auto" }}
+                    style={{ marginTop: "0.25rem", width: "auto", minHeight: "auto" }}
                   />
                   <div>
                     <strong>Cash on Delivery (COD)</strong>
-                    <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0.25rem 0 0" }}>
+                    <p style={{ fontSize: "13px", color: "var(--ink-secondary)", margin: "0.25rem 0 0" }}>
                       Pay cash directly to the courier upon doorstep delivery.
                     </p>
                   </div>
@@ -147,42 +149,44 @@ export default async function CheckoutPage({
           </div>
 
           {/* Right Column: Order Review */}
-          <aside style={{ padding: "1.5rem", background: "var(--surface-card)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 1rem" }}>Order Summary</h2>
+          <aside className="card-surface">
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 1rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem" }}>
+              Order Breakdown
+            </h2>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", borderBottom: "1px solid var(--line)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
               {cart.items.map((item) => (
-                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                   <span>{item.product_name} &times; {item.quantity}</span>
-                  <span style={{ fontWeight: 600 }}>{formatMinorUnitsToPHP(item.line_total_minor)}</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-mono)" }}>{formatMinorUnitsToPHP(item.line_total_minor)}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "0.5rem" }}>
-              <span style={{ color: "var(--muted)" }}>Subtotal</span>
-              <strong>{formatMinorUnitsToPHP(cart.subtotal_minor)}</strong>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", marginBottom: "0.5rem" }}>
+              <span style={{ color: "var(--ink-secondary)" }}>Subtotal</span>
+              <strong style={{ fontFamily: "var(--font-mono)" }}>{formatMinorUnitsToPHP(cart.subtotal_minor)}</strong>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", marginBottom: "1rem" }}>
-              <span style={{ color: "var(--muted)" }}>Standard Shipping</span>
-              <span>{formatMinorUnitsToPHP(shippingMinor)}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", marginBottom: "1rem" }}>
+              <span style={{ color: "var(--ink-secondary)" }}>Standard Shipping</span>
+              <span style={{ fontFamily: "var(--font-mono)" }}>{formatMinorUnitsToPHP(shippingMinor)}</span>
             </div>
 
-            <div style={{ borderTop: "1px solid var(--line)", paddingTop: "1rem", marginBottom: "1.5rem" }}>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginBottom: "1.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.25rem" }}>
                 <span>Grand Total</span>
-                <strong style={{ color: "var(--ink)" }}>{formatMinorUnitsToPHP(grandTotalMinor)}</strong>
+                <strong style={{ color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{formatMinorUnitsToPHP(grandTotalMinor)}</strong>
               </div>
             </div>
 
             <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", gap: "0.4rem", padding: "0.9rem" }}>
               <span>Place Order Now</span>
-              <ArrowRightIcon size={18} />
+              <ArrowRightIcon size={16} />
             </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", color: "var(--muted)", fontSize: "0.8rem", justifyContent: "center" }}>
-              <CheckIcon size={16} style={{ color: "#34d399" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", color: "var(--ink-muted)", fontSize: "12px", justifyContent: "center" }}>
+              <CheckIcon size={14} style={{ color: "var(--success)" }} />
               <span>Safe &amp; Encrypted Checkout</span>
             </div>
           </aside>
