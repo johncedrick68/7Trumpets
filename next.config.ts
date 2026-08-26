@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     serverActions: {
-      // The receipt itself remains capped at 2 MiB; this allows multipart framing.
-      bodySizeLimit: "3mb",
+      // Product images remain capped at 5 MiB; this allows multipart framing.
+      bodySizeLimit: "6mb",
     },
   },
   async headers() {

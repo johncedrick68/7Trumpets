@@ -1786,7 +1786,12 @@ select extensions.set_eq(
     ('public.submit_gcash_proof'), ('public.approve_gcash_submission'),
     ('public.reject_gcash_submission'), ('public.settle_cod_payment'),
     ('public.admin_transition_order'), ('public.authorize_payment_receipt_preview'),
-    ('public.allow_checkout_attempt'), ('public.allow_receipt_upload_attempt')
+    ('public.allow_checkout_attempt'), ('public.allow_receipt_upload_attempt'),
+    ('public.admin_save_category'), ('public.admin_save_product'),
+    ('public.admin_save_variant'), ('public.admin_save_product_image'),
+    ('public.admin_delete_product_image'), ('public.admin_adjust_inventory'),
+    ('public.admin_save_product_option'), ('public.admin_save_option_value'),
+    ('public.admin_set_variant_option_value')
   $$,
   'authenticated can execute only current-user and narrowly authorized operations'
 );

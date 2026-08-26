@@ -1035,6 +1035,93 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_inventory: {
+        Args: {
+          p_delta: number
+          p_idempotency_key: string
+          p_reason: string
+          p_type: string
+          p_variant_id: string
+        }
+        Returns: Json
+      }
+      admin_delete_product_image: {
+        Args: { p_image_id: string }
+        Returns: boolean
+      }
+      admin_save_category: {
+        Args: {
+          p_archived?: boolean
+          p_description?: string
+          p_id?: string
+          p_name?: string
+          p_parent_id?: string
+          p_position?: number
+          p_slug?: string
+        }
+        Returns: string
+      }
+      admin_save_option_value: {
+        Args: {
+          p_id?: string
+          p_option_id: string
+          p_position?: number
+          p_product_id: string
+          p_value: string
+        }
+        Returns: string
+      }
+      admin_save_product: {
+        Args: {
+          p_category_id?: string
+          p_description?: string
+          p_id?: string
+          p_name?: string
+          p_slug?: string
+          p_status?: string
+        }
+        Returns: string
+      }
+      admin_save_product_image: {
+        Args: {
+          p_alt_text: string
+          p_position?: number
+          p_product_id: string
+          p_storage_path: string
+          p_variant_id?: string
+        }
+        Returns: string
+      }
+      admin_save_product_option: {
+        Args: {
+          p_id?: string
+          p_name: string
+          p_position?: number
+          p_product_id: string
+        }
+        Returns: string
+      }
+      admin_save_variant: {
+        Args: {
+          p_compare_at_price_minor?: number
+          p_id?: string
+          p_name?: string
+          p_price_minor?: number
+          p_product_id?: string
+          p_sku?: string
+          p_status?: string
+        }
+        Returns: string
+      }
+      admin_set_variant_option_value: {
+        Args: {
+          p_option_id: string
+          p_option_value_id: string
+          p_product_id: string
+          p_variant_id: string
+        }
+        Returns: boolean
+      }
       admin_transition_order: {
         Args: {
           p_idempotency_key: string

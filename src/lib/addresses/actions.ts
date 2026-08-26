@@ -43,6 +43,7 @@ export async function getCustomerAddresses(): Promise<Address[]> {
 }
 
 export async function saveAddress(formData: FormData) {
+  const addressId = (formData.get("address_id") as string)?.trim() || null;
   const recipientName = (formData.get("recipient_name") as string)?.trim();
   const phone = (formData.get("phone") as string)?.trim();
   const addressLine1 = (formData.get("address_line1") as string)?.trim();
@@ -63,7 +64,7 @@ export async function saveAddress(formData: FormData) {
   const userId = claimsData?.claims?.sub;
   if (!userId) redirect("/login?next=/account/addresses");
 
-  // If new address is set as default, clear existing default first
+  // If address is set as default, clear existing default first
   if (isDefault) {
     const { error: clearError } = await supabase
       .from("addresses")
@@ -75,29 +76,57 @@ export async function saveAddress(formData: FormData) {
     }
   }
 
-  const { error } = await supabase.from("addresses").insert({
-    user_id: userId,
-    recipient_name: recipientName,
-    phone,
-    address_line1: addressLine1,
-    address_line2: addressLine2,
-    barangay,
-    city_municipality: cityMunicipality,
-    province,
-    postal_code: postalCode,
-    country_code: "PH",
-    is_default: isDefault,
-    label,
-  });
+  if (addressId) {
+    // Update existing address owned by user
+    const { error } = await supabase
+      .from("addresses")
+      .update({
+        recipient_name: recipientName,
+        phone,
+        address_line1: addressLine1,
+        address_line2: addressLine2,
+        barangay,
+        city_municipality: cityMunicipality,
+        province,
+        postal_code: postalCode,
+        country_code: "PH",
+        is_default: isDefault,
+        label,
+      })
+      .eq("id", addressId)
+      .eq("user_id", userId);
 
-  if (error) {
-    logServerError("address.save", "database_failure");
-    redirect("/account/addresses?error=save_failed");
+    if (error) {
+      logServerError("address.update", "database_failure");
+      redirect("/account/addresses?error=save_failed");
+    }
+  } else {
+    // Insert new address
+    const { error } = await supabase.from("addresses").insert({
+      user_id: userId,
+      recipient_name: recipientName,
+      phone,
+      address_line1: addressLine1,
+      address_line2: addressLine2,
+      barangay,
+      city_municipality: cityMunicipality,
+      province,
+      postal_code: postalCode,
+      country_code: "PH",
+      is_default: isDefault,
+      label,
+    });
+
+    if (error) {
+      logServerError("address.save", "database_failure");
+      redirect("/account/addresses?error=save_failed");
+    }
   }
 
   revalidatePath("/account/addresses");
   redirect("/account/addresses?saved=1");
 }
+
 
 export async function setDefaultAddress(formData: FormData) {
   const addressId = formData.get("address_id") as string;

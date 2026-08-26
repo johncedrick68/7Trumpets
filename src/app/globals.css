@@ -256,6 +256,20 @@ section {
   color: var(--ink);
 }
 
+.product-card-image,
+.product-detail-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.product-image-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
 .product-options,
 .product-variants {
   margin-top: 2rem;
@@ -275,10 +289,24 @@ section {
   margin-bottom: 1rem;
 }
 
+.option-group select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+}
+
 .option-name {
+  display: block;
   margin: 0 0 0.5rem;
   font-size: 1rem;
   font-weight: 700;
+}
+
+.selected-variant {
+  min-height: 1.5rem;
+  color: var(--muted);
 }
 
 .option-values {

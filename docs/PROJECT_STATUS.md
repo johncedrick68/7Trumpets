@@ -1,6 +1,6 @@
 # Project Status
 
-CURRENT PHASE: 3 (IN PROGRESS)
+CURRENT PHASE: 4–5 R3 (VERIFIED — READY TO COMMIT)
 
 PHASE 0: APPROVED
 
@@ -40,9 +40,9 @@ PHASE 3A: PRODUCTION READINESS AUDIT COMPLETE
 
 PHASE 3B: OPERATIONAL POLICIES & SECURITY BOUNDARIES VERIFIED
 
-LOCAL SUPABASE: INITIALIZED / VERIFIED (13 MIGRATIONS REPLAY CLEAN)
+LOCAL SUPABASE: INITIALIZED / VERIFIED (16 MIGRATIONS REPLAY CLEAN)
 
-HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 13 MIGRATIONS VERIFIED
+HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 16 MIGRATIONS PRESENT; RPC GRANT PARITY VERIFIED
 
 DATABASE SCHEMA: 22-TABLE CONTRACT AUTHORED / LOCALLY & REMOTELY VERIFIED
 
@@ -50,7 +50,8 @@ MIGRATIONS LEDGER:
 - Original canonical migrations: 8
 - Additive Phase 1D corrections: 2
 - Additive Phase 3B policy & abuse boundaries: 3
-- Total migrations: 13
+- Additive Phase 4 catalog, inventory, and grant-normalization boundaries: 3
+- Total migrations: 16
 
 PRODUCTION: NOT CREATED / UNTOUCHED
 
@@ -80,3 +81,5 @@ Phase 2H established the secure admin operational foundation (`/admin`), server-
 Phase 3A delivered the comprehensive pre-production readiness audit across security, financial integrity, storage, and platform operations.
 
 Phase 3B codified operational policies (`docs/phases/PHASE_3B_OPERATIONAL_POLICIES.md`) for Admin AAL2, auth abuse controls, and 5-year private payment receipt retention, and established additive database migration boundaries (13 total migrations) with pgTAP (217/217 PASS) and hosted development verification.
+
+Phase 4–5 R3 has a clean 16-migration local replay, pgTAP (279/279 PASS), database lint with no schema errors, regenerated local database types, passing local and hosted concurrency harnesses, hosted AAL2 verification, identical local/hosted ACLs for all nine Phase 4 RPCs, and passing application test/lint/typecheck/build gates. The additive grant-normalization migration removes inherited `service_role` execution and leaves only explicitly authorized `authenticated` wrappers executable.

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/server-log";
+import { sortByMinPrice } from "@/lib/catalog/variants";
 
 export interface Category {
   id: string;
@@ -25,6 +26,7 @@ export interface ProductVariant {
   name: string | null;
   price_minor: number;
   compare_at_price_minor: number | null;
+  option_value_ids: string[];
 }
 
 export interface ProductOptionValue {
@@ -71,6 +73,13 @@ export function formatMinorUnitsToPHP(minorUnits: number): string {
   }).format(php);
 }
 
+function productImageUrl(path: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return `${baseUrl}/storage/v1/object/public/product-images/${encodedPath}`;
+}
+
 export async function getCategories(): Promise<Category[]> {
   const supabase = await createClient();
     const { data, error } = await supabase
@@ -105,59 +114,75 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
 
 export async function getProducts(options?: {
   categoryId?: string;
+  search?: string;
+  sort?: "newest" | "price_asc" | "price_desc";
 }): Promise<ProductSummary[]> {
   const supabase = await createClient();
-    let query = supabase
-      .from("products")
-      .select(`
-        id,
-        name,
-        slug,
-        description,
-        category_id,
-        product_variants (
-          price_minor,
-          status
-        ),
-        product_images (
-          storage_path,
-          position
-        )
-      `)
-      .eq("status", "active")
-      .order("created_at", { ascending: false });
+  let query = supabase
+    .from("products")
+    .select(`
+      id,
+      name,
+      slug,
+      description,
+      category_id,
+      created_at,
+      product_variants (
+        price_minor,
+        status
+      ),
+      product_images (
+        storage_path,
+        position
+      )
+    `)
+    .eq("status", "published");
 
-    if (options?.categoryId) {
-      query = query.eq("category_id", options.categoryId);
-    }
+  if (options?.categoryId) {
+    query = query.eq("category_id", options.categoryId);
+  }
 
-    const { data, error } = await query;
+  if (options?.search && options.search.trim()) {
+    query = query.ilike("name", `%${options.search.trim()}%`);
+  }
+
+  query = query.order("created_at", { ascending: false });
+
+  const { data, error } = await query;
   if (error) {
     logServerError("catalog.products", "database_failure");
     throw new Error("CATALOG_UNAVAILABLE");
   }
 
-  return (data ?? []).map((item) => {
-      const activeVariants = (item.product_variants || []).filter(
-        (v) => v.status === "active",
-      );
-      const prices = activeVariants.map((v) => v.price_minor);
-      const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const items = (data ?? []).map((item) => {
+    const activeVariants = (item.product_variants || []).filter(
+      (v) => v.status === "active",
+    );
+    const prices = activeVariants.map((v) => v.price_minor);
+    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
-      const sortedImages = (item.product_images || []).sort(
-        (a, b) => a.position - b.position,
-      );
+    const sortedImages = (item.product_images || []).sort(
+      (a, b) => a.position - b.position,
+    );
 
-      return {
-        id: item.id,
-        name: item.name,
-        slug: item.slug,
-        description: item.description,
-        category_id: item.category_id,
-        min_price_minor: minPrice,
-        primary_image_path: sortedImages[0]?.storage_path ?? null,
-      };
+    return {
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      description: item.description,
+      category_id: item.category_id,
+      min_price_minor: minPrice,
+      primary_image_path: sortedImages[0] ? productImageUrl(sortedImages[0].storage_path) : null,
+    };
   });
+
+  if (options?.sort === "price_asc") {
+    return sortByMinPrice(items, "price_asc");
+  } else if (options?.sort === "price_desc") {
+    return sortByMinPrice(items, "price_desc");
+  }
+
+  return items;
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
@@ -166,7 +191,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       .from("products")
       .select("id, name, slug, description, category_id")
       .eq("slug", slug)
-      .eq("status", "active")
+      .eq("status", "published")
       .maybeSingle();
 
   if (productError) {
@@ -175,7 +200,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
   }
   if (!product) return null;
 
-    const [variantsRes, optionsRes, optionValuesRes, imagesRes] =
+    const [variantsRes, optionsRes, optionValuesRes, variantValuesRes, imagesRes] =
       await Promise.all([
         supabase
           .from("product_variants")
@@ -194,13 +219,17 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
           .eq("product_id", product.id)
           .order("position", { ascending: true }),
         supabase
+          .from("variant_option_values")
+          .select("variant_id, option_value_id")
+          .eq("product_id", product.id),
+        supabase
           .from("product_images")
           .select("id, storage_path, alt_text, position, variant_id")
           .eq("product_id", product.id)
           .order("position", { ascending: true }),
       ]);
 
-  if (variantsRes.error || optionsRes.error || optionValuesRes.error || imagesRes.error) {
+  if (variantsRes.error || optionsRes.error || optionValuesRes.error || variantValuesRes.error || imagesRes.error) {
     logServerError("catalog.product_relations", "database_failure");
     throw new Error("CATALOG_UNAVAILABLE");
   }
@@ -210,7 +239,10 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       values: (optionValuesRes.data || []).filter((v) => v.option_id === opt.id),
     }));
 
-    const images: ProductImage[] = imagesRes.data || [];
+    const images: ProductImage[] = (imagesRes.data || []).map((image) => ({
+      ...image,
+      storage_path: productImageUrl(image.storage_path),
+    }));
 
   return {
       id: product.id,
@@ -219,7 +251,12 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       description: product.description,
       category_id: product.category_id,
       primary_image_path: images[0]?.storage_path ?? null,
-      variants: variantsRes.data || [],
+      variants: (variantsRes.data || []).map((variant) => ({
+        ...variant,
+        option_value_ids: (variantValuesRes.data || [])
+          .filter((value) => value.variant_id === variant.id)
+          .map((value) => value.option_value_id),
+      })),
       options: optionsMap,
       images,
   };

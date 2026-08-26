@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatMinorUnitsToPHP, getProductBySlug } from "@/lib/catalog/queries";
 import { addToCart } from "@/lib/cart/actions";
+import { ProductPurchaseForm } from "@/components/product-purchase-form";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,14 @@ export default async function ProductDetailPage({
         </nav>
 
         <article className="product-detail-card" aria-labelledby="product-title">
+          {product.images.length > 0 && (
+            <div className="product-image-list">
+              {product.images.map((image) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={image.id} src={image.storage_path} alt={image.alt_text} className="product-detail-image" />
+              ))}
+            </div>
+          )}
           <div className="product-detail-info">
             <p className="eyebrow">Product Details</p>
             <h1 id="product-title">{product.name}</h1>
@@ -44,23 +53,16 @@ export default async function ProductDetailPage({
             )}
 
             {product.options.length > 0 && (
-              <section className="product-options" aria-label="Product options">
-                {product.options.map((opt) => (
-                  <div key={opt.id} className="option-group">
-                    <h3 className="option-name">{opt.name}</h3>
-                    <div className="option-values">
-                      {opt.values.map((val) => (
-                        <span key={val.id} className="option-badge">
-                          {val.value}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </section>
+              <ProductPurchaseForm
+                options={product.options}
+                variants={product.variants.map((variant) => ({
+                  ...variant,
+                  formatted_price: formatMinorUnitsToPHP(variant.price_minor),
+                }))}
+              />
             )}
 
-            {product.variants.length > 0 && (
+            {product.options.length === 0 && product.variants.length > 0 && (
               <section className="product-variants" aria-label="Available variants">
                 <h3>Available Variants</h3>
                 <ul className="variant-list">
