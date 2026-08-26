@@ -25,13 +25,13 @@ export default async function ProductsPage(props: {
   return (
     <main className="catalog-main">
       <div className="catalog-container">
-        <header className="admin-page-header" style={{ marginBottom: "2rem" }}>
-          <p className="eyebrow">1968 Clothing Collection</p>
-          <h1 style={{ fontSize: "clamp(2rem, 4vw, 2.6rem)", fontWeight: 800 }}>
+        <header style={{ marginBottom: "2rem" }}>
+          <p className="eyebrow">1968 Archive</p>
+          <h1 style={{ fontSize: "clamp(2rem, 4vw, 2.5rem)", fontWeight: 800, letterSpacing: "-0.02em" }}>
             {activeCategory ? activeCategory.name : "All Streetwear Pieces"}
           </h1>
-          <p style={{ color: "var(--muted)", maxWidth: "600px", margin: "0.5rem 0 0" }}>
-            {activeCategory?.description || "Independent Filipino streetwear. Limited releases, made to be worn."}
+          <p style={{ color: "var(--ink-secondary)", maxWidth: "580px", margin: "0.4rem 0 0", fontSize: "14px" }}>
+            {activeCategory?.description || "Independent Filipino streetwear. Limited archival releases, made to be worn."}
           </p>
         </header>
 
@@ -55,8 +55,8 @@ export default async function ProductsPage(props: {
           <form method="GET" action="/products" className="search-form">
             {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
             <div style={{ position: "relative", width: "100%", display: "flex", alignItems: "center" }}>
-              <div style={{ position: "absolute", left: "12px", color: "var(--muted)", pointerEvents: "none" }}>
-                <SearchIcon size={16} />
+              <div style={{ position: "absolute", left: "10px", color: "var(--ink-muted)", pointerEvents: "none" }}>
+                <SearchIcon size={14} />
               </div>
               <input
                 type="search"
@@ -64,15 +64,17 @@ export default async function ProductsPage(props: {
                 defaultValue={search}
                 placeholder="Search pieces..."
                 aria-label="Search products"
-                style={{ paddingLeft: "36px" }}
+                style={{ paddingLeft: "32px" }}
               />
             </div>
           </form>
         </div>
 
         {products.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "4rem 1rem", background: "var(--surface)", borderRadius: "var(--radius)" }}>
-            <p className="subtle-text">No pieces found matching your criteria.</p>
+          <div style={{ textAlign: "center", padding: "4rem 1rem", background: "var(--surface)", borderRadius: "var(--radius-sm)" }}>
+            <p style={{ color: "var(--ink-muted)", fontFamily: "var(--font-mono)", fontSize: "13px" }}>
+              No pieces found matching your criteria.
+            </p>
             <Link href="/products" className="btn btn-secondary small-btn" style={{ marginTop: "1rem" }}>
               Reset Filters
             </Link>
@@ -101,7 +103,7 @@ export default async function ProductsPage(props: {
                       <Link href={`/products/${product.slug}`}>{product.name}</Link>
                     </h2>
                     {product.description && (
-                      <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0 0 1rem", flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      <p style={{ fontSize: "13px", color: "var(--ink-muted)", margin: "0 0 0.85rem", flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 }}>
                         {product.description}
                       </p>
                     )}
@@ -110,9 +112,9 @@ export default async function ProductsPage(props: {
                         {formatMinorUnitsToPHP(product.min_price_minor)}
                       </span>
                     </div>
-                    <Link href={`/products/${product.slug}`} className="btn btn-secondary small-btn" style={{ width: "100%", justifyContent: "center", gap: "0.4rem" }}>
+                    <Link href={`/products/${product.slug}`} className="btn btn-secondary small-btn" style={{ width: "100%", justifyContent: "center" }}>
                       <span>Select Size</span>
-                      <ArrowRightIcon size={14} />
+                      <ArrowRightIcon size={12} />
                     </Link>
                   </div>
                 </article>

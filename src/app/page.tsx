@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { formatMinorUnitsToPHP, getCategories, getProducts } from "@/lib/catalog/queries";
-import { SparklesIcon, TruckIcon, ShieldCheckIcon, PackageIcon, ArrowRightIcon } from "@/components/icons";
+import { ArrowRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +13,19 @@ export default async function HomePage() {
 
   return (
     <main>
-      {/* Hero Section */}
-      <section className="hero" aria-labelledby="hero-title" style={{ width: "100%", maxWidth: "none", background: "none", border: "none", borderRadius: 0, padding: "clamp(2.5rem, 6vw, 4.5rem) var(--pad)" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }} className="hero-kicker">
-            <SparklesIcon size={14} />
-            <span>Independent Filipino Streetwear · Est. 1968</span>
-          </div>
+      {/* Editorial Hero */}
+      <section className="hero" aria-labelledby="hero-title">
+        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+          <p className="eyebrow" style={{ justifyContent: "center" }}>
+            01 / DROP 01 ARCHIVE
+          </p>
 
-          <div style={{ margin: "1.5rem auto 1.25rem", maxWidth: "640px" }}>
+          <div style={{ margin: "1.25rem auto 1.5rem", maxWidth: "540px" }}>
             <Image
               src="/images/1968%20Clothing%20Banner%20transparent.png"
               alt="1968 Clothing"
-              width={640}
-              height={140}
+              width={540}
+              height={120}
               priority
               style={{ width: "100%", height: "auto", objectFit: "contain" }}
             />
@@ -36,13 +35,13 @@ export default async function HomePage() {
             Wear the legacy.<br />Move the culture.
           </h1>
           <p className="hero-intro">
-            Limited-run pieces shaped by community, history, and the streets we call home. Hand-crafted with heavyweight fabrics and archival prints.
+            Limited-run garments shaped by community, history, and the streets we call home. Heavyweight custom cotton with archival screenprint artwork.
           </p>
 
           <div className="hero-actions">
-            <Link href="/products" className="btn btn-primary" style={{ padding: "0.85rem 2rem", fontSize: "0.95rem", gap: "0.5rem" }}>
-              <span>Explore the Drop</span>
-              <ArrowRightIcon size={18} />
+            <Link href="/products" className="btn btn-primary" style={{ padding: "0.8rem 1.8rem" }}>
+              <span>View Collection</span>
+              <ArrowRightIcon size={14} />
             </Link>
             <Link href="#story" className="btn btn-secondary">
               Our Story
@@ -51,56 +50,52 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Trust Strip */}
+      {/* Technical Qualities Strip */}
       <div className="trust-strip">
         <div className="trust-item">
-          <PackageIcon size={18} />
           <div>
-            <strong>Limited-Run Releases</strong>
-            <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Numbered &amp; archival pieces</div>
+            <strong>01 — Limited Releases</strong>
+            <span>Numbered archival production runs</span>
           </div>
         </div>
         <div className="trust-item">
-          <SparklesIcon size={18} />
           <div>
-            <strong>Designed in PH</strong>
-            <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Rooted in Filipino streetwear culture</div>
+            <strong>02 — Designed in Manila</strong>
+            <span>Rooted in Philippine streetwear</span>
           </div>
         </div>
         <div className="trust-item">
-          <TruckIcon size={18} />
           <div>
-            <strong>Doorstep COD &amp; GCash</strong>
-            <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Safe payment &amp; express shipping</div>
+            <strong>03 — Doorstep Delivery</strong>
+            <span>Secure Cash on Delivery &amp; GCash</span>
           </div>
         </div>
         <div className="trust-item">
-          <ShieldCheckIcon size={18} />
           <div>
-            <strong>Authentic Guarantee</strong>
-            <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>100% Genuine 1968 merchandise</div>
+            <strong>04 — Guaranteed Genuine</strong>
+            <span>100% Official 1968 merchandise</span>
           </div>
         </div>
       </div>
 
-      <div className="catalog-main" style={{ width: "100%", maxWidth: "var(--max)", margin: "0 auto", padding: "3rem var(--pad)" }}>
-        {/* Drop 01 Release */}
-        <section aria-labelledby="collection-title" style={{ width: "100%", maxWidth: "none", background: "none", border: "none", padding: 0 }}>
+      <div className="catalog-main" style={{ width: "100%", maxWidth: "var(--max-width)", margin: "0 auto" }}>
+        {/* Drop 01 Releases */}
+        <section aria-labelledby="collection-title">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Drop 01 · The Current Release</p>
-              <h2 id="collection-title" className="section-title">Pieces with Purpose</h2>
+              <p className="eyebrow">The Current Release</p>
+              <h2 id="collection-title" className="section-title">Drop 01 Pieces</h2>
             </div>
-            <Link href="/products" className="btn btn-secondary small-btn" style={{ gap: "0.4rem" }}>
+            <Link href="/products" className="btn btn-secondary small-btn">
               <span>View All ({products.length})</span>
-              <ArrowRightIcon size={14} />
+              <ArrowRightIcon size={12} />
             </Link>
           </div>
 
           {categories.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "2rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "1.75rem" }}>
               <Link href="/products" className="category-pill active">
-                All Drops
+                All
               </Link>
               {categories.map((cat) => (
                 <Link key={cat.id} href={`/categories/${cat.slug}`} className="category-pill">
@@ -111,8 +106,10 @@ export default async function HomePage() {
           )}
 
           {products.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "4rem 1rem", background: "var(--surface)", borderRadius: "var(--radius)" }}>
-              <p className="subtle-text">Loading catalog pieces...</p>
+            <div style={{ textAlign: "center", padding: "4rem 1rem", background: "var(--surface)", borderRadius: "var(--radius-sm)" }}>
+              <p style={{ color: "var(--ink-muted)", fontFamily: "var(--font-mono)", fontSize: "13px" }}>
+                Catalog updating...
+              </p>
             </div>
           ) : (
             <div className="product-grid">
@@ -138,7 +135,7 @@ export default async function HomePage() {
                         <Link href={`/products/${product.slug}`}>{product.name}</Link>
                       </h3>
                       {product.description && (
-                        <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "0 0 1rem", flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        <p style={{ fontSize: "13px", color: "var(--ink-muted)", margin: "0 0 0.85rem", flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 }}>
                           {product.description}
                         </p>
                       )}
@@ -147,9 +144,9 @@ export default async function HomePage() {
                           {formatMinorUnitsToPHP(product.min_price_minor)}
                         </span>
                       </div>
-                      <Link href={`/products/${product.slug}`} className="btn btn-secondary small-btn" style={{ width: "100%", justifyContent: "center", gap: "0.4rem" }}>
+                      <Link href={`/products/${product.slug}`} className="btn btn-secondary small-btn" style={{ width: "100%", justifyContent: "center" }}>
                         <span>Select Size</span>
-                        <ArrowRightIcon size={14} />
+                        <ArrowRightIcon size={12} />
                       </Link>
                     </div>
                   </article>
@@ -160,17 +157,17 @@ export default async function HomePage() {
         </section>
 
         {/* Story Section */}
-        <section id="story" style={{ width: "100%", maxWidth: "none", background: "var(--surface-card)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "clamp(2rem, 5vw, 4rem)", marginTop: "4.5rem", position: "relative", overflow: "hidden" }}>
-          <div style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}>
-            <span className="eyebrow">More Than a Number</span>
-            <h2 style={{ fontSize: "clamp(1.8rem, 3.5vw, 2.6rem)", fontWeight: 800, margin: "0.5rem 0 1.5rem", letterSpacing: "-0.02em" }}>
+        <section id="story" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "clamp(2rem, 5vw, 4rem)", marginTop: "4rem" }}>
+          <div style={{ maxWidth: "700px", margin: "0 auto", textAlign: "center" }}>
+            <p className="eyebrow" style={{ justifyContent: "center" }}>Heritage &amp; Identity</p>
+            <h2 style={{ fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)", fontWeight: 800, margin: "0.5rem 0 1.25rem", letterSpacing: "-0.02em", color: "var(--ink)" }}>
               Built by the culture.<br />Worn by the community.
             </h2>
-            <p style={{ fontSize: "1.05rem", color: "var(--muted)", lineHeight: 1.75, margin: "0 0 2rem" }}>
-              1968 is not just a year—it is the root of brotherhood, strength, and identity. Every garment we craft is an ode to the resilient spirit of Philippine streetwear, bringing timeless principles into modern, wearable silhouettes.
+            <p style={{ fontSize: "15px", color: "var(--ink-secondary)", lineHeight: 1.75, margin: "0 0 2rem" }}>
+              1968 is not just a number—it represents principles of brotherhood, resilience, and creative independence. Every release is a wearable statement built for the daily journey, engineered to carry a story across every street.
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
-              <Link href="/products" className="btn btn-primary" style={{ padding: "0.85rem 2rem" }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <Link href="/products" className="btn btn-primary">
                 Shop the Collection &rarr;
               </Link>
               <Link href="/orders" className="btn btn-secondary">
