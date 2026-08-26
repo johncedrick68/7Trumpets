@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getAdminAuthContext } from "@/lib/admin/auth";
 import { approveGcashSubmission, rejectGcashSubmission } from "@/lib/admin/actions";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
+import Link from "next/link";
+import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +28,7 @@ export default async function AdminPaymentsPage({
   const serviceClient = createServiceClient();
 
   // Fetch pending submissions and recent payment history
-  const { data: submissions } = await serviceClient
+  const { data: submissions, error: submissionsError } = await serviceClient
     .from("payment_submissions")
     .select(`
       id,
@@ -54,21 +56,11 @@ export default async function AdminPaymentsPage({
     .order("created_at", { ascending: false })
     .limit(50);
 
+  if (submissionsError) {
+    logServerError("admin.payments.list", "database_failure");
+    throw new Error("ADMIN_PAYMENTS_UNAVAILABLE");
+  }
   const submissionList = submissions || [];
-
-  // Generate signed URLs for private receipts via service client
-  const submissionsWithUrls = await Promise.all(
-    submissionList.map(async (sub) => {
-      let signedUrl: string | null = null;
-      if (sub.receipt_storage_path) {
-        const { data } = await serviceClient.storage
-          .from("payment-receipts")
-          .createSignedUrl(sub.receipt_storage_path, 600); // 10 minutes valid for staff review
-        signedUrl = data?.signedUrl ?? null;
-      }
-      return { ...sub, signedUrl };
-    })
-  );
 
   return (
     <div className="admin-page">
@@ -92,9 +84,9 @@ export default async function AdminPaymentsPage({
       )}
 
       <div className="admin-card">
-        <h2>Manual GCash Submissions ({submissionsWithUrls.length})</h2>
+        <h2>Manual GCash Submissions ({submissionList.length})</h2>
 
-        {submissionsWithUrls.length === 0 ? (
+        {submissionList.length === 0 ? (
           <p className="subtle-text" style={{ padding: "1.5rem 0" }}>
             No payment submissions found in queue.
           </p>
@@ -113,7 +105,7 @@ export default async function AdminPaymentsPage({
                 </tr>
               </thead>
               <tbody>
-                {submissionsWithUrls.map((sub) => {
+                {submissionList.map((sub) => {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const payment = sub.payments as any;
                   const order = payment?.orders;
@@ -129,15 +121,13 @@ export default async function AdminPaymentsPage({
                       <td><strong>{formatMinorUnitsToPHP(sub.claimed_amount_minor)}</strong></td>
                       <td><code>{sub.reference_number || "None"}</code></td>
                       <td>
-                        {sub.signedUrl ? (
-                          <a
-                            href={sub.signedUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {sub.receipt_storage_path ? (
+                          <Link
+                            href={`/admin/payments/receipts/${sub.id}`}
                             className="btn btn-secondary small-btn"
                           >
                             View Receipt &rarr;
-                          </a>
+                          </Link>
                         ) : (
                           <span className="subtle-text small-text">No image</span>
                         )}

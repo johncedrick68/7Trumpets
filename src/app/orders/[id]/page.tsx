@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { deriveCustomerFulfillmentStage } from "@/lib/orders/status";
+import { logServerError } from "@/lib/server-log";
 import { getReceiptSignedUrl, submitGcashProof } from "@/lib/payments/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,9 +30,13 @@ export default async function OrderConfirmationPage({
     .select("*")
     .eq("id", id)
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
-  if (orderError || !order) {
+  if (orderError) {
+    logServerError("order.detail", "database_failure");
+    throw new Error("ORDER_UNAVAILABLE");
+  }
+  if (!order) {
     notFound();
   }
 
@@ -51,6 +56,10 @@ export default async function OrderConfirmationPage({
 
   const items = itemsRes.data || [];
   const payment = paymentRes.data;
+  if (itemsRes.error || paymentRes.error) {
+    logServerError("order.detail_relations", "database_failure");
+    throw new Error("ORDER_UNAVAILABLE");
+  }
 
   // 3. If payment exists, fetch submissions for this payment (owner-scoped)
   let submissions: Array<{
@@ -62,11 +71,15 @@ export default async function OrderConfirmationPage({
   }> = [];
 
   if (payment) {
-    const { data: subData } = await supabase
+    const { data: subData, error: submissionsError } = await supabase
       .from("payment_submissions")
       .select("id, claimed_amount_minor, reference_number, receipt_storage_path, created_at")
       .eq("payment_id", payment.id)
       .order("created_at", { ascending: false });
+    if (submissionsError) {
+      logServerError("order.submissions", "database_failure");
+      throw new Error("ORDER_UNAVAILABLE");
+    }
     submissions = subData || [];
   }
 

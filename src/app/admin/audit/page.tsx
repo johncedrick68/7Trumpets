@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getAdminAuthContext } from "@/lib/admin/auth";
+import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export default async function AdminAuditLogsPage() {
   const serviceClient = createServiceClient();
 
   // Fetch recent audit logs
-  const { data: auditLogs } = await serviceClient
+  const { data: auditLogs, error: auditError } = await serviceClient
     .from("audit_logs")
     .select(`
       id,
@@ -30,6 +31,10 @@ export default async function AdminAuditLogsPage() {
     .order("created_at", { ascending: false })
     .limit(100);
 
+  if (auditError) {
+    logServerError("admin.audit", "database_failure");
+    throw new Error("ADMIN_AUDIT_UNAVAILABLE");
+  }
   const logList = auditLogs || [];
 
   return (

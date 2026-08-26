@@ -1,8 +1,9 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
-import { getAdminAuthContext } from "@/lib/admin/auth";
+import { requireAdminAal2 } from "@/lib/admin/auth";
 import { manageUserRole } from "@/lib/admin/actions";
-import { createServiceClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/server-log";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +17,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const adminCtx = await getAdminAuthContext();
-  if (!adminCtx) {
-    redirect("/login?next=/admin/users");
-  }
+  const adminCtx = await requireAdminAal2("/admin/users");
 
   // Super admin only access
   if (adminCtx.role !== "super_admin") {
@@ -27,15 +25,12 @@ export default async function AdminUsersPage({
   }
 
   const { notice, error } = await searchParams;
-  const serviceClient = createServiceClient();
-
-  // Fetch staff roles from private.user_roles via service client
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: userRoles } = await (serviceClient as any)
-    .schema("private")
-    .from("user_roles")
-    .select("user_id, role, created_at, assigned_by")
-    .order("created_at", { ascending: false });
+  const supabase = await createClient();
+  const { data: userRoles, error: rolesError } = await supabase.rpc("list_staff_roles");
+  if (rolesError) {
+    logServerError("admin.roles.list", "database_failure");
+    throw new Error("ADMIN_ROLES_UNAVAILABLE");
+  }
 
   const roleList = userRoles || [];
 

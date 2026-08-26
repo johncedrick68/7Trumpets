@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getAdminAuthContext } from "@/lib/admin/auth";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
+import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export default async function AdminOrdersListPage() {
 
   const serviceClient = createServiceClient();
 
-  const { data: orders } = await serviceClient
+  const { data: orders, error: ordersError } = await serviceClient
     .from("orders")
     .select(`
       id,
@@ -33,6 +34,10 @@ export default async function AdminOrdersListPage() {
     .order("placed_at", { ascending: false })
     .limit(100);
 
+  if (ordersError) {
+    logServerError("admin.orders.list", "database_failure");
+    throw new Error("ADMIN_ORDERS_UNAVAILABLE");
+  }
   const orderList = orders || [];
 
   return (

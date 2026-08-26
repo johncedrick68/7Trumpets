@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
-import { getAdminAuthContext } from "@/lib/admin/auth";
+import { requireAdminAal2 } from "@/lib/admin/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +9,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const adminCtx = await getAdminAuthContext();
-
-  if (!adminCtx) {
-    redirect("/login?next=/admin");
-  }
+  const adminCtx = await requireAdminAal2("/admin");
 
   return (
     <div className="admin-container">

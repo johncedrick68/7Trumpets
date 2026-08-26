@@ -1,6 +1,6 @@
 # Project Status
 
-CURRENT PHASE: 2 (IN PROGRESS)
+CURRENT PHASE: 3 (IN PROGRESS)
 
 PHASE 0: APPROVED
 
@@ -18,7 +18,7 @@ PHASE 1C: LOCAL MIGRATIONS AUTHORED / VERIFIED
 
 PHASE 1D: HOSTED DEVELOPMENT VERIFIED / CLOSED
 
-PHASE 2: IN PROGRESS
+PHASE 2: CLOSED
 
 PHASE 2A: APPLICATION FOUNDATION VERIFIED
 
@@ -36,18 +36,21 @@ PHASE 2G: CUSTOMER ORDER HISTORY / GCASH PROOF / TRACKING VERIFIED
 
 PHASE 2H: ADMIN FOUNDATION & AAL2 BOUNDARY VERIFIED
 
-PHASE 2: CLOSED
+PHASE 3A: PRODUCTION READINESS AUDIT COMPLETE
 
-LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
+PHASE 3B: OPERATIONAL POLICIES & SECURITY BOUNDARIES VERIFIED
 
-HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — VERIFIED
+LOCAL SUPABASE: INITIALIZED / VERIFIED (13 MIGRATIONS REPLAY CLEAN)
+
+HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 13 MIGRATIONS VERIFIED
 
 DATABASE SCHEMA: 22-TABLE CONTRACT AUTHORED / LOCALLY & REMOTELY VERIFIED
 
 MIGRATIONS LEDGER:
 - Original canonical migrations: 8
 - Additive Phase 1D corrections: 2
-- Total migrations: 10
+- Additive Phase 3B policy & abuse boundaries: 3
+- Total migrations: 13
 
 PRODUCTION: NOT CREATED / UNTOUCHED
 
@@ -72,4 +75,8 @@ Phase 2F established authenticated checkout (`/checkout`) and order confirmation
 
 Phase 2G established authenticated customer order history (`/orders`), detailed tracking view (`/orders/[id]`), canonical presentation-tier fulfillment stage derivation (`src/lib/orders/status.ts`), and private Manual GCash payment receipt upload and proof submission (`src/lib/payments/actions.ts`) with magic byte validation, short-lived signed URLs, and immutable payment evidence preservation.
 
-Phase 2H established the secure admin operational foundation (`/admin`), server-side role verification backed by `private.user_roles` in PostgreSQL (`src/lib/admin/auth.ts`), AAL2 enforcement for super_admin staff role management (`/admin/users`, `public.manage_user_role`), GCash payment verification queue with transactional approval/rejection (`/admin/payments`), fulfillment lifecycle transitions (`/admin/orders`, `/admin/orders/[id]`), COD settlement actions, and immutable audit logs visibility (`/admin/audit`). Phase 2 application layer is now complete and closed.
+Phase 2H established the secure admin operational foundation (`/admin`), server-side role verification backed by `private.user_roles` in PostgreSQL (`src/lib/admin/auth.ts`), AAL2 enforcement for super_admin staff role management (`/admin/users`, `public.manage_user_role`), GCash payment verification queue with transactional approval/rejection (`/admin/payments`), fulfillment lifecycle transitions (`/admin/orders`, `/admin/orders/[id]`), COD settlement actions, and immutable audit logs visibility (`/admin/audit`). Phase 2 application layer is complete and closed.
+
+Phase 3A delivered the comprehensive pre-production readiness audit across security, financial integrity, storage, and platform operations.
+
+Phase 3B codified operational policies (`docs/phases/PHASE_3B_OPERATIONAL_POLICIES.md`) for Admin AAL2, auth abuse controls, and 5-year private payment receipt retention, and established additive database migration boundaries (13 total migrations) with pgTAP (217/217 PASS) and hosted development verification.

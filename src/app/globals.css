@@ -1356,3 +1356,9 @@ a {
   background: var(--danger);
   color: #fff;
 }
+.mfa-qr {
+  display: block;
+  width: min(100%, 16rem);
+  height: auto;
+  margin: 1rem auto;
+}

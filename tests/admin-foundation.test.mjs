@@ -32,34 +32,32 @@ test("admin foundation files and routes exist and are server components with dyn
   }
 });
 
-test("admin auth helper verifies role exclusively from private.user_roles in PostgreSQL", async () => {
+test("admin auth helper verifies role through the authenticated PostgreSQL boundary", async () => {
   const authHelper = await read("src/lib/admin/auth.ts");
 
   assert.match(authHelper, /getAdminAuthContext/);
   assert.match(authHelper, /auth\.getClaims\(\)/);
-  assert.match(authHelper, /createServiceClient/);
-  assert.match(authHelper, /\.schema\("private"\)/);
-  assert.match(authHelper, /\.from\("user_roles"\)/);
-  assert.match(authHelper, /\.eq\("user_id", userId\)/);
+  assert.match(authHelper, /\.rpc\("current_user_role"\)/);
+  assert.doesNotMatch(authHelper, /createServiceClient|\.schema\("private"\)/);
 
   // Does NOT trust user_metadata or query parameters for role assignment
   assert.doesNotMatch(authHelper, /user_metadata\.role|user_metadata\.admin/);
   assert.doesNotMatch(authHelper, /searchParams\.get\(["']role["']\)/);
 });
 
-test("admin layout and pages enforce getAdminAuthContext and redirect unauthorized users", async () => {
+test("admin layout requires AAL2 and admin pages retain server-side authentication", async () => {
   const layout = await read("src/app/admin/layout.tsx");
   const dashPage = await read("src/app/admin/page.tsx");
   const paymentsPage = await read("src/app/admin/payments/page.tsx");
   const usersPage = await read("src/app/admin/users/page.tsx");
 
-  assert.match(layout, /getAdminAuthContext\(\)/);
-  assert.match(layout, /redirect\("\/login\?next=\/admin"\)/);
+  assert.match(layout, /requireAdminAal2\("\/admin"\)/);
 
   assert.match(dashPage, /getAdminAuthContext\(\)/);
   assert.match(paymentsPage, /getAdminAuthContext\(\)/);
 
   // Users page specifically requires super_admin
+  assert.match(usersPage, /requireAdminAal2\("\/admin\/users"\)/);
   assert.match(usersPage, /adminCtx\.role !== "super_admin"/);
   assert.match(usersPage, /notFound\(\)/);
 });
@@ -69,8 +67,8 @@ test("AAL2 is strictly enforced for super_admin role mutations", async () => {
   const usersPage = await read("src/app/admin/users/page.tsx");
 
   assert.match(adminActions, /manageUserRole/);
+  assert.match(adminActions, /requireAdminAal2\("\/admin\/users"\)/);
   assert.match(adminActions, /adminCtx\.role !== "super_admin"/);
-  assert.match(adminActions, /adminCtx\.aal !== "aal2"/);
   assert.match(adminActions, /manage_user_role/);
 
   // Users page displays warning if AAL2 is not satisfied
@@ -97,11 +95,11 @@ test("GCash payment review actions use canonical database RPCs and do not mutate
   assert.doesNotMatch(adminActions, /\.from\("payments"\)\.update\(\{\s*status:\s*["']PAID["']/);
 });
 
-test("Order fulfillment transitions use canonical transition_order RPC", async () => {
+test("Order fulfillment transitions use the authenticated admin boundary", async () => {
   const adminActions = await read("src/lib/admin/actions.ts");
 
   assert.match(adminActions, /transitionOrderStatus/);
-  assert.match(adminActions, /\.rpc\("transition_order"/);
+  assert.match(adminActions, /\.rpc\("admin_transition_order"/);
   assert.doesNotMatch(adminActions, /\.from\("orders"\)\.update\(\{\s*status:/);
 });
 
@@ -114,11 +112,10 @@ test("Audit logs view queries append-only audit_logs table via authorized server
   assert.match(auditPage, /\.order\("created_at", \{\s*ascending:\s*false\s*\}\)/);
 });
 
-test("Admin actions derive actor identity solely from verified server session and reject client-supplied identities", async () => {
+test("Admin actions derive actor identity from the verified session and reject client-supplied identities", async () => {
   const adminActions = await read("src/lib/admin/actions.ts");
 
-  // Every action calls getAdminAuthContext() and uses adminCtx.userId
-  assert.match(adminActions, /const adminCtx = await getAdminAuthContext\(\)/);
+  assert.match(adminActions, /requireAdminAal2/);
   assert.doesNotMatch(adminActions, /p_reviewer_id:\s*formData\.get\(/);
   assert.doesNotMatch(adminActions, /p_changed_by:\s*formData\.get\(/);
   assert.doesNotMatch(adminActions, /p_actor_id:\s*formData\.get\(/);
@@ -126,7 +123,8 @@ test("Admin actions derive actor identity solely from verified server session an
 
 test("Customer cannot call admin actions or transition order states", async () => {
   const adminActions = await read("src/lib/admin/actions.ts");
+  const authHelper = await read("src/lib/admin/auth.ts");
 
-  // Ensure every action redirects to login if getAdminAuthContext returns null (e.g. for customer)
-  assert.match(adminActions, /if \(!adminCtx\) \{\s*redirect\("\/login/);
+  assert.match(adminActions, /requireAdminAal2/);
+  assert.match(authHelper, /if \(!context\) redirect\(`\/login/);
 });

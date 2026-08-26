@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -1035,6 +1035,71 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_transition_order: {
+        Args: {
+          p_idempotency_key: string
+          p_metadata?: Json
+          p_note: string
+          p_order_id: string
+          p_source: string
+          p_to_status: string
+        }
+        Returns: {
+          address_line1: string
+          address_line2: string | null
+          barangay: string | null
+          cancellation_reason: string | null
+          city_municipality: string
+          country_code: string
+          created_at: string
+          currency_code: string
+          customer_email: string
+          customer_note: string | null
+          delivery_failure_reason: string | null
+          discount_minor: number
+          id: string
+          idempotency_key: string
+          order_number: string
+          placed_at: string
+          postal_code: string
+          province: string
+          recipient_name: string
+          recipient_phone: string
+          shipping_minor: number
+          status: string
+          subtotal_minor: number
+          total_minor: number
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      allow_checkout_attempt: {
+        Args: { p_idempotency_key: string }
+        Returns: boolean
+      }
+      allow_receipt_upload_attempt: {
+        Args: { p_payment_id: string }
+        Returns: boolean
+      }
+      approve_gcash_submission: {
+        Args: {
+          p_idempotency_key: string
+          p_payment_id: string
+          p_reason?: string
+          p_submission_id: string
+        }
+        Returns: string
+      }
+      authorize_payment_receipt_preview: {
+        Args: { p_submission_id: string }
+        Returns: string
+      }
       checkout_order: {
         Args: {
           p_customer_id: string
@@ -1081,9 +1146,49 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      current_user_role: { Args: never; Returns: string }
+      list_staff_roles: {
+        Args: never
+        Returns: {
+          assigned_by: string
+          created_at: string
+          role: string
+          user_id: string
+        }[]
+      }
       manage_user_role: {
         Args: { p_assign: boolean; p_role: string; p_user_id: string }
         Returns: boolean
+      }
+      reject_gcash_submission: {
+        Args: {
+          p_idempotency_key: string
+          p_payment_id: string
+          p_rejection_reason: string
+          p_submission_id: string
+        }
+        Returns: string
+      }
+      settle_cod_payment: {
+        Args: {
+          p_idempotency_key: string
+          p_metadata?: Json
+          p_payment_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      submit_gcash_proof: {
+        Args: {
+          p_claimed_amount_minor: number
+          p_event_idempotency_key: string
+          p_payment_id: string
+          p_receipt_storage_path: string
+          p_reference_number?: string
+          p_reservation_expires_at: string
+          p_submission_idempotency_key: string
+        }
+        Returns: string
       }
       transition_order: {
         Args: {

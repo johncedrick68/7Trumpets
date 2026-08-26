@@ -170,19 +170,21 @@ test("order detail page enforces owner isolation and shows immutable payment sub
 
 test("GCash proof submission action enforces size, MIME, magic bytes, and owner checks", async () => {
   const actions = await read("src/lib/payments/actions.ts");
+  const imageInspector = await read("src/lib/payments/image.ts");
 
-  // Magic bytes check
-  assert.match(actions, /validateImageMagicBytes/);
-  assert.match(actions, /0xff/); // JPEG
-  assert.match(actions, /0x89/); // PNG
-  assert.match(actions, /0x52/); // WebP
+  assert.match(actions, /inspectReceiptImage/);
+  assert.match(imageInspector, /0xff/); // JPEG
+  assert.match(imageInspector, /0x89/); // PNG
+  assert.match(imageInspector, /RIFF/); // WebP
+  assert.match(imageInspector, /MAX_DIMENSION/);
+  assert.match(imageInspector, /MAX_PIXELS/);
 
   // File size limit (2MB)
   assert.match(actions, /2 \* 1024 \* 1024/);
 
   // Private storage bucket & path prefix enforcement
   assert.match(actions, /payment-receipts/);
-  assert.match(actions, /\$\{userId\}\/\$\{order\.id\}\/\$\{fileUuid\}\.\$\{ext\}/);
+  assert.match(actions, /\$\{userId\}\/\$\{order\.id\}\/\$\{fileUuid\}\.\$\{image\.extension\}/);
 
   // Calls canonical RPC submit_gcash_proof
   assert.match(actions, /submit_gcash_proof/);

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/server-log";
 
 export interface Category {
   id: string;
@@ -71,8 +72,7 @@ export function formatMinorUnitsToPHP(minorUnits: number): string {
 }
 
 export async function getCategories(): Promise<Category[]> {
-  try {
-    const supabase = await createClient();
+  const supabase = await createClient();
     const { data, error } = await supabase
       .from("categories")
       .select("id, name, slug, description, position")
@@ -80,16 +80,15 @@ export async function getCategories(): Promise<Category[]> {
       .order("position", { ascending: true })
       .order("name", { ascending: true });
 
-    if (error || !data) return [];
-    return data;
-  } catch {
-    return [];
+  if (error) {
+    logServerError("catalog.categories", "database_failure");
+    throw new Error("CATALOG_UNAVAILABLE");
   }
+  return data ?? [];
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  try {
-    const supabase = await createClient();
+  const supabase = await createClient();
     const { data, error } = await supabase
       .from("categories")
       .select("id, name, slug, description, position")
@@ -97,18 +96,17 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
       .is("archived_at", null)
       .maybeSingle();
 
-    if (error || !data) return null;
-    return data;
-  } catch {
-    return null;
+  if (error) {
+    logServerError("catalog.category", "database_failure");
+    throw new Error("CATALOG_UNAVAILABLE");
   }
+  return data;
 }
 
 export async function getProducts(options?: {
   categoryId?: string;
 }): Promise<ProductSummary[]> {
-  try {
-    const supabase = await createClient();
+  const supabase = await createClient();
     let query = supabase
       .from("products")
       .select(`
@@ -134,9 +132,12 @@ export async function getProducts(options?: {
     }
 
     const { data, error } = await query;
-    if (error || !data) return [];
+  if (error) {
+    logServerError("catalog.products", "database_failure");
+    throw new Error("CATALOG_UNAVAILABLE");
+  }
 
-    return data.map((item) => {
+  return (data ?? []).map((item) => {
       const activeVariants = (item.product_variants || []).filter(
         (v) => v.status === "active",
       );
@@ -156,15 +157,11 @@ export async function getProducts(options?: {
         min_price_minor: minPrice,
         primary_image_path: sortedImages[0]?.storage_path ?? null,
       };
-    });
-  } catch {
-    return [];
-  }
+  });
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
-  try {
-    const supabase = await createClient();
+  const supabase = await createClient();
     const { data: product, error: productError } = await supabase
       .from("products")
       .select("id, name, slug, description, category_id")
@@ -172,7 +169,11 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       .eq("status", "active")
       .maybeSingle();
 
-    if (productError || !product) return null;
+  if (productError) {
+    logServerError("catalog.product", "database_failure");
+    throw new Error("CATALOG_UNAVAILABLE");
+  }
+  if (!product) return null;
 
     const [variantsRes, optionsRes, optionValuesRes, imagesRes] =
       await Promise.all([
@@ -199,14 +200,19 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
           .order("position", { ascending: true }),
       ]);
 
-    const optionsMap: ProductOption[] = (optionsRes.data || []).map((opt) => ({
+  if (variantsRes.error || optionsRes.error || optionValuesRes.error || imagesRes.error) {
+    logServerError("catalog.product_relations", "database_failure");
+    throw new Error("CATALOG_UNAVAILABLE");
+  }
+
+  const optionsMap: ProductOption[] = (optionsRes.data || []).map((opt) => ({
       ...opt,
       values: (optionValuesRes.data || []).filter((v) => v.option_id === opt.id),
     }));
 
     const images: ProductImage[] = imagesRes.data || [];
 
-    return {
+  return {
       id: product.id,
       name: product.name,
       slug: product.slug,
@@ -216,8 +222,5 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       variants: variantsRes.data || [],
       options: optionsMap,
       images,
-    };
-  } catch {
-    return null;
-  }
+  };
 }

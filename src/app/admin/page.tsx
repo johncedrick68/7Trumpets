@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getAdminAuthContext } from "@/lib/admin/auth";
+import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export default async function AdminDashboardPage() {
   const serviceClient = createServiceClient();
 
   // Fetch operational summary counts
-  const [{ count: pendingGcashCount }, { count: unfulfilledOrdersCount }] = await Promise.all([
+  const [paymentResult, orderResult] = await Promise.all([
     serviceClient
       .from("payments")
       .select("*", { count: "exact", head: true })
@@ -26,6 +27,12 @@ export default async function AdminDashboardPage() {
       .select("*", { count: "exact", head: true })
       .in("status", ["CONFIRMED", "PROCESSING", "PACKING", "READY_FOR_SHIPMENT", "SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY"]),
   ]);
+  if (paymentResult.error || orderResult.error) {
+    logServerError("admin.dashboard", "database_failure");
+    throw new Error("ADMIN_DASHBOARD_UNAVAILABLE");
+  }
+  const pendingGcashCount = paymentResult.count;
+  const unfulfilledOrdersCount = orderResult.count;
 
   return (
     <div className="admin-page">

@@ -1,4 +1,8 @@
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+
+import { safeRedirectPath } from "@/lib/auth/redirect";
+import { logServerError } from "@/lib/server-log";
+import { createClient } from "@/lib/supabase/server";
 
 export interface AdminAuthContext {
   userId: string;
@@ -16,35 +20,33 @@ export interface AdminAuthContext {
  */
 export async function getAdminAuthContext(): Promise<AdminAuthContext | null> {
   const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
   const email = claimsData?.claims?.email ?? "";
-  const aal = (claimsData?.claims?.aal as "aal1" | "aal2") || "aal1";
+  const aal = claimsData?.claims?.aal === "aal2" ? "aal2" : "aal1";
 
-  if (!userId) {
+  if (claimsError || !userId) {
+    if (claimsError) logServerError("admin.auth.claims", "auth_provider_failure");
     return null;
   }
 
-  // Use service client to securely query private.user_roles for this user
-  const serviceClient = createServiceClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: roles, error } = await (serviceClient as any)
-    .schema("private")
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
+  const { data: role, error } = await supabase.rpc("current_user_role");
 
-  if (error || !roles || roles.length === 0) {
+  if (error) {
+    logServerError("admin.auth.role", "database_failure");
+    return null;
+  }
+  if (role !== "admin" && role !== "super_admin") {
     return null;
   }
 
-  // Check if user has super_admin or admin role
-  const roleList = roles.map((r: { role: string }) => r.role);
-  if (roleList.includes("super_admin")) {
-    return { userId, email, role: "super_admin", aal };
-  } else if (roleList.includes("admin")) {
-    return { userId, email, role: "admin", aal };
-  }
+  return { userId, email, role, aal };
+}
 
-  return null;
+export async function requireAdminAal2(next = "/admin") {
+  const context = await getAdminAuthContext();
+  const safeNext = safeRedirectPath(next, "/admin");
+  if (!context) redirect(`/login?next=${encodeURIComponent(safeNext)}`);
+  if (context.aal !== "aal2") redirect(`/admin-mfa?next=${encodeURIComponent(safeNext)}`);
+  return context;
 }

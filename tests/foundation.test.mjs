@@ -19,7 +19,7 @@ test("required foundation and Phase 2B-2G files exist", () => {
   assert.ok(existsSync("src/lib/supabase/client.ts"), "src/lib/supabase/client.ts must exist");
   assert.ok(existsSync("src/lib/supabase/server.ts"), "src/lib/supabase/server.ts must exist");
   assert.ok(existsSync("src/lib/supabase/proxy.ts"), "src/lib/supabase/proxy.ts must exist");
-  assert.ok(existsSync("src/proxy.ts"), "src/proxy.ts must exist");
+  assert.ok(existsSync("src/middleware.ts"), "Next.js middleware entry must exist");
 
   // Phase 2C auth files
   assert.ok(existsSync("src/lib/auth/actions.ts"), "auth actions must exist in 2C");

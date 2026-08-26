@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getOrCreateCart } from "@/lib/cart/actions";
+import { logServerError } from "@/lib/server-log";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export async function processCheckout(formData: FormData) {
@@ -36,6 +37,15 @@ export async function processCheckout(formData: FormData) {
   const userEmail = userData?.user?.email;
   if (!userEmail) {
     redirect("/login?next=/checkout");
+  }
+
+  const { data: checkoutAllowed, error: throttleError } = await supabase.rpc(
+    "allow_checkout_attempt",
+    { p_idempotency_key: idempotencyKey },
+  );
+  if (throttleError || !checkoutAllowed) {
+    if (throttleError) logServerError("checkout.throttle", "database_failure");
+    redirect("/checkout?error=checkout_throttled");
   }
 
   // 1. Fetch user's cart
@@ -102,7 +112,8 @@ export async function processCheckout(formData: FormData) {
   }
 
   // 5. Clear the user's cart items upon successful order creation
-  await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+  const { error: cleanupError } = await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+  if (cleanupError) logServerError("checkout.cart_cleanup", "database_failure");
 
   revalidatePath("/cart");
   revalidatePath("/orders");

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/server-log";
 
 export interface CartItemDetail {
   id: string;
@@ -33,12 +34,17 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
   if (!userId) return null;
 
   // 1. Ensure user has a cart
-  let { data: cart } = await supabase
+  const { data: existingCart, error: cartError } = await supabase
     .from("carts")
     .select("id, user_id")
     .eq("user_id", userId)
     .maybeSingle();
 
+  if (cartError) {
+    logServerError("cart.read", "database_failure");
+    throw new Error("CART_UNAVAILABLE");
+  }
+  let cart = existingCart;
   if (!cart) {
     const { data: newCart, error: insertError } = await supabase
       .from("carts")
@@ -46,7 +52,10 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
       .select("id, user_id")
       .single();
 
-    if (insertError) return null;
+    if (insertError) {
+      logServerError("cart.create", "database_failure");
+      throw new Error("CART_UNAVAILABLE");
+    }
     cart = newCart;
   }
 
@@ -73,20 +82,15 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
     .eq("cart_id", cart.id)
     .order("created_at", { ascending: true });
 
-  if (itemsError || !items) {
-    return {
-      id: cart.id,
-      user_id: cart.user_id,
-      items: [],
-      subtotal_minor: 0,
-      item_count: 0,
-    };
+  if (itemsError) {
+    logServerError("cart.items.read", "database_failure");
+    throw new Error("CART_UNAVAILABLE");
   }
 
   let subtotal = 0;
   let totalCount = 0;
 
-  const itemDetails: CartItemDetail[] = items.map((item) => {
+  const itemDetails: CartItemDetail[] = (items ?? []).map((item) => {
     const variant = item.product_variants;
     const product = variant?.products;
     const price = variant?.price_minor ?? 0;
@@ -140,19 +144,28 @@ export async function addToCart(formData: FormData) {
     .select("id")
     .eq("id", variantId)
     .eq("status", "active")
-    .single();
+    .maybeSingle();
 
-  if (varError || !variant) {
+  if (varError) {
+    logServerError("cart.variant.read", "database_failure");
+    redirect("/products?error=catalog_unavailable");
+  }
+  if (!variant) {
     redirect("/products?error=variant_unavailable");
   }
 
   // Get or create cart
-  let { data: cart } = await supabase
+  const { data: existingCart, error: cartLookupError } = await supabase
     .from("carts")
     .select("id")
     .eq("user_id", userId)
     .maybeSingle();
 
+  if (cartLookupError) {
+    logServerError("cart.read", "database_failure");
+    redirect("/cart?error=cart_unavailable");
+  }
+  let cart = existingCart;
   if (!cart) {
     const { data: newCart, error: cartError } = await supabase
       .from("carts")
@@ -167,27 +180,38 @@ export async function addToCart(formData: FormData) {
   }
 
   // Check if item already in cart
-  const { data: existingItem } = await supabase
+  const { data: existingItem, error: itemLookupError } = await supabase
     .from("cart_items")
     .select("id, quantity")
     .eq("cart_id", cart.id)
     .eq("variant_id", variantId)
     .maybeSingle();
 
+  if (itemLookupError) {
+    logServerError("cart.item.read", "database_failure");
+    redirect("/cart?error=cart_unavailable");
+  }
+  let mutationError;
   if (existingItem) {
     const newQty = Math.min(99, existingItem.quantity + quantity);
-    await supabase
+    const { error } = await supabase
       .from("cart_items")
       .update({ quantity: newQty })
       .eq("id", existingItem.id);
+    mutationError = error;
   } else {
-    await supabase
+    const { error } = await supabase
       .from("cart_items")
       .insert({
         cart_id: cart.id,
         variant_id: variantId,
         quantity,
       });
+    mutationError = error;
+  }
+  if (mutationError) {
+    logServerError("cart.item.write", "database_failure");
+    redirect("/cart?error=cart_update_failed");
   }
 
   revalidatePath("/cart");
@@ -206,13 +230,20 @@ export async function updateCartItemQuantity(formData: FormData) {
   const userId = claimsData?.claims?.sub;
   if (!userId) redirect("/login?next=/cart");
 
+  let mutationError;
   if (quantity <= 0) {
-    await supabase.from("cart_items").delete().eq("id", itemId);
+    const { error } = await supabase.from("cart_items").delete().eq("id", itemId);
+    mutationError = error;
   } else {
-    await supabase
+    const { error } = await supabase
       .from("cart_items")
       .update({ quantity: Math.min(99, quantity) })
       .eq("id", itemId);
+    mutationError = error;
+  }
+  if (mutationError) {
+    logServerError("cart.item.quantity", "database_failure");
+    redirect("/cart?error=cart_update_failed");
   }
 
   revalidatePath("/cart");
@@ -228,7 +259,11 @@ export async function removeCartItem(formData: FormData) {
   const userId = claimsData?.claims?.sub;
   if (!userId) redirect("/login?next=/cart");
 
-  await supabase.from("cart_items").delete().eq("id", itemId);
+  const { error } = await supabase.from("cart_items").delete().eq("id", itemId);
+  if (error) {
+    logServerError("cart.item.remove", "database_failure");
+    redirect("/cart?error=cart_update_failed");
+  }
 
   revalidatePath("/cart");
   redirect("/cart");

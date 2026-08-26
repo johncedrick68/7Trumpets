@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAdminAuthContext } from "@/lib/admin/auth";
 import { settleCodPayment, transitionOrderStatus } from "@/lib/admin/actions";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
+import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ export default async function AdminOrderDetailPage({
   const serviceClient = createServiceClient();
 
   // Fetch full order record
-  const { data: order } = await serviceClient
+  const { data: order, error: orderError } = await serviceClient
     .from("orders")
     .select(`
       *,
@@ -60,8 +61,12 @@ export default async function AdminOrderDetailPage({
       )
     `)
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
+  if (orderError) {
+    logServerError("admin.order.detail", "database_failure");
+    throw new Error("ADMIN_ORDER_UNAVAILABLE");
+  }
   if (!order) {
     notFound();
   }
@@ -102,7 +107,9 @@ export default async function AdminOrderDetailPage({
     allowedTransitions.push({ to: "DELIVERED", label: "Mark Delivered" });
     allowedTransitions.push({ to: "DELIVERY_FAILED", label: "Delivery Failed" });
   } else if (order.status === "DELIVERED") {
-    allowedTransitions.push({ to: "COMPLETED", label: "Complete Order" });
+    if (payment?.status === "PAID") {
+      allowedTransitions.push({ to: "COMPLETED", label: "Complete Order" });
+    }
   }
 
   return (
@@ -160,7 +167,8 @@ export default async function AdminOrderDetailPage({
             )}
 
             {/* COD Settlement action */}
-            {payment?.method === "COD" && payment?.status === "UNPAID" && (
+            {payment?.method === "COD" && payment?.status === "UNPAID"
+              && (order.status === "DELIVERED" || order.status === "COMPLETED") && (
               <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
                 <h3>COD Payment Settlement</h3>
                 <p className="subtle-text small-text">
@@ -168,6 +176,7 @@ export default async function AdminOrderDetailPage({
                 </p>
                 <form action={settleCodPayment} style={{ marginTop: "0.5rem" }}>
                   <input type="hidden" name="payment_id" value={payment.id} />
+                  <input type="hidden" name="order_id" value={order.id} />
                   <input type="hidden" name="reason" value="COD cash collected at delivery by courier/driver" />
                   <button type="submit" className="btn btn-secondary">
                     Settle COD Payment (Mark PAID)

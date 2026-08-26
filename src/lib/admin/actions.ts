@@ -4,8 +4,9 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getAdminAuthContext } from "@/lib/admin/auth";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { requireAdminAal2 } from "@/lib/admin/auth";
+import { logServerError } from "@/lib/server-log";
+import { createClient } from "@/lib/supabase/server";
 
 export interface AdminActionResult {
   error?: string;
@@ -17,10 +18,7 @@ export interface AdminActionResult {
  * Atomically consumes inventory reservations, updates payment to PAID, and records audit logs.
  */
 export async function approveGcashSubmission(formData: FormData) {
-  const adminCtx = await getAdminAuthContext();
-  if (!adminCtx) {
-    redirect("/login?next=/admin");
-  }
+  await requireAdminAal2("/admin/payments");
 
   const paymentId = formData.get("payment_id") as string;
   const submissionId = formData.get("submission_id") as string;
@@ -31,19 +29,17 @@ export async function approveGcashSubmission(formData: FormData) {
   }
 
   const idempotencyKey = `gcash_appr_${paymentId}_${submissionId}_${Date.now()}_${randomUUID().replace(/-/g, "")}`;
-  const serviceClient = createServiceClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: rpcError } = await (serviceClient as any).rpc("approve_gcash_submission", {
+  const supabase = await createClient();
+  const { error: rpcError } = await supabase.rpc("approve_gcash_submission", {
     p_payment_id: paymentId,
     p_submission_id: submissionId,
-    p_reviewer_id: adminCtx.userId,
     p_idempotency_key: idempotencyKey,
     p_reason: reason,
   });
 
   if (rpcError) {
-    redirect(`/admin/payments?error=${encodeURIComponent(rpcError.message || "approval_failed")}`);
+    logServerError("payment.approve", "database_rejection");
+    redirect("/admin/payments?error=approval_failed");
   }
 
   revalidatePath("/admin/payments");
@@ -56,10 +52,7 @@ export async function approveGcashSubmission(formData: FormData) {
  * Preserves the order in CONFIRMED and allows customer resubmission while reservation deadline permits.
  */
 export async function rejectGcashSubmission(formData: FormData) {
-  const adminCtx = await getAdminAuthContext();
-  if (!adminCtx) {
-    redirect("/login?next=/admin");
-  }
+  await requireAdminAal2("/admin/payments");
 
   const paymentId = formData.get("payment_id") as string;
   const submissionId = formData.get("submission_id") as string;
@@ -70,19 +63,17 @@ export async function rejectGcashSubmission(formData: FormData) {
   }
 
   const idempotencyKey = `gcash_rej_${paymentId}_${submissionId}_${Date.now()}_${randomUUID().replace(/-/g, "")}`;
-  const serviceClient = createServiceClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: rpcError } = await (serviceClient as any).rpc("reject_gcash_submission", {
+  const supabase = await createClient();
+  const { error: rpcError } = await supabase.rpc("reject_gcash_submission", {
     p_payment_id: paymentId,
     p_submission_id: submissionId,
-    p_reviewer_id: adminCtx.userId,
     p_rejection_reason: reason,
     p_idempotency_key: idempotencyKey,
   });
 
   if (rpcError) {
-    redirect(`/admin/payments?error=${encodeURIComponent(rpcError.message || "rejection_failed")}`);
+    logServerError("payment.reject", "database_rejection");
+    redirect("/admin/payments?error=rejection_failed");
   }
 
   revalidatePath("/admin/payments");
@@ -95,12 +86,10 @@ export async function rejectGcashSubmission(formData: FormData) {
  * Requires that order reservations were consumed.
  */
 export async function settleCodPayment(formData: FormData) {
-  const adminCtx = await getAdminAuthContext();
-  if (!adminCtx) {
-    redirect("/login?next=/admin");
-  }
+  await requireAdminAal2("/admin/orders");
 
   const paymentId = formData.get("payment_id") as string;
+  const orderId = formData.get("order_id") as string;
   const reason = (formData.get("reason") as string)?.trim() || "COD cash collected upon delivery";
 
   if (!paymentId) {
@@ -108,34 +97,29 @@ export async function settleCodPayment(formData: FormData) {
   }
 
   const idempotencyKey = `cod_settle_${paymentId}_${Date.now()}_${randomUUID().replace(/-/g, "")}`;
-  const serviceClient = createServiceClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: rpcError } = await (serviceClient as any).rpc("settle_cod_payment", {
+  const supabase = await createClient();
+  const { error: rpcError } = await supabase.rpc("settle_cod_payment", {
     p_payment_id: paymentId,
-    p_actor_id: adminCtx.userId,
     p_reason: reason,
     p_idempotency_key: idempotencyKey,
     p_metadata: {},
   });
 
   if (rpcError) {
-    redirect(`/admin/payments?error=${encodeURIComponent(rpcError.message || "settlement_failed")}`);
+    logServerError("payment.cod_settle", "database_rejection");
+    redirect(`/admin/orders/${orderId || ""}?error=settlement_failed`);
   }
 
   revalidatePath("/admin/payments");
   revalidatePath("/admin/orders");
-  redirect("/admin/payments?notice=cod_settled");
+  redirect(`/admin/orders/${orderId || ""}?notice=cod_settled`);
 }
 
 /**
  * Transition order status along the canonical fulfillment lifecycle using public.transition_order RPC.
  */
 export async function transitionOrderStatus(formData: FormData) {
-  const adminCtx = await getAdminAuthContext();
-  if (!adminCtx) {
-    redirect("/login?next=/admin");
-  }
+  await requireAdminAal2("/admin/orders");
 
   const orderId = formData.get("order_id") as string;
   const toStatus = formData.get("to_status") as string;
@@ -146,54 +130,19 @@ export async function transitionOrderStatus(formData: FormData) {
   }
 
   const idempotencyKey = `ord_trans_${orderId}_${toStatus}_${Date.now()}_${randomUUID().replace(/-/g, "")}`;
-  const serviceClient = createServiceClient();
-
-  // If transitioning from CONFIRMED to PROCESSING, ensure reservations are consumed if needed
-  // For GCash, approve_gcash_submission already consumed reservations when payment became PAID.
-  // For COD, reservations need to be consumed prior to PROCESSING as required by database constraints.
-  if (toStatus === "PROCESSING") {
-    // Check payment method
-    const { data: payment } = await serviceClient
-      .from("payments")
-      .select("method, status")
-      .eq("order_id", orderId)
-      .single();
-
-    if (payment?.method === "COD") {
-      // Find active reservations and consume them for COD processing
-      const { data: reservations } = await serviceClient
-        .from("inventory_reservations")
-        .select("id")
-        .eq("order_id", orderId)
-        .eq("status", "active");
-
-      if (reservations && reservations.length > 0) {
-        for (const res of reservations) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (serviceClient as any).rpc("transition_inventory_reservation", {
-            p_reservation_id: res.id,
-            p_to_status: "consumed",
-            p_idempotency_key: `cod_consume_${res.id}_${Date.now()}`,
-            p_actor_id: adminCtx.userId,
-            p_reason: "COD order preparation started",
-          });
-        }
-      }
-    }
-  }
-
-  const { error: rpcError } = await serviceClient.rpc("transition_order", {
+  const supabase = await createClient();
+  const { error: rpcError } = await supabase.rpc("admin_transition_order", {
     p_order_id: orderId,
     p_to_status: toStatus,
     p_note: note,
     p_source: "admin_dashboard",
-    p_changed_by: adminCtx.userId,
     p_idempotency_key: idempotencyKey,
     p_metadata: {},
   });
 
   if (rpcError) {
-    redirect(`/admin/orders/${orderId}?error=${encodeURIComponent(rpcError.message || "transition_failed")}`);
+    logServerError("order.transition", "database_rejection");
+    redirect(`/admin/orders/${orderId}?error=invalid_transition`);
   }
 
   revalidatePath(`/admin/orders/${orderId}`);
@@ -208,17 +157,10 @@ export async function transitionOrderStatus(formData: FormData) {
  * STRICTLY requires active AAL2 authentication level and super_admin role.
  */
 export async function manageUserRole(formData: FormData) {
-  const adminCtx = await getAdminAuthContext();
-  if (!adminCtx) {
-    redirect("/login?next=/admin/users");
-  }
+  const adminCtx = await requireAdminAal2("/admin/users");
 
   if (adminCtx.role !== "super_admin") {
     redirect("/admin/users?error=super_admin_required");
-  }
-
-  if (adminCtx.aal !== "aal2") {
-    redirect("/admin/users?error=aal2_required");
   }
 
   const targetUserId = formData.get("target_user_id") as string;
@@ -237,7 +179,8 @@ export async function manageUserRole(formData: FormData) {
   });
 
   if (rpcError) {
-    redirect(`/admin/users?error=${encodeURIComponent(rpcError.message || "role_management_failed")}`);
+    logServerError("role.manage", "database_rejection");
+    redirect("/admin/users?error=role_management_failed");
   }
 
   revalidatePath("/admin/users");

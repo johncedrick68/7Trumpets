@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { deriveCustomerFulfillmentStage } from "@/lib/orders/status";
+import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +16,16 @@ export default async function OrderHistoryPage() {
   }
 
   // Fetch all orders owned by user, sorted by placed_at descending
-  const { data: orders } = await supabase
+  const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select("id, order_number, status, total_minor, placed_at, shipping_minor")
     .eq("user_id", userId)
     .order("placed_at", { ascending: false });
 
+  if (ordersError) {
+    logServerError("orders.list", "database_failure");
+    throw new Error("ORDERS_UNAVAILABLE");
+  }
   const orderList = orders || [];
 
   return (

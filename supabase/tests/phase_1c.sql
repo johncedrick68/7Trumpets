@@ -12,7 +12,7 @@ select extensions.set_eq(
     where schemaname in ('public', 'private')
   $$,
   $$ values
-    ('public.profiles'), ('private.user_roles'),
+    ('public.profiles'), ('private.user_roles'), ('private.commerce_throttles'),
     ('public.categories'), ('public.products'), ('public.product_variants'),
     ('public.product_options'), ('public.product_option_values'),
     ('public.variant_option_values'), ('public.product_images'),
@@ -23,7 +23,7 @@ select extensions.set_eq(
     ('public.payment_submissions'), ('public.payment_events'),
     ('public.audit_logs')
   $$,
-  'exactly the 22 Phase 1 application tables exist'
+  'the 22 Phase 1 tables plus the Phase 3B throttle table exist'
 );
 
 select extensions.is(
@@ -640,6 +640,16 @@ select extensions.throws_ok(
   'backward order transition is forbidden'
 );
 
+do $$
+begin
+  perform public.transition_order('c1111111-1111-1111-1111-111111111111', 'PACKING', null, 'test', null, 'cod-packing', '{}'::jsonb);
+  perform public.transition_order('c1111111-1111-1111-1111-111111111111', 'READY_FOR_SHIPMENT', null, 'test', null, 'cod-ready', '{}'::jsonb);
+  perform public.transition_order('c1111111-1111-1111-1111-111111111111', 'SHIPPED', null, 'test', null, 'cod-shipped', '{}'::jsonb);
+  perform public.transition_order('c1111111-1111-1111-1111-111111111111', 'OUT_FOR_DELIVERY', null, 'test', null, 'cod-out', '{}'::jsonb);
+  perform public.transition_order('c1111111-1111-1111-1111-111111111111', 'DELIVERED', null, 'test', null, 'cod-delivered', '{}'::jsonb);
+end
+$$;
+
 select extensions.is(
   private.settle_cod_payment(
     'd1111111-1111-1111-1111-111111111111',
@@ -663,10 +673,10 @@ select extensions.throws_ok(
 
 select extensions.is(
   (public.transition_order(
-    'c1111111-1111-1111-1111-111111111111', 'CANCELLED', 'customer cancelled',
-    'test', null, 'cod-cancelled', '{}'::jsonb
+    'c1111111-1111-1111-1111-111111111111', 'COMPLETED', 'order complete',
+    'test', null, 'cod-completed', '{}'::jsonb
   )).status,
-  'CANCELLED', 'post-consumption COD cancellation remains valid without automatic restock'
+  'COMPLETED', 'paid delivered COD order can complete'
 );
 
 -- Manual GCash rejection keeps the order and stock retryable; correction is additive.
@@ -1753,12 +1763,10 @@ select extensions.set_eq(
     where n.nspname in ('public', 'private')
       and has_function_privilege('service_role', p.oid, 'EXECUTE')
   $$,
-  $$ values
-    ('public.checkout_order'), ('public.transition_order'),
+    $$ values
+    ('public.checkout_order'),
     ('private.reserve_inventory'), ('private.transition_inventory_reservation'),
     ('private.start_gcash_review'),
-    ('private.settle_cod_payment'), ('private.submit_gcash_proof'),
-    ('private.approve_gcash_submission'), ('private.reject_gcash_submission'),
     ('private.close_expired_gcash_payment')
   $$,
   'service_role can execute only intended atomic commerce routines'
@@ -1772,8 +1780,15 @@ select extensions.set_eq(
     where n.nspname in ('public', 'private')
       and has_function_privilege('authenticated', p.oid, 'EXECUTE')
   $$,
-  $$ values ('private.has_role'), ('public.manage_user_role') $$,
-  'authenticated can execute only the role predicate and AAL2 role operation'
+  $$ values
+    ('private.has_role'), ('public.manage_user_role'),
+    ('public.current_user_role'), ('public.list_staff_roles'),
+    ('public.submit_gcash_proof'), ('public.approve_gcash_submission'),
+    ('public.reject_gcash_submission'), ('public.settle_cod_payment'),
+    ('public.admin_transition_order'), ('public.authorize_payment_receipt_preview'),
+    ('public.allow_checkout_attempt'), ('public.allow_receipt_upload_attempt')
+  $$,
+  'authenticated can execute only current-user and narrowly authorized operations'
 );
 
 select extensions.ok(
@@ -1805,8 +1820,8 @@ select extensions.ok(
 
 select extensions.set_eq(
   $$ select policyname from pg_catalog.pg_policies where schemaname = 'storage' and tablename = 'objects' $$,
-  $$ values ('product_images_public_read') $$,
-  'storage objects retain only public product-image read policy'
+  $$ values ('product_images_public_read'), ('payment_receipts_owner_insert') $$,
+  'storage objects expose public product reads and owner-bound receipt inserts only'
 );
 
 select * from extensions.finish();

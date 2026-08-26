@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/server-log";
 
 export interface Address {
   id: string;
@@ -34,8 +35,11 @@ export async function getCustomerAddresses(): Promise<Address[]> {
     .order("is_default", { ascending: false })
     .order("created_at", { ascending: false });
 
-  if (error || !data) return [];
-  return data;
+  if (error) {
+    logServerError("address.list", "database_failure");
+    throw new Error("ADDRESSES_UNAVAILABLE");
+  }
+  return data ?? [];
 }
 
 export async function saveAddress(formData: FormData) {
@@ -61,10 +65,14 @@ export async function saveAddress(formData: FormData) {
 
   // If new address is set as default, clear existing default first
   if (isDefault) {
-    await supabase
+    const { error: clearError } = await supabase
       .from("addresses")
       .update({ is_default: false })
       .eq("user_id", userId);
+    if (clearError) {
+      logServerError("address.default.clear", "database_failure");
+      redirect("/account/addresses?error=save_failed");
+    }
   }
 
   const { error } = await supabase.from("addresses").insert({
@@ -83,6 +91,7 @@ export async function saveAddress(formData: FormData) {
   });
 
   if (error) {
+    logServerError("address.save", "database_failure");
     redirect("/account/addresses?error=save_failed");
   }
 
@@ -100,17 +109,27 @@ export async function setDefaultAddress(formData: FormData) {
   if (!userId) redirect("/login?next=/account/addresses");
 
   // 1. Clear current default
-  await supabase
+  const { error: clearError } = await supabase
     .from("addresses")
     .update({ is_default: false })
     .eq("user_id", userId);
+  if (clearError) {
+    logServerError("address.default.clear", "database_failure");
+    redirect("/account/addresses?error=update_failed");
+  }
 
   // 2. Set new default for target address owned by user
-  await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("addresses")
     .update({ is_default: true })
     .eq("id", addressId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle();
+  if (updateError || !updated) {
+    if (updateError) logServerError("address.default.set", "database_failure");
+    redirect("/account/addresses?error=update_failed");
+  }
 
   revalidatePath("/account/addresses");
   redirect("/account/addresses?updated=1");
@@ -125,11 +144,15 @@ export async function deleteAddress(formData: FormData) {
   const userId = claimsData?.claims?.sub;
   if (!userId) redirect("/login?next=/account/addresses");
 
-  await supabase
+  const { error } = await supabase
     .from("addresses")
     .delete()
     .eq("id", addressId)
     .eq("user_id", userId);
+  if (error) {
+    logServerError("address.delete", "database_failure");
+    redirect("/account/addresses?error=delete_failed");
+  }
 
   revalidatePath("/account/addresses");
   redirect("/account/addresses?deleted=1");

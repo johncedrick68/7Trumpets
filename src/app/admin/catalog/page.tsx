@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getAdminAuthContext } from "@/lib/admin/auth";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
+import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export default async function AdminCatalogOverviewPage() {
   const serviceClient = createServiceClient();
 
   // Fetch products with variants and inventory status
-  const { data: products } = await serviceClient
+  const { data: products, error: productsError } = await serviceClient
     .from("products")
     .select(`
       id,
@@ -38,6 +39,10 @@ export default async function AdminCatalogOverviewPage() {
     `)
     .order("created_at", { ascending: false });
 
+  if (productsError) {
+    logServerError("admin.catalog", "database_failure");
+    throw new Error("ADMIN_CATALOG_UNAVAILABLE");
+  }
   const productList = products || [];
 
   return (

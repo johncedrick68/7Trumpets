@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { safeRedirectPath } from "@/lib/auth/redirect";
+import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,7 +65,8 @@ export async function signIn(formData: FormData) {
 
   const { data, error: identityError } = await supabase.auth.getUser();
   if (identityError || !data.user) {
-    await supabase.auth.signOut();
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) logServerError("auth.failed_login_cleanup", "auth_provider_failure");
     redirect("/login?error=credentials");
   }
 
@@ -76,7 +78,8 @@ export async function requestPasswordReset(formData: FormData) {
   if (!validEmail(email)) redirect("/forgot-password?error=email");
 
   const supabase = await createClient();
-  await supabase.auth.resetPasswordForEmail(email);
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) logServerError("auth.password_reset", "email_delivery_failure");
   redirect("/forgot-password?sent=1");
 }
 
@@ -121,6 +124,7 @@ export async function updateProfile(formData: FormData) {
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+  if (error) logServerError("auth.sign_out", "auth_provider_failure");
   redirect("/login?signedOut=1");
 }
