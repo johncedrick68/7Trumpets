@@ -78,12 +78,12 @@ test("checkout and order confirmation pages exist and are server components with
   assert.doesNotMatch(orderPage, /"use client"/);
 });
 
-test("checkout and orders flow does not include admin mutations or premature fulfillment UI in Phase 2F", async () => {
+test("checkout and orders flow does not include admin mutations or admin fulfillment actions in customer UI", async () => {
   const checkoutAction = await read("src/lib/checkout/actions.ts");
   const orderPage = await read("src/app/orders/[id]/page.tsx");
 
   assert.doesNotMatch(checkoutAction, /transition_order|approve_gcash_submission|settle_cod_payment/);
-  assert.doesNotMatch(orderPage, /approve|reject|fulfill|shipment_tracking/);
+  assert.doesNotMatch(orderPage, /transition_order|approve_gcash_submission|settle_cod_payment|reject_gcash_submission/);
 });
 
 test("service role client is never exposed to browser or client components", async () => {

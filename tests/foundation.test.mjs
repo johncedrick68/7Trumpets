@@ -5,7 +5,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("required foundation and Phase 2B-2F files exist", () => {
+test("required foundation and Phase 2B-2G files exist", () => {
   assert.ok(existsSync(".env.example"), ".env.example must exist");
   assert.ok(existsSync(".gitignore"), ".gitignore must exist");
   assert.ok(existsSync("package.json"), "package.json must exist");
@@ -49,13 +49,18 @@ test("required foundation and Phase 2B-2F files exist", () => {
   // Phase 2F checkout and order confirmation files
   assert.ok(existsSync("src/lib/checkout/actions.ts"), "checkout actions must exist in 2F");
   assert.ok(existsSync("src/app/checkout/page.tsx"), "checkout page must exist in 2F");
-  assert.ok(existsSync("src/app/orders/[id]/page.tsx"), "order confirmation page must exist in 2F");
+
+  // Phase 2G order history, tracking, and payment proof files
+  assert.ok(existsSync("src/app/orders/page.tsx"), "order history page must exist in 2G");
+  assert.ok(existsSync("src/app/orders/[id]/page.tsx"), "order confirmation/tracking page must exist in 2G");
+  assert.ok(existsSync("src/lib/orders/status.ts"), "order status helper must exist in 2G");
+  assert.ok(existsSync("src/lib/payments/actions.ts"), "payment actions must exist in 2G");
 });
 
-test("Phase 2G-2H fulfillment tracking and admin review features do not exist in Phase 2F", () => {
-  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2F");
-  assert.strictEqual(existsSync("src/app/admin/orders"), false, "admin orders route must not exist in 2F");
-  assert.strictEqual(existsSync("src/app/admin/payments"), false, "admin payments route must not exist in 2F");
+test("Phase 2H admin review and fulfillment mutation features do not exist in Phase 2G", () => {
+  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2G");
+  assert.strictEqual(existsSync("src/app/admin/orders"), false, "admin orders route must not exist in 2G");
+  assert.strictEqual(existsSync("src/app/admin/payments"), false, "admin payments route must not exist in 2G");
 });
 
 test("package.json includes approved Supabase packages", async () => {
@@ -94,11 +99,13 @@ test("browser and client-side code never leaks SUPABASE_SECRET_KEY", async () =>
   const proxyClient = await read("src/lib/supabase/proxy.ts");
   const cartPage = await read("src/app/cart/page.tsx");
   const checkoutPage = await read("src/app/checkout/page.tsx");
+  const ordersPage = await read("src/app/orders/page.tsx");
 
   assert.doesNotMatch(browserClient, /SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(proxyClient, /SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(cartPage, /SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(checkoutPage, /SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(ordersPage, /SUPABASE_SECRET_KEY/);
 });
 
 test("generated database types contain the 22-table schema and Phase 1D RPC definitions", async () => {

@@ -667,7 +667,170 @@ section {
   text-align: center;
 }
 
-/* Order Confirmation Details */
+/* Order History & Tracking Details */
+.order-history-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.order-history-card {
+  background: #fffdf8;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.order-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.order-history-number {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.order-history-date {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  background: var(--paper);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status-pill.exception {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.order-history-body {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 0.75rem 0;
+}
+
+.order-stage-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.order-history-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.order-total-val {
+  font-size: 1.15rem;
+  color: var(--accent);
+}
+
+/* Fulfillment Stepper */
+.tracking-stepper-card {
+  width: 100%;
+  padding: 1.5rem;
+  background: #fffdf8;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.stage-description {
+  margin: 0.5rem 0 1.5rem;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.stepper-track {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin-top: 1rem;
+}
+
+.stepper-track::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 30px;
+  right: 30px;
+  height: 3px;
+  background: var(--line);
+  z-index: 1;
+}
+
+.step-node {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.node-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.step-node.completed .node-icon {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.step-node.current .node-icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.node-label {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.step-node.completed .node-label,
+.step-node.current .node-label {
+  color: var(--ink);
+}
+
+.exception-status-box {
+  padding: 1rem;
+  background: #fff5f5;
+  border: 1px solid var(--danger);
+  border-radius: 0.25rem;
+  color: var(--danger);
+}
+
+/* Order Details Layout */
 .order-details-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -682,7 +845,8 @@ section {
 
 .order-status-card,
 .order-items-section,
-.delivery-snapshot-section {
+.delivery-snapshot-section,
+.gcash-proof-section {
   width: 100%;
   padding: 1.5rem;
   background: #fffdf8;
@@ -762,10 +926,63 @@ section {
   font-size: 0.95rem;
 }
 
+.gcash-account-number {
+  font-size: 1.05rem !important;
+  margin: 0.5rem 0 !important;
+  color: var(--accent);
+}
+
 .small-note {
   margin-top: 0.5rem !important;
   font-size: 0.85rem !important;
   color: var(--muted);
+}
+
+.proof-upload-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.proof-upload-form label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.submissions-history-list {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.submissions-history-list h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.submission-card {
+  padding: 0.75rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.submission-card p {
+  margin: 0;
+}
+
+.ref-line {
+  color: var(--muted);
+  margin-top: 0.25rem !important;
+}
+
+.receipt-view-link {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 @media (max-width: 48rem) {
@@ -779,6 +996,25 @@ section {
   .cart-item-card {
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+
+  .stepper-track {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .stepper-track::before {
+    display: none;
+  }
+
+  .step-node {
+    flex-direction: row;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .node-label {
+    margin-top: 0;
   }
 }
 

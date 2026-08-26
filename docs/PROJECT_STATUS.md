@@ -32,7 +32,9 @@ PHASE 2E: CUSTOMER CART & SAVED ADDRESSES VERIFIED
 
 PHASE 2F: CHECKOUT & TRUSTED ORDER CREATION VERIFIED
 
-PHASE 2G: NOT STARTED
+PHASE 2G: CUSTOMER ORDER HISTORY / GCASH PROOF / TRACKING VERIFIED
+
+PHASE 2H: NOT STARTED
 
 LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
 
@@ -64,4 +66,6 @@ Phase 2D established the public catalog read experience, including server-side q
 
 Phase 2E established authenticated customer cart management (`/cart`), item add/quantity update/remove actions with server-authoritative pricing (`src/lib/cart/actions.ts`), and saved address management (`/account/addresses`, `src/lib/addresses/actions.ts`) enforcing one-default-address semantics and owner-isolated RLS.
 
-Phase 2F established authenticated checkout (`/checkout`) and order confirmation (`/orders/[id]`), executing atomic order creation, authoritative repricing, inventory reservation, and payment initiation strictly via canonical database RPC `public.checkout_order`. Admin payment verification and courier tracking remain deferred.
+Phase 2F established authenticated checkout (`/checkout`) and order confirmation (`/orders/[id]`), executing atomic order creation, authoritative repricing, inventory reservation, and payment initiation strictly via canonical database RPC `public.checkout_order`.
+
+Phase 2G established authenticated customer order history (`/orders`), detailed tracking view (`/orders/[id]`), canonical presentation-tier fulfillment stage derivation (`src/lib/orders/status.ts`), and private Manual GCash payment receipt upload and proof submission (`src/lib/payments/actions.ts`) with magic byte validation, short-lived signed URLs, and immutable payment evidence preservation. Admin review UI remains deferred.

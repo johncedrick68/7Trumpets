@@ -49,6 +49,9 @@ export default async function AccountPage({
         </p>
 
         <nav className="account-quick-links" aria-label="Account navigation">
+          <Link href="/orders" className="category-pill">
+            My Orders
+          </Link>
           <Link href="/account/addresses" className="category-pill">
             Saved Addresses
           </Link>
