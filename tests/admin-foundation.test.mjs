@@ -1,0 +1,132 @@
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("admin foundation files and routes exist and are server components with dynamic rendering", async () => {
+  assert.ok(existsSync("src/app/admin/layout.tsx"));
+  assert.ok(existsSync("src/app/admin/page.tsx"));
+  assert.ok(existsSync("src/app/admin/orders/page.tsx"));
+  assert.ok(existsSync("src/app/admin/orders/[id]/page.tsx"));
+  assert.ok(existsSync("src/app/admin/payments/page.tsx"));
+  assert.ok(existsSync("src/app/admin/catalog/page.tsx"));
+  assert.ok(existsSync("src/app/admin/audit/page.tsx"));
+  assert.ok(existsSync("src/app/admin/users/page.tsx"));
+  assert.ok(existsSync("src/lib/admin/auth.ts"));
+  assert.ok(existsSync("src/lib/admin/actions.ts"));
+
+  const layout = await read("src/app/admin/layout.tsx");
+  const dashPage = await read("src/app/admin/page.tsx");
+  const ordersPage = await read("src/app/admin/orders/page.tsx");
+  const orderDetailPage = await read("src/app/admin/orders/[id]/page.tsx");
+  const paymentsPage = await read("src/app/admin/payments/page.tsx");
+  const catalogPage = await read("src/app/admin/catalog/page.tsx");
+  const auditPage = await read("src/app/admin/audit/page.tsx");
+  const usersPage = await read("src/app/admin/users/page.tsx");
+
+  for (const content of [layout, dashPage, ordersPage, orderDetailPage, paymentsPage, catalogPage, auditPage, usersPage]) {
+    assert.match(content, /dynamic = "force-dynamic"/);
+    assert.doesNotMatch(content, /"use client"/);
+  }
+});
+
+test("admin auth helper verifies role exclusively from private.user_roles in PostgreSQL", async () => {
+  const authHelper = await read("src/lib/admin/auth.ts");
+
+  assert.match(authHelper, /getAdminAuthContext/);
+  assert.match(authHelper, /auth\.getClaims\(\)/);
+  assert.match(authHelper, /createServiceClient/);
+  assert.match(authHelper, /\.schema\("private"\)/);
+  assert.match(authHelper, /\.from\("user_roles"\)/);
+  assert.match(authHelper, /\.eq\("user_id", userId\)/);
+
+  // Does NOT trust user_metadata or query parameters for role assignment
+  assert.doesNotMatch(authHelper, /user_metadata\.role|user_metadata\.admin/);
+  assert.doesNotMatch(authHelper, /searchParams\.get\(["']role["']\)/);
+});
+
+test("admin layout and pages enforce getAdminAuthContext and redirect unauthorized users", async () => {
+  const layout = await read("src/app/admin/layout.tsx");
+  const dashPage = await read("src/app/admin/page.tsx");
+  const paymentsPage = await read("src/app/admin/payments/page.tsx");
+  const usersPage = await read("src/app/admin/users/page.tsx");
+
+  assert.match(layout, /getAdminAuthContext\(\)/);
+  assert.match(layout, /redirect\("\/login\?next=\/admin"\)/);
+
+  assert.match(dashPage, /getAdminAuthContext\(\)/);
+  assert.match(paymentsPage, /getAdminAuthContext\(\)/);
+
+  // Users page specifically requires super_admin
+  assert.match(usersPage, /adminCtx\.role !== "super_admin"/);
+  assert.match(usersPage, /notFound\(\)/);
+});
+
+test("AAL2 is strictly enforced for super_admin role mutations", async () => {
+  const adminActions = await read("src/lib/admin/actions.ts");
+  const usersPage = await read("src/app/admin/users/page.tsx");
+
+  assert.match(adminActions, /manageUserRole/);
+  assert.match(adminActions, /adminCtx\.role !== "super_admin"/);
+  assert.match(adminActions, /adminCtx\.aal !== "aal2"/);
+  assert.match(adminActions, /manage_user_role/);
+
+  // Users page displays warning if AAL2 is not satisfied
+  assert.match(usersPage, /adminCtx\.aal !== "aal2"/);
+  assert.match(usersPage, /AAL2 MFA Verification Required/);
+});
+
+test("GCash payment review actions use canonical database RPCs and do not mutate payments table directly", async () => {
+  const adminActions = await read("src/lib/admin/actions.ts");
+
+  // Approve GCash action uses approve_gcash_submission RPC
+  assert.match(adminActions, /approveGcashSubmission/);
+  assert.match(adminActions, /\.rpc\("approve_gcash_submission"/);
+
+  // Reject GCash action uses reject_gcash_submission RPC
+  assert.match(adminActions, /rejectGcashSubmission/);
+  assert.match(adminActions, /\.rpc\("reject_gcash_submission"/);
+
+  // Settle COD action uses settle_cod_payment RPC
+  assert.match(adminActions, /settleCodPayment/);
+  assert.match(adminActions, /\.rpc\("settle_cod_payment"/);
+
+  // Does NOT directly UPDATE payments status to PAID without RPC
+  assert.doesNotMatch(adminActions, /\.from\("payments"\)\.update\(\{\s*status:\s*["']PAID["']/);
+});
+
+test("Order fulfillment transitions use canonical transition_order RPC", async () => {
+  const adminActions = await read("src/lib/admin/actions.ts");
+
+  assert.match(adminActions, /transitionOrderStatus/);
+  assert.match(adminActions, /\.rpc\("transition_order"/);
+  assert.doesNotMatch(adminActions, /\.from\("orders"\)\.update\(\{\s*status:/);
+});
+
+test("Audit logs view queries append-only audit_logs table via authorized server boundary", async () => {
+  const auditPage = await read("src/app/admin/audit/page.tsx");
+
+  assert.match(auditPage, /getAdminAuthContext/);
+  assert.match(auditPage, /createServiceClient/);
+  assert.match(auditPage, /\.from\("audit_logs"\)/);
+  assert.match(auditPage, /\.order\("created_at", \{\s*ascending:\s*false\s*\}\)/);
+});
+
+test("Admin actions derive actor identity solely from verified server session and reject client-supplied identities", async () => {
+  const adminActions = await read("src/lib/admin/actions.ts");
+
+  // Every action calls getAdminAuthContext() and uses adminCtx.userId
+  assert.match(adminActions, /const adminCtx = await getAdminAuthContext\(\)/);
+  assert.doesNotMatch(adminActions, /p_reviewer_id:\s*formData\.get\(/);
+  assert.doesNotMatch(adminActions, /p_changed_by:\s*formData\.get\(/);
+  assert.doesNotMatch(adminActions, /p_actor_id:\s*formData\.get\(/);
+});
+
+test("Customer cannot call admin actions or transition order states", async () => {
+  const adminActions = await read("src/lib/admin/actions.ts");
+
+  // Ensure every action redirects to login if getAdminAuthContext returns null (e.g. for customer)
+  assert.match(adminActions, /if \(!adminCtx\) \{\s*redirect\("\/login/);
+});

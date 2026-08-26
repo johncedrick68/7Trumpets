@@ -34,7 +34,9 @@ PHASE 2F: CHECKOUT & TRUSTED ORDER CREATION VERIFIED
 
 PHASE 2G: CUSTOMER ORDER HISTORY / GCASH PROOF / TRACKING VERIFIED
 
-PHASE 2H: NOT STARTED
+PHASE 2H: ADMIN FOUNDATION & AAL2 BOUNDARY VERIFIED
+
+PHASE 2: CLOSED
 
 LOCAL SUPABASE: INITIALIZED / VERIFIED (10 MIGRATIONS REPLAY CLEAN)
 
@@ -68,4 +70,6 @@ Phase 2E established authenticated customer cart management (`/cart`), item add/
 
 Phase 2F established authenticated checkout (`/checkout`) and order confirmation (`/orders/[id]`), executing atomic order creation, authoritative repricing, inventory reservation, and payment initiation strictly via canonical database RPC `public.checkout_order`.
 
-Phase 2G established authenticated customer order history (`/orders`), detailed tracking view (`/orders/[id]`), canonical presentation-tier fulfillment stage derivation (`src/lib/orders/status.ts`), and private Manual GCash payment receipt upload and proof submission (`src/lib/payments/actions.ts`) with magic byte validation, short-lived signed URLs, and immutable payment evidence preservation. Admin review UI remains deferred.
+Phase 2G established authenticated customer order history (`/orders`), detailed tracking view (`/orders/[id]`), canonical presentation-tier fulfillment stage derivation (`src/lib/orders/status.ts`), and private Manual GCash payment receipt upload and proof submission (`src/lib/payments/actions.ts`) with magic byte validation, short-lived signed URLs, and immutable payment evidence preservation.
+
+Phase 2H established the secure admin operational foundation (`/admin`), server-side role verification backed by `private.user_roles` in PostgreSQL (`src/lib/admin/auth.ts`), AAL2 enforcement for super_admin staff role management (`/admin/users`, `public.manage_user_role`), GCash payment verification queue with transactional approval/rejection (`/admin/payments`), fulfillment lifecycle transitions (`/admin/orders`, `/admin/orders/[id]`), COD settlement actions, and immutable audit logs visibility (`/admin/audit`). Phase 2 application layer is now complete and closed.

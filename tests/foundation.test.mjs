@@ -55,12 +55,23 @@ test("required foundation and Phase 2B-2G files exist", () => {
   assert.ok(existsSync("src/app/orders/[id]/page.tsx"), "order confirmation/tracking page must exist in 2G");
   assert.ok(existsSync("src/lib/orders/status.ts"), "order status helper must exist in 2G");
   assert.ok(existsSync("src/lib/payments/actions.ts"), "payment actions must exist in 2G");
+  // Phase 2H admin files
+  assert.ok(existsSync("src/app/admin/layout.tsx"), "admin layout must exist in 2H");
+  assert.ok(existsSync("src/app/admin/page.tsx"), "admin dashboard page must exist in 2H");
+  assert.ok(existsSync("src/app/admin/orders/page.tsx"), "admin orders page must exist in 2H");
+  assert.ok(existsSync("src/app/admin/orders/[id]/page.tsx"), "admin order detail page must exist in 2H");
+  assert.ok(existsSync("src/app/admin/payments/page.tsx"), "admin payments page must exist in 2H");
+  assert.ok(existsSync("src/app/admin/catalog/page.tsx"), "admin catalog page must exist in 2H");
+  assert.ok(existsSync("src/app/admin/audit/page.tsx"), "admin audit page must exist in 2H");
+  assert.ok(existsSync("src/app/admin/users/page.tsx"), "admin users page must exist in 2H");
+  assert.ok(existsSync("src/lib/admin/auth.ts"), "admin auth helper must exist in 2H");
+  assert.ok(existsSync("src/lib/admin/actions.ts"), "admin actions must exist in 2H");
 });
 
-test("Phase 2H admin review and fulfillment mutation features do not exist in Phase 2G", () => {
-  assert.strictEqual(existsSync("src/app/admin"), false, "admin routes must not exist in 2G");
-  assert.strictEqual(existsSync("src/app/admin/orders"), false, "admin orders route must not exist in 2G");
-  assert.strictEqual(existsSync("src/app/admin/payments"), false, "admin payments route must not exist in 2G");
+test("Phase 2H admin routes and actions are present and accounted for", () => {
+  assert.ok(existsSync("src/app/admin"));
+  assert.ok(existsSync("src/app/admin/orders"));
+  assert.ok(existsSync("src/app/admin/payments"));
 });
 
 test("package.json includes approved Supabase packages", async () => {
