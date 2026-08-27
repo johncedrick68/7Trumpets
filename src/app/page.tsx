@@ -12,21 +12,22 @@ export default async function HomePage() {
   ]);
 
   return (
-    <main>
+    <>
       {/* Editorial Hero */}
       <section className="hero" aria-labelledby="hero-title">
-        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <div className="hero-inner">
           <p className="eyebrow" style={{ justifyContent: "center" }}>
-            01 / DROP 01 ARCHIVE
+            01 / Drop 01 Archive
           </p>
 
-          <div style={{ margin: "1.25rem auto 1.5rem", maxWidth: "540px" }}>
+          <div style={{ margin: "1.25rem auto 1.5rem", maxWidth: "500px" }}>
             <Image
               src="/images/1968%20Clothing%20Banner%20transparent.png"
               alt="1968 Clothing"
-              width={540}
+              width={500}
               height={120}
               priority
+              className="hero-banner-img"
               style={{ width: "100%", height: "auto", objectFit: "contain" }}
             />
           </div>
@@ -78,7 +79,8 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <div className="catalog-main" style={{ width: "100%", maxWidth: "var(--max-width)", margin: "0 auto" }}>
+      <main className="catalog-main">
+        <div className="catalog-container">
         {/* Drop 01 Releases */}
         <section aria-labelledby="collection-title">
           <div className="section-header">
@@ -176,7 +178,8 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }
