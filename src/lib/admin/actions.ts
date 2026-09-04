@@ -469,7 +469,7 @@ export async function adjustInventory(formData: FormData) {
  * Strictly enforces AAL2 and derives the idempotency key server-side.
  */
 export async function expireGcashPayment(formData: FormData) {
-  const returnTo = (formData.get("return_to") as string)?.trim() || "/admin/payments";
+  const returnTo = "/admin/payments";
   await requireAdminAal2(returnTo);
 
   const paymentId = (formData.get("payment_id") as string)?.trim();

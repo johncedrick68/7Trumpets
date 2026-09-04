@@ -301,7 +301,6 @@ export default async function AdminPaymentsPage({
                   </p>
                   <form action={expireGcashPayment} className="pt-1">
                     <input type="hidden" name="payment_id" value={exp.payment_id} />
-                    <input type="hidden" name="return_to" value="/admin/payments" />
                     <Button type="submit" variant="destructive" size="sm" className="w-full text-xs">
                       Expire &amp; Release Stock
                     </Button>
@@ -351,7 +350,6 @@ export default async function AdminPaymentsPage({
                       <TableCell className="text-right">
                         <form action={expireGcashPayment}>
                           <input type="hidden" name="payment_id" value={exp.payment_id} />
-                          <input type="hidden" name="return_to" value="/admin/payments" />
                           <Button type="submit" variant="destructive" size="sm" className="h-8 text-xs">
                             Expire &amp; Release Stock
                           </Button>

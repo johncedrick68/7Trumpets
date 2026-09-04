@@ -74,3 +74,46 @@ test("GCash Expiration: Admin payments UI consumes database-authoritative eligib
   assert.match(paymentsPage, /expireGcashPayment/);
   assert.match(paymentsPage, /notice === "gcash_expired"/);
 });
+
+test("GCash Expiration: Action prevents open redirect vulnerability and ignores attacker-controlled return_to", async () => {
+  const actions = await read("src/lib/admin/actions.ts");
+
+  // Extract expireGcashPayment function implementation
+  const expireMatch = actions.match(/export async function expireGcashPayment\(formData: FormData\) \{([\s\S]*?)\n\}/);
+  assert.ok(expireMatch, "expireGcashPayment function must exist");
+  const expireBody = expireMatch[1];
+
+  // Must NEVER read raw return_to from formData
+  assert.doesNotMatch(
+    expireBody,
+    /formData\.get\(["']return_to["']\)/,
+    "Must not read or trust raw return_to from formData"
+  );
+
+  // Must use fixed safe internal return destination
+  assert.match(
+    expireBody,
+    /const returnTo = ["']\/admin\/payments["'];/,
+    "Must use fixed safe internal destination /admin/payments"
+  );
+
+  // Must pass fixed internal returnTo to requireAdminAal2
+  assert.match(
+    expireBody,
+    /requireAdminAal2\(returnTo\)/,
+    "requireAdminAal2 must use safe internal returnTo"
+  );
+
+  // All redirects in expireGcashPayment must use the fixed safe returnTo
+  const redirectMatches = [...expireBody.matchAll(/redirect\((.*?)\)/g)];
+  assert.ok(redirectMatches.length > 0, "expireGcashPayment must have redirects");
+  for (const match of redirectMatches) {
+    const target = match[1];
+    assert.match(
+      target,
+      /`\$\{returnTo\}\?/,
+      `Redirect target ${target} must strictly prefix with \${returnTo}?`
+    );
+  }
+});
+

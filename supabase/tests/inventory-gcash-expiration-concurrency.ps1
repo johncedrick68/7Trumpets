@@ -105,11 +105,16 @@ COMMIT;
     $results = @($jobs | Wait-Job | Receive-Job)
     $jobs | Remove-Job
 
-    # Both concurrent calls should succeed deterministically (either initial transition or safe replay of same idempotency key)
-    # Both should output 'FAILED' (the terminal status of the payment)
-    $successfulCalls = @($results | Where-Object { $_.ExitCode -eq 0 -and $_.Output -match 'FAILED' }).Count
-    if ($successfulCalls -lt 1) {
-        throw "Expected at least one call to complete with status FAILED; outputs: $($results.Output -join ' | ')"
+    # Both concurrent calls must succeed deterministically (initial transition and safe replay of same idempotency key)
+    # Both processes must exit successfully with code 0 and return terminal status 'FAILED'
+    if ($results.Count -ne 2) {
+        throw "Expected 2 job results; got $($results.Count)"
+    }
+    for ($i = 0; $i -lt $results.Count; $i++) {
+        $r = $results[$i]
+        if ($r.ExitCode -ne 0 -or $r.Output -notmatch 'FAILED') {
+            throw "Job $($i + 1) did not succeed with status FAILED: ExitCode=$($r.ExitCode), Output=$($r.Output)"
+        }
     }
 
     # Verify all concurrency invariants in PostgreSQL
@@ -121,16 +126,19 @@ SELECT (
   -- Exactly one active-to-expired reservation transition
   AND (SELECT count(*) FROM public.inventory_reservations r WHERE r.variant_id = '$variantId' AND r.status = 'expired') = 1
   AND (SELECT count(*) FROM public.inventory_reservations r WHERE r.variant_id = '$variantId' AND r.status = 'active') = 0
-  -- Exactly one reservation_created and exactly one reservation_expired movement (no duplicates)
+  -- Exactly one reservation_created and exactly one reservation_expired terminal movement exists (no duplicates)
   AND (SELECT count(*) FROM public.inventory_movements m WHERE m.variant_id = '$variantId') = 2
   AND (SELECT count(*) FROM public.inventory_movements m WHERE m.variant_id = '$variantId' AND m.movement_type = 'reservation_created') = 1
   AND (SELECT count(*) FROM public.inventory_movements m WHERE m.variant_id = '$variantId' AND m.movement_type = 'reservation_expired') = 1
   AND (SELECT sum(m.reserved_delta) FROM public.inventory_movements m WHERE m.variant_id = '$variantId') = 0
-  -- Order cancelled exactly once
+  -- Order cancelled exactly once (no duplicate history: 1 initial + 1 cancellation)
   AND (SELECT status FROM public.orders WHERE id = '$orderId') = 'CANCELLED'
+  AND (SELECT count(*) FROM public.order_status_history h WHERE h.order_id = '$orderId') = 2
   AND (SELECT count(*) FROM public.order_status_history h WHERE h.order_id = '$orderId' AND h.to_status = 'CANCELLED') = 1
-  -- Payment failed
+  -- Payment failed exactly once (no duplicate payment events or payment audit logs)
   AND (SELECT status FROM public.payments WHERE id = '$paymentId') = 'FAILED'
+  AND (SELECT count(*) FROM public.audit_logs a WHERE a.entity = 'payment' AND a.entity_id = '$paymentId' AND a.action = 'payment.timeout_closed') = 1
+  AND (SELECT count(*) FROM public.audit_logs a WHERE a.entity = 'inventory_reservation' AND a.entity_id IN (SELECT id FROM public.inventory_reservations WHERE variant_id = '$variantId') AND a.action = 'inventory.reservation_expired') = 1
 )
 FROM public.inventory i
 WHERE i.variant_id = '$variantId';
