@@ -87,11 +87,27 @@ test("package.json includes approved Supabase packages", async () => {
 
   const runtimeDeps = Object.keys(pkg.dependencies || {}).sort();
   assert.deepStrictEqual(runtimeDeps, [
+    "@hookform/resolvers",
+    "@radix-ui/react-slot",
     "@supabase/ssr",
     "@supabase/supabase-js",
+    "@tailwindcss/postcss",
+    "class-variance-authority",
+    "clsx",
+    "embla-carousel-react",
+    "lucide-react",
     "next",
+    "next-themes",
+    "postcss",
+    "radix-ui",
     "react",
     "react-dom",
+    "react-hook-form",
+    "sonner",
+    "tailwind-merge",
+    "tailwindcss",
+    "tailwindcss-animate",
+    "zod",
   ]);
 });
 

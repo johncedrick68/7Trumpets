@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { addToCart } from "@/lib/cart/actions";
 import { findVariant } from "@/lib/catalog/variants";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShoppingBag } from "lucide-react";
+import { SizeChartDialog } from "@/components/size-chart-dialog";
 
 interface Option {
   id: string;
@@ -29,29 +34,44 @@ export function ProductPurchaseForm({
   const variant = findVariant(variants, options.map((option) => selected[option.id] ?? ""));
 
   return (
-    <form action={addToCart} className="product-options">
+    <form action={addToCart} className="flex flex-col gap-5 mt-4">
+      <div className="flex items-end justify-between gap-3">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Choose your fit</p>
+        <SizeChartDialog />
+      </div>
       {options.map((option) => (
-        <div key={option.id} className="option-group">
-          <label className="option-name" htmlFor={`option-${option.id}`}>{option.name}</label>
-          <select
-            id={`option-${option.id}`}
-            value={selected[option.id] ?? ""}
-            onChange={(event) => setSelected({ ...selected, [option.id]: event.target.value })}
+        <div key={option.id} className="space-y-2">
+          <Label htmlFor={`option-${option.id}`} className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+            {option.name}
+          </Label>
+          <Select 
+            name={`option-${option.id}`} 
+            value={selected[option.id]} 
+            onValueChange={(val) => setSelected({ ...selected, [option.id]: val })}
             required
           >
-            <option value="">Select {option.name}</option>
-            {option.values.map((value) => (
-              <option key={value.id} value={value.id}>{value.value}</option>
-            ))}
-          </select>
+            <SelectTrigger id={`option-${option.id}`} className="w-full h-12 rounded-none border-border">
+              <SelectValue placeholder={`Select ${option.name}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {option.values.map((value) => (
+                <SelectItem key={value.id} value={value.id}>{value.value}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       ))}
       <input type="hidden" name="variant_id" value={variant?.id ?? ""} />
       <input type="hidden" name="quantity" value="1" />
-      <p aria-live="polite" className="selected-variant">
-        {variant ? `Available · SKU: ${variant.sku} · ${variant.formatted_price}` : "Select all options to see availability."}
-      </p>
-      <button type="submit" className="button-link" disabled={!variant}>Add to Cart</button>
+      
+      <div aria-live="polite" className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest min-h-4">
+        {variant ? `Available · SKU: ${variant.sku}` : "Select all options to see availability."}
+      </div>
+      
+      <Button type="submit" disabled={!variant} size="lg" className="w-full font-bold h-14 rounded-none uppercase tracking-widest text-sm bg-foreground text-background hover:bg-foreground/90 transition-all flex items-center justify-center gap-2">
+        <ShoppingBag className="w-4 h-4" />
+        Add to Bag {variant && `· ${variant.formatted_price}`}
+      </Button>
     </form>
   );
 }

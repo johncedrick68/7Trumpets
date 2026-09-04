@@ -27,6 +27,7 @@ export default async function HomePage() {
               width={500}
               height={120}
               priority
+              sizes="(max-width: 768px) 90vw, 500px"
               className="hero-banner-img"
               style={{ width: "100%", height: "auto", objectFit: "contain" }}
             />
@@ -108,10 +109,16 @@ export default async function HomePage() {
           )}
 
           {products.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "4rem 1rem", background: "var(--surface)", borderRadius: "var(--radius-sm)" }}>
-              <p style={{ color: "var(--ink-muted)", fontFamily: "var(--font-mono)", fontSize: "13px" }}>
-                Catalog updating...
+            <div style={{ textAlign: "center", padding: "3.5rem 1.5rem", background: "var(--surface)", borderRadius: "var(--radius-md)", border: "1px dashed var(--border-strong)" }}>
+              <p style={{ color: "var(--ink)", fontWeight: 700, fontSize: "15px", marginBottom: "0.35rem" }}>
+                Archival Releases Loading
               </p>
+              <p style={{ color: "var(--ink-secondary)", fontSize: "13px", maxWidth: "440px", margin: "0 auto" }}>
+                Our Drop 01 streetwear archive is currently being prepared. Browse our collection or brand story below.
+              </p>
+              <Link href="/products" className="btn btn-secondary small-btn" style={{ marginTop: "1rem" }}>
+                Browse Catalog &rarr;
+              </Link>
             </div>
           ) : (
             <div className="product-grid">

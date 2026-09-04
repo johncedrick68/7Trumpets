@@ -84,7 +84,8 @@ function productImageUrl(path: string): string {
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("categories")
       .select("id, name, slug, description, position")
@@ -92,15 +93,19 @@ export async function getCategories(): Promise<Category[]> {
       .order("position", { ascending: true })
       .order("name", { ascending: true });
 
-  if (error) {
-    logServerError("catalog.categories", "database_failure");
-    throw new Error("CATALOG_UNAVAILABLE");
+    if (error) {
+      logServerError("catalog.categories", "database_failure");
+      return [];
+    }
+    return data ?? [];
+  } catch {
+    return [];
   }
-  return data ?? [];
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("categories")
       .select("id, name, slug, description, position")
@@ -108,11 +113,14 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
       .is("archived_at", null)
       .maybeSingle();
 
-  if (error) {
-    logServerError("catalog.category", "database_failure");
-    throw new Error("CATALOG_UNAVAILABLE");
+    if (error) {
+      logServerError("catalog.category", "database_failure");
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
   }
-  return data;
 }
 
 export async function getProducts(options?: {
@@ -151,13 +159,14 @@ export async function getProducts(options?: {
 
   query = query.order("created_at", { ascending: false });
 
-  const { data, error } = await query;
-  if (error) {
-    logServerError("catalog.products", "database_failure");
-    throw new Error("CATALOG_UNAVAILABLE");
-  }
+  try {
+    const { data, error } = await query;
+    if (error) {
+      logServerError("catalog.products", "database_failure");
+      return [];
+    }
 
-  const items = (data ?? []).map((item) => {
+    const items = (data ?? []).map((item) => {
     const activeVariants = (item.product_variants || []).filter(
       (v) => v.status === "active",
     );
@@ -179,17 +188,21 @@ export async function getProducts(options?: {
     };
   });
 
-  if (options?.sort === "price_asc") {
-    return sortByMinPrice(items, "price_asc");
-  } else if (options?.sort === "price_desc") {
-    return sortByMinPrice(items, "price_desc");
-  }
+    if (options?.sort === "price_asc") {
+      return sortByMinPrice(items, "price_asc");
+    } else if (options?.sort === "price_desc") {
+      return sortByMinPrice(items, "price_desc");
+    }
 
-  return items;
+    return items;
+  } catch {
+    return [];
+  }
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
     const { data: product, error: productError } = await supabase
       .from("products")
       .select("id, name, slug, description, category_id")
@@ -197,11 +210,11 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       .eq("status", "published")
       .maybeSingle();
 
-  if (productError) {
-    logServerError("catalog.product", "database_failure");
-    throw new Error("CATALOG_UNAVAILABLE");
-  }
-  if (!product) return null;
+    if (productError) {
+      logServerError("catalog.product", "database_failure");
+      return null;
+    }
+    if (!product) return null;
 
     const [variantsRes, optionsRes, optionValuesRes, variantValuesRes, imagesRes] =
       await Promise.all([
@@ -232,12 +245,12 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
           .order("position", { ascending: true }),
       ]);
 
-  if (variantsRes.error || optionsRes.error || optionValuesRes.error || variantValuesRes.error || imagesRes.error) {
-    logServerError("catalog.product_relations", "database_failure");
-    throw new Error("CATALOG_UNAVAILABLE");
-  }
+    if (variantsRes.error || optionsRes.error || optionValuesRes.error || variantValuesRes.error || imagesRes.error) {
+      logServerError("catalog.product_relations", "database_failure");
+      return null;
+    }
 
-  const optionsMap: ProductOption[] = (optionsRes.data || []).map((opt) => ({
+    const optionsMap: ProductOption[] = (optionsRes.data || []).map((opt) => ({
       ...opt,
       values: (optionValuesRes.data || []).filter((v) => v.option_id === opt.id),
     }));
@@ -247,7 +260,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       storage_path: productImageUrl(image.storage_path),
     }));
 
-  return {
+    return {
       id: product.id,
       name: product.name,
       slug: product.slug,
@@ -257,10 +270,13 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       variants: (variantsRes.data || []).map((variant) => ({
         ...variant,
         option_value_ids: (variantValuesRes.data || [])
-          .filter((value) => value.variant_id === variant.id)
-          .map((value) => value.option_value_id),
+          .filter((vv) => vv.variant_id === variant.id)
+          .map((vv) => vv.option_value_id),
       })),
       options: optionsMap,
       images,
-  };
+    };
+  } catch {
+    return null;
+  }
 }

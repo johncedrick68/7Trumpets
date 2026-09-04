@@ -1,11 +1,18 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
 
 import { getAdminAuthContext } from "@/lib/admin/auth";
 import { approveGcashSubmission, rejectGcashSubmission } from "@/lib/admin/actions";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
-import Link from "next/link";
 import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -61,16 +68,24 @@ export default async function AdminPaymentsPage({
     throw new Error("ADMIN_PAYMENTS_UNAVAILABLE");
   }
   const submissionList = submissions || [];
+  const pendingCount = submissionList.filter((submission) => submission.review_status === "PENDING" || submission.review_status === "VERIFYING").length;
 
   return (
-    <div className="admin-page">
-      <header className="admin-page-header">
-        <h1>Payment Verification Queue</h1>
-        <p className="subtle-text">Review and verify Manual GCash payments using canonical transactional RPCs.</p>
+    <div className="space-y-8">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">Operations · AAL2 required</p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Payment Verification</h1>
+          <p className="text-muted-foreground text-sm max-w-2xl">
+            Verify evidence before approving. A receipt is customer-provided evidence, not proof of payment on its own.
+          </p>
+        </div>
+        <Badge variant={pendingCount > 0 ? "default" : "secondary"} className="w-fit font-mono text-xs">{pendingCount} awaiting review</Badge>
       </header>
 
       {notice && (
-        <div className="notice" role="status" style={{ marginBottom: "1.5rem" }}>
+        <div className="p-4 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4" />
           {notice === "gcash_approved" && "GCash payment approved successfully. Reservations consumed and payment transitioned to PAID."}
           {notice === "gcash_rejected" && "GCash payment rejected. Customer may resubmit while reservation remains active."}
           {notice === "cod_settled" && "COD payment marked settled as PAID."}
@@ -78,33 +93,58 @@ export default async function AdminPaymentsPage({
       )}
 
       {error && (
-        <div className="error" role="alert" style={{ marginBottom: "1.5rem" }}>
+        <div className="p-4 rounded-md bg-destructive/10 text-destructive border border-destructive/20 flex items-center gap-2">
+          <XCircle className="w-4 h-4" />
           Error: {error}
         </div>
       )}
 
-      <div className="admin-card">
-        <h2>Manual GCash Submissions ({submissionList.length})</h2>
-
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5" />
+            Manual GCash Submissions
+            <Badge variant="secondary" className="ml-2 font-mono">{submissionList.length}</Badge>
+          </CardTitle>
+          <CardDescription>Verify customer-submitted GCash reference numbers and receipts.</CardDescription>
+        </CardHeader>
+        
         {submissionList.length === 0 ? (
-          <p className="subtle-text" style={{ padding: "1.5rem 0" }}>
-            No payment submissions found in queue.
-          </p>
+          <CardContent className="border-t border-dashed py-12 text-center text-muted-foreground">
+            No Manual GCash submissions have been received yet.
+          </CardContent>
         ) : (
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Submitted At</th>
-                  <th>Claimed Amount</th>
-                  <th>Ref No.</th>
-                  <th>Receipt Proof</th>
-                  <th>Review Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+          <>
+          <div className="divide-y border-t md:hidden">
+            {submissionList.map((sub) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const payment = sub.payments as any;
+              const order = payment?.orders;
+              const isPending = sub.review_status === "PENDING" || sub.review_status === "VERIFYING";
+              const reviewVariant = sub.review_status === "APPROVED" ? "default" : sub.review_status === "REJECTED" ? "destructive" : "secondary";
+              return <article key={sub.id} className="space-y-4 p-4">
+                <div className="flex items-start justify-between gap-3"><div><Link href={`/admin/orders/${order?.id}`} className="font-mono text-sm font-semibold underline-offset-4 hover:underline">Order {order?.order_number || "—"}</Link><p className="mt-1 text-sm text-muted-foreground">{order?.recipient_name || order?.customer_email || "Customer unavailable"}</p></div><Badge variant={reviewVariant} className="text-[10px] uppercase">{sub.review_status}</Badge></div>
+                <div className="grid grid-cols-2 gap-3 border-y py-3 text-sm"><div><p className="text-xs text-muted-foreground">Claimed amount</p><p className="font-mono font-semibold">{formatMinorUnitsToPHP(sub.claimed_amount_minor)}</p></div><div><p className="text-xs text-muted-foreground">Reference no.</p><p className="break-all font-mono text-xs font-medium">{sub.reference_number || "Not provided"}</p></div></div>
+                <p className="text-xs text-muted-foreground">Submitted {new Date(sub.created_at).toLocaleString()}</p>
+                {sub.receipt_storage_path ? <Button asChild variant="outline" className="w-full"><Link href={`/admin/payments/receipts/${sub.id}`}>Review receipt <ArrowRight className="ml-2 size-4" aria-hidden="true" /></Link></Button> : <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">No receipt image was provided.</p>}
+                {isPending ? <div className="space-y-3 rounded-md bg-muted/40 p-3"><p className="text-sm font-medium">Decision</p><form action={approveGcashSubmission}><input type="hidden" name="payment_id" value={sub.payment_id} /><input type="hidden" name="submission_id" value={sub.id} /><Button type="submit" className="w-full">Approve payment as PAID</Button></form><form action={rejectGcashSubmission} className="space-y-2"><input type="hidden" name="payment_id" value={sub.payment_id} /><input type="hidden" name="submission_id" value={sub.id} /><Input type="text" name="rejection_reason" placeholder="Reason for rejection" required /><Button type="submit" variant="destructive" className="w-full">Reject submission</Button></form></div> : <p className="text-sm text-muted-foreground">Review complete — no further action available.</p>}
+              </article>;
+            })}
+          </div>
+          <div className="hidden border-t md:block md:overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[150px]">Order</TableHead>
+                  <TableHead>Submitted At</TableHead>
+                  <TableHead className="text-right">Claimed Amount</TableHead>
+                  <TableHead className="font-mono">Ref No.</TableHead>
+                  <TableHead>Receipt Proof</TableHead>
+                  <TableHead>Review Status</TableHead>
+                  <TableHead className="text-center min-w-[200px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {submissionList.map((sub) => {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const payment = sub.payments as any;
@@ -112,69 +152,81 @@ export default async function AdminPaymentsPage({
                   const isPending = sub.review_status === "PENDING" || sub.review_status === "VERIFYING";
 
                   return (
-                    <tr key={sub.id}>
-                      <td>
-                        <strong>{order?.order_number || "Order"}</strong>
-                        <div className="subtle-text small-text">{order?.customer_email}</div>
-                      </td>
-                      <td>{new Date(sub.created_at).toLocaleString()}</td>
-                      <td><strong>{formatMinorUnitsToPHP(sub.claimed_amount_minor)}</strong></td>
-                      <td><code>{sub.reference_number || "None"}</code></td>
-                      <td>
+                    <TableRow key={sub.id}>
+                      <TableCell>
+                        <Link href={`/admin/orders/${order?.id}`} className="font-medium hover:underline text-primary">
+                          {order?.order_number || "Order"}
+                        </Link>
+                        <div className="text-xs text-muted-foreground">{order?.customer_email}</div>
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {new Date(sub.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatMinorUnitsToPHP(sub.claimed_amount_minor)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {sub.reference_number || "None"}
+                      </TableCell>
+                      <TableCell>
                         {sub.receipt_storage_path ? (
-                          <Link
-                            href={`/admin/payments/receipts/${sub.id}`}
-                            className="btn btn-secondary small-btn"
-                          >
-                            View Receipt &rarr;
-                          </Link>
+                          <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+                            <Link href={`/admin/payments/receipts/${sub.id}`}>
+                              View Receipt <ArrowRight className="w-3 h-3 ml-1" />
+                            </Link>
+                          </Button>
                         ) : (
-                          <span className="subtle-text small-text">No image</span>
+                          <span className="text-muted-foreground text-xs italic">No image</span>
                         )}
-                      </td>
-                      <td>
-                        <span className={`status-pill status-${sub.review_status.toLowerCase()}`}>
-                          {sub.review_status}
-                        </span>
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          sub.review_status === "APPROVED" ? "default" :
+                          sub.review_status === "REJECTED" ? "destructive" :
+                          "secondary"
+                        } className="capitalize">
+                          {sub.review_status.toLowerCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         {isPending ? (
-                          <div className="admin-action-forms" style={{ display: "flex", gap: "0.5rem" }}>
+                          <div className="flex flex-col gap-2">
                             <form action={approveGcashSubmission}>
                               <input type="hidden" name="payment_id" value={sub.payment_id} />
                               <input type="hidden" name="submission_id" value={sub.id} />
-                              <button type="submit" className="btn btn-primary small-btn">
+                            <Button type="submit" size="sm" className="h-9 w-full text-xs">
                                 Approve (PAID)
-                              </button>
+                              </Button>
                             </form>
 
-                            <form action={rejectGcashSubmission} style={{ display: "flex", gap: "0.25rem" }}>
+                            <form action={rejectGcashSubmission} className="flex gap-2">
                               <input type="hidden" name="payment_id" value={sub.payment_id} />
                               <input type="hidden" name="submission_id" value={sub.id} />
-                              <input
+                              <Input
                                 type="text"
                                 name="rejection_reason"
-                                placeholder="Rejection reason..."
+                                placeholder="Reason..."
                                 required
-                                className="small-input"
+                                className="h-9 min-w-[120px] flex-1 text-xs"
                               />
-                              <button type="submit" className="btn btn-secondary small-btn btn-danger-tone">
+                              <Button type="submit" variant="destructive" size="sm" className="h-9 text-xs">
                                 Reject
-                              </button>
+                              </Button>
                             </form>
                           </div>
                         ) : (
-                          <span className="subtle-text small-text">Completed</span>
+                          <div className="text-center text-sm text-muted-foreground italic">Completed</div>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
+          </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

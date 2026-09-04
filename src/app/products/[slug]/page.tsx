@@ -5,6 +5,8 @@ import { addToCart } from "@/lib/cart/actions";
 import { formatMinorUnitsToPHP, getProductBySlug } from "@/lib/catalog/queries";
 import { ProductPurchaseForm } from "@/components/product-purchase-form";
 import { BagIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { SizeChartDialog } from "@/components/size-chart-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -24,18 +26,18 @@ export default async function ProductDetailPage({
   const minPrice = activePrices.length > 0 ? Math.min(...activePrices) : 0;
 
   return (
-    <main className="catalog-main">
-      <div className="catalog-container">
-        <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.4rem", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-muted)", marginBottom: "1.5rem", textTransform: "uppercase" }}>
-          <Link href="/products" style={{ color: "var(--ink-muted)" }}>Collection</Link>
+    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-7xl mx-auto">
+      <div className="w-full max-w-6xl mx-auto">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-8">
+          <Link href="/products" className="hover:text-foreground transition-colors">Collection</Link>
           <span>/</span>
-          <span style={{ color: "var(--ink)" }}>{product.name}</span>
+          <span className="text-foreground font-bold">{product.name}</span>
         </nav>
 
-        <div className="product-detail-layout">
+        <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
           {/* Gallery Column */}
-          <div>
-            <div className="gallery-main-wrap">
+          <div className="w-full lg:w-3/5 flex flex-col gap-4">
+            <div className="aspect-[4/5] md:aspect-square w-full rounded-xl overflow-hidden bg-muted border border-border relative">
               {product.images.length > 0 ? (
                 <Image
                   src={
@@ -44,27 +46,27 @@ export default async function ProductDetailPage({
                       : `/images/${product.images[0].storage_path.split("/").pop()}`
                   }
                   alt={product.name}
-                  width={600}
-                  height={600}
+                  width={800}
+                  height={1000}
                   priority
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <Image
                   src="/images/1968%20CLOTHING%20V1.webp"
                   alt={product.name}
-                  width={600}
-                  height={600}
+                  width={800}
+                  height={1000}
                   priority
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  className="w-full h-full object-cover"
                 />
               )}
             </div>
 
             {product.images.length > 1 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.6rem", marginTop: "0.75rem" }}>
+              <div className="grid grid-cols-4 gap-3">
                 {product.images.slice(0, 4).map((img, idx) => (
-                  <div key={img.id || idx} style={{ borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--border)", background: "var(--surface)" }}>
+                  <div key={img.id || idx} className="aspect-square rounded-lg overflow-hidden border border-border bg-muted relative">
                     <Image
                       src={
                         img.storage_path.startsWith("http")
@@ -74,7 +76,7 @@ export default async function ProductDetailPage({
                       alt={img.alt_text || product.name}
                       width={150}
                       height={150}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      className="w-full h-full object-cover"
                     />
                   </div>
                 ))}
@@ -83,22 +85,22 @@ export default async function ProductDetailPage({
           </div>
 
           {/* Info Column */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <p className="eyebrow">
+          <div className="w-full lg:w-2/5 flex flex-col">
+            <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-2">
               Archival Garment
             </p>
 
-            <h1 style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800, margin: "0 0 0.85rem", letterSpacing: "-0.02em" }}>
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">
               {product.name}
             </h1>
 
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "1.4rem", fontWeight: 800, color: "var(--ink)", marginBottom: "1.5rem" }}>
+            <div className="font-mono text-2xl font-bold text-foreground mb-8">
               {formatMinorUnitsToPHP(minPrice)}
             </div>
 
             {product.description && (
-              <div style={{ color: "var(--ink-secondary)", fontSize: "14px", lineHeight: 1.7, marginBottom: "1.75rem", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "1rem 0" }}>
-                <p style={{ margin: 0 }}>{product.description}</p>
+              <div className="text-muted-foreground text-sm leading-relaxed mb-8 py-6 border-y border-border">
+                <p>{product.description}</p>
               </div>
             )}
 
@@ -113,25 +115,26 @@ export default async function ProductDetailPage({
             )}
 
             {product.options.length === 0 && product.variants.length > 0 && (
-              <div style={{ marginTop: "0.5rem" }}>
-                <label style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ink-muted)", marginBottom: "0.75rem" }}>
+              <div className="mt-4">
+                <label className="block font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4">
                   Select Size &amp; Add to Bag
                 </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                <SizeChartDialog />
+                <div className="flex flex-col gap-3">
                   {product.variants.map((variant) => (
-                    <form key={variant.id} action={addToCart} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.65rem 0.85rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)" }}>
+                    <form key={variant.id} action={addToCart} className="flex justify-between items-center p-4 bg-muted/30 border border-border rounded-lg">
                       <input type="hidden" name="variant_id" value={variant.id} />
                       <input type="hidden" name="quantity" value="1" />
                       <div>
-                        <strong style={{ fontSize: "13px" }}>{variant.name || variant.sku}</strong>
-                        <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-muted)" }}>SKU: {variant.sku}</div>
+                        <strong className="text-sm">{variant.name || variant.sku}</strong>
+                        <div className="font-mono text-[11px] text-muted-foreground mt-1">SKU: {variant.sku}</div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
-                        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "13px" }}>{formatMinorUnitsToPHP(variant.price_minor)}</span>
-                        <button type="submit" className="btn btn-primary small-btn" style={{ gap: "0.35rem" }}>
-                          <BagIcon size={12} />
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono font-bold text-sm">{formatMinorUnitsToPHP(variant.price_minor)}</span>
+                        <Button type="submit" size="sm" className="gap-2">
+                          <BagIcon size={14} />
                           <span>Add to Bag</span>
-                        </button>
+                        </Button>
                       </div>
                     </form>
                   ))}
@@ -140,11 +143,11 @@ export default async function ProductDetailPage({
             )}
 
             {/* Specifications Box */}
-            <div style={{ marginTop: "2rem", padding: "1rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", display: "flex", flexDirection: "column", gap: "0.5rem", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-muted)" }}>
-              <div><strong>FABRIC:</strong> 100% Heavyweight Pre-Shrunk Cotton (220-240 GSM)</div>
-              <div><strong>PRINT:</strong> Archival High-Density Plastisol Screenprint</div>
-              <div><strong>SHIPPING:</strong> Metro Manila 2-3 business days · Provincial 3-6 business days</div>
-              <div><strong>PAYMENTS:</strong> Doorstep Cash on Delivery (COD) · Manual GCash</div>
+            <div className="mt-10 p-5 bg-muted/40 border border-border rounded-lg flex flex-col gap-3 font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
+              <div><strong className="text-foreground">FABRIC:</strong> 100% Heavyweight Pre-Shrunk Cotton (220-240 GSM)</div>
+              <div><strong className="text-foreground">PRINT:</strong> Archival High-Density Plastisol Screenprint</div>
+              <div><strong className="text-foreground">SHIPPING:</strong> Metro Manila 2-3 business days · Provincial 3-6 business days</div>
+              <div><strong className="text-foreground">PAYMENTS:</strong> Doorstep Cash on Delivery (COD) · Manual GCash</div>
             </div>
           </div>
         </div>

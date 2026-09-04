@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
-import { BagIcon, UserIcon } from "@/components/icons";
+import { UserIcon } from "@/components/icons";
 import { MobileNav } from "@/components/mobile-nav";
+import { CartBadge } from "@/components/cart-badge";
 
 export const metadata: Metadata = {
   title: {
@@ -69,15 +70,8 @@ export default function RootLayout({
                 <UserIcon size={18} />
               </Link>
 
-              <Link
-                href="/cart"
-                className="bag-btn"
-                aria-label="Shopping Bag"
-              >
-                <BagIcon size={15} />
-                <span>Bag</span>
-                <span className="bag-count" aria-label="0 items">0</span>
-              </Link>
+              {/* Live cart count — server component, updates on revalidation */}
+              <CartBadge />
 
               {/* Mobile hamburger — client component */}
               <MobileNav />

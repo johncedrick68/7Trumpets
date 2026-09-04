@@ -215,6 +215,7 @@ export async function addToCart(formData: FormData) {
   }
 
   revalidatePath("/cart");
+  revalidatePath("/", "layout");  // update header CartBadge across all pages
   redirect("/cart");
 }
 
@@ -247,6 +248,7 @@ export async function updateCartItemQuantity(formData: FormData) {
   }
 
   revalidatePath("/cart");
+  revalidatePath("/", "layout");  // update header CartBadge
   redirect("/cart");
 }
 
@@ -266,5 +268,6 @@ export async function removeCartItem(formData: FormData) {
   }
 
   revalidatePath("/cart");
+  revalidatePath("/", "layout");  // update header CartBadge
   redirect("/cart");
 }

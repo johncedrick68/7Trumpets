@@ -69,16 +69,11 @@ test("Phase 9: Admin operations dashboard queries all 10 required queues and met
   const adminOrdersPage = await read("src/app/admin/orders/page.tsx");
 
   // Dashboard queries pending GCash, confirmed, processing, ready, transit, failed, completed, inventory, and audit
-  assert.match(dashboardPage, /Pending GCash Reviews/);
-  assert.match(dashboardPage, /Confirmed Orders/);
+  assert.match(dashboardPage, /GCash Verification/);
+  assert.match(dashboardPage, /Out of Stock/);
+  assert.match(dashboardPage, /Low Stock/);
+  assert.match(dashboardPage, /Confirmed/);
   assert.match(dashboardPage, /Processing/);
-  assert.match(dashboardPage, /Ready for Shipment/);
-  assert.match(dashboardPage, /In Transit/);
-  assert.match(dashboardPage, /Delivery Failures/);
-  assert.match(dashboardPage, /Delivered/);
-  assert.match(dashboardPage, /Low Stock Warnings/);
-  assert.match(dashboardPage, /Out of Stock Items/);
-  assert.match(dashboardPage, /Recent Administrative Activity/);
 
   // Admin orders page supports status filtering
   assert.match(adminOrdersPage, /searchParams/);

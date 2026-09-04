@@ -1,9 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOut, updateProfile } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { AccountNavigation } from "@/components/account-navigation";
 
 export const dynamic = "force-dynamic";
+// Shared navigation includes /orders, /account/addresses, and /update-password.
 
 export default async function AccountPage({
   searchParams,
@@ -29,108 +34,93 @@ export default async function AccountPage({
   const params = await searchParams;
 
   return (
-    <main className="catalog-main">
-      <div className="catalog-container" style={{ maxWidth: "780px" }}>
+    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-5xl mx-auto">
+      <div className="w-full">
         {/* Header with User Info & Sign Out */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.75rem" }}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <p className="eyebrow">Customer Account</p>
-            <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: "0 0 0.25rem", letterSpacing: "-0.02em" }}>
+            <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
+              Customer Account
+            </p>
+            <h1 className="text-3xl font-extrabold tracking-tight mt-1 mb-1">
               Account Settings
             </h1>
-            <p style={{ color: "var(--ink-secondary)", fontSize: "14px", margin: 0 }}>
-              Signed in as <strong style={{ color: "var(--ink)" }}>{userData.user.email}</strong>
+            <p className="text-sm text-muted-foreground">
+              Signed in as <strong className="text-foreground">{userData.user.email}</strong>
             </p>
           </div>
 
           <form action={signOut}>
-            <button type="submit" className="btn btn-secondary small-btn">
+            <Button variant="outline" type="submit">
               Sign Out
-            </button>
+            </Button>
           </form>
         </div>
 
-        {/* Account Sub-Navigation Tabs */}
-        <nav className="account-tabs" aria-label="Account navigation">
-          <Link href="/account" className="account-tab active">
-            Profile Settings
-          </Link>
-          <Link href="/orders" className="account-tab">
-            Order History
-          </Link>
-          <Link href="/account/addresses" className="account-tab">
-            Saved Addresses
-          </Link>
-          <Link href="/update-password" className="account-tab">
-            Password &amp; Security
-          </Link>
-          <Link href="/cart" className="account-tab">
-            Shopping Bag
-          </Link>
-        </nav>
+        <AccountNavigation current="profile" />
 
         {params.saved === "1" && (
-          <p className="notice" role="status">
+          <div className="p-4 text-sm text-green-800 bg-green-50 rounded-md border border-green-200 mb-6" role="status">
             Profile details updated successfully.
-          </p>
+          </div>
         )}
         {params.password === "updated" && (
-          <p className="notice" role="status">
+          <div className="p-4 text-sm text-green-800 bg-green-50 rounded-md border border-green-200 mb-6" role="status">
             Password changed successfully.
-          </p>
+          </div>
         )}
         {(params.error || profileError || !profile) && (
-          <p className="error" role="alert">
+          <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6" role="alert">
             We could not load or save your profile. Please check your connection.
-          </p>
+          </div>
         )}
 
         {/* Profile Card */}
-        <section className="card-surface" aria-labelledby="profile-heading">
-          <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1.5rem" }}>
-            <h2 id="profile-heading" style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 0.25rem" }}>
-              Personal Information
-            </h2>
-            <p style={{ color: "var(--ink-muted)", fontSize: "13px", margin: 0 }}>
+        <Card className="shadow-sm border-border">
+          <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+            <CardDescription>
               Update your contact details for delivery confirmations.
-            </p>
-          </div>
+            </CardDescription>
+          </CardHeader>
 
           {profile && (
             <form action={updateProfile}>
-              <div className="form-group">
-                <label htmlFor="display_name">Full Name / Display Name</label>
-                <input
-                  id="display_name"
-                  name="display_name"
-                  autoComplete="name"
-                  maxLength={100}
-                  defaultValue={profile.display_name ?? ""}
-                  placeholder="Juan Dela Cruz"
-                />
-              </div>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="display_name">Full Name / Display Name</Label>
+                  <Input
+                    id="display_name"
+                    name="display_name"
+                    autoComplete="name"
+                    maxLength={100}
+                    defaultValue={profile.display_name ?? ""}
+                    placeholder="Juan Dela Cruz"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label htmlFor="phone">Phone Number (e.g. 0917 123 4567)</label>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  maxLength={32}
-                  defaultValue={profile.phone ?? ""}
-                  placeholder="0917 123 4567"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    maxLength={32}
+                    defaultValue={profile.phone ?? ""}
+                    placeholder="e.g. 0917 123 4567"
+                  />
+                </div>
+              </CardContent>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
-                <button type="submit" className="btn btn-primary">
+              <CardFooter className="flex justify-end pt-4 border-t border-border mt-4">
+                <Button type="submit">
                   Save Changes &rarr;
-                </button>
-              </div>
+                </Button>
+              </CardFooter>
             </form>
           )}
-        </section>
+        </Card>
       </div>
     </main>
   );

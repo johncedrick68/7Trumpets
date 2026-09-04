@@ -5,6 +5,10 @@ import { deriveCustomerFulfillmentStage } from "@/lib/orders/status";
 import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 import { PackageIcon, ArrowRightIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { AccountNavigation } from "@/components/account-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -30,95 +34,88 @@ export default async function OrderHistoryPage() {
   const orderList = orders || [];
 
   return (
-    <main className="catalog-main">
-      <div className="catalog-container" style={{ maxWidth: "860px" }}>
-        <header style={{ marginBottom: "1.75rem" }}>
-          <p className="eyebrow">Customer Account</p>
-          <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: "0 0 0.25rem", letterSpacing: "-0.02em" }}>
+    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-5xl mx-auto">
+      <div className="w-full">
+        <header className="mb-8">
+          <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
+            Customer Account
+          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight mt-1 mb-1">
             Order History
           </h1>
-          <p style={{ color: "var(--ink-secondary)", fontSize: "14px", margin: 0 }}>
+          <p className="text-sm text-muted-foreground">
             View and track your 1968 Clothing archival orders.
           </p>
         </header>
 
-        {/* Account Sub-Navigation Tabs */}
-        <nav className="account-tabs" aria-label="Account navigation">
-          <Link href="/account" className="account-tab">
-            Profile Settings
-          </Link>
-          <Link href="/orders" className="account-tab active">
-            Order History
-          </Link>
-          <Link href="/account/addresses" className="account-tab">
-            Saved Addresses
-          </Link>
-          <Link href="/update-password" className="account-tab">
-            Password &amp; Security
-          </Link>
-          <Link href="/cart" className="account-tab">
-            Shopping Bag
-          </Link>
-        </nav>
+        <AccountNavigation current="orders" />
 
         {orderList.length === 0 ? (
-          <div className="card-surface" style={{ textAlign: "center", padding: "4rem 1.5rem" }}>
-            <div style={{ display: "inline-flex", justifyContent: "center", marginBottom: "1rem", color: "var(--ink-muted)" }}>
-              <PackageIcon size={40} />
-            </div>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "0 0 0.5rem" }}>No orders placed yet</h2>
-            <p style={{ color: "var(--ink-secondary)", margin: "0 0 1.5rem", fontSize: "14px" }}>
-              Explore our current Drop 01 streetwear releases.
-            </p>
-            <Link href="/products" className="btn btn-primary" style={{ gap: "0.5rem" }}>
-              <span>Explore Collection</span>
-              <ArrowRightIcon size={14} />
-            </Link>
-          </div>
+          <Card className="border-dashed border-2 bg-muted/20 text-center py-16 px-6">
+            <CardContent className="flex flex-col items-center p-0">
+              <div className="mb-4 text-muted-foreground bg-muted p-4 rounded-full">
+                <PackageIcon size={40} />
+              </div>
+              <h2 className="text-xl font-bold mb-2">No orders placed yet</h2>
+              <p className="text-muted-foreground mb-6 text-sm">
+                Explore our current Drop 01 streetwear releases.
+              </p>
+              <Button asChild className="gap-2">
+                <Link href="/products">
+                  <span>Explore Collection</span>
+                  <ArrowRightIcon size={14} />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="flex flex-col gap-4">
             {orderList.map((order) => {
               const stageInfo = deriveCustomerFulfillmentStage(order.status);
               return (
-                <article key={order.id} className="card-surface" style={{ padding: "1.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.85rem" }}>
-                    <div>
-                      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 0.25rem" }}>
-                        <Link href={`/orders/${order.id}`} style={{ textDecoration: "underline" }}>
-                          Order #{order.order_number}
+                <Card key={order.id} className="border-border shadow-sm overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-3">
+                      <div>
+                        <h2 className="text-lg font-bold">
+                          <Link href={`/orders/${order.id}`} className="hover:underline decoration-2 underline-offset-4">
+                            Order #{order.order_number}
+                          </Link>
+                        </h2>
+                        <p className="text-xs font-mono text-muted-foreground mt-1">
+                          Placed on{" "}
+                          {new Date(order.placed_at).toLocaleDateString("en-PH", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="px-3 py-1 font-mono uppercase tracking-widest text-[10px]">
+                        {stageInfo.label}
+                      </Badge>
+                    </div>
+
+                    <p className="text-sm text-muted-foreground mb-6">
+                      {stageInfo.description}
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t border-border">
+                      <div>
+                        <span className="text-xs text-muted-foreground font-mono uppercase tracking-widest mr-2">TOTAL:</span>
+                        <strong className="text-lg font-mono">
+                          {formatMinorUnitsToPHP(order.total_minor)}
+                        </strong>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto group" asChild>
+                        <Link href={`/orders/${order.id}`}>
+                          <span>View Details & Tracking</span>
+                          <ArrowRightIcon size={12} className="opacity-70 group-hover:opacity-100 transition-opacity" />
                         </Link>
-                      </h2>
-                      <p style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--ink-muted)", margin: 0 }}>
-                        Placed on{" "}
-                        {new Date(order.placed_at).toLocaleDateString("en-PH", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </p>
+                      </Button>
                     </div>
-                    <span className="status-pill status-confirmed">
-                      {stageInfo.label}
-                    </span>
-                  </div>
-
-                  <p style={{ fontSize: "13px", color: "var(--ink-secondary)", margin: "0 0 1.25rem" }}>
-                    {stageInfo.description}
-                  </p>
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
-                    <div>
-                      <span style={{ fontSize: "12px", color: "var(--ink-muted)", fontFamily: "var(--font-mono)" }}>TOTAL: </span>
-                      <strong style={{ fontSize: "1.1rem", fontFamily: "var(--font-mono)" }}>
-                        {formatMinorUnitsToPHP(order.total_minor)}
-                      </strong>
-                    </div>
-                    <Link href={`/orders/${order.id}`} className="btn btn-secondary small-btn" style={{ gap: "0.4rem" }}>
-                      <span>View Order Details &amp; Tracking</span>
-                      <ArrowRightIcon size={12} />
-                    </Link>
-                  </div>
-                </article>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
