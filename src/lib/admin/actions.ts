@@ -461,3 +461,40 @@ export async function adjustInventory(formData: FormData) {
   revalidatePath("/admin/catalog");
   redirect("/admin/catalog?notice=inventory_adjusted");
 }
+
+/**
+ * Finalize an expired unresolved MANUAL_GCASH payment/order and release active inventory reservations.
+ * Atomically transitions reservations to expired, restores available inventory, fails unpaid payment
+ * (or closes window on rejected), cancels order, and writes immutable audit/movement ledgers.
+ * Strictly enforces AAL2 and derives the idempotency key server-side.
+ */
+export async function expireGcashPayment(formData: FormData) {
+  const returnTo = (formData.get("return_to") as string)?.trim() || "/admin/payments";
+  await requireAdminAal2(returnTo);
+
+  const paymentId = (formData.get("payment_id") as string)?.trim();
+  const reason = (formData.get("reason") as string)?.trim() || "Payment window expired without verified receipt";
+
+  if (!paymentId) {
+    redirect(`${returnTo}?error=missing_payment_id`);
+  }
+
+  const idempotencyKey = `gcash_expire_${paymentId}`;
+  const supabase = await createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: rpcError } = await (supabase.rpc as any)("close_expired_gcash_payment", {
+    p_payment_id: paymentId,
+    p_idempotency_key: idempotencyKey,
+    p_reason: reason,
+  });
+
+  if (rpcError) {
+    logServerError("payment.expire", "database_rejection");
+    redirect(`${returnTo}?error=expiration_failed`);
+  }
+
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin/orders");
+  revalidatePath("/orders");
+  redirect(`${returnTo}?notice=gcash_expired`);
+}
