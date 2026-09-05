@@ -77,11 +77,34 @@ export interface CheckoutOrderDependencies {
   gcashConfig: GcashConfig;
   invokeCheckoutRpc: (
     params: CheckoutOrderRpcParams
-  ) => Promise<{ data: { id: string } | null; error: unknown }>;
+  ) => Promise<{ data: unknown; error: unknown }>;
   clearCartItems: (cartId: string) => Promise<{ error: unknown }>;
   onRedirect: (url: string) => never;
   onLogServerError?: (scope: string, reason: string) => void;
   now?: number;
+}
+
+const CANONICAL_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Validates that an untrusted runtime value from checkout RPC is a non-null,
+ * non-array scalar object containing a valid canonical PostgreSQL UUID in its "id" property.
+ * Returns the trimmed UUID string if valid, or null otherwise.
+ */
+export function extractValidOrderUuid(data: unknown): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return null;
+  }
+  const candidate = (data as Record<string, unknown>).id;
+  if (typeof candidate !== "string") {
+    return null;
+  }
+  const trimmed = candidate.trim();
+  if (!trimmed || !CANONICAL_UUID_REGEX.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
 }
 
 /**
@@ -90,9 +113,10 @@ export interface CheckoutOrderDependencies {
  * Guarantees:
  * 1. Unconfigured GCash rejects before RPC and before cart deletion.
  * 2. COD strictly passes p_gcash_expires_at: null.
- * 3. RPC failure leaves cart completely untouched.
- * 4. Missing/invalid order result leaves cart completely untouched.
- * 5. Cart deletion only occurs after verified, authoritative order creation.
+ * 3. RPC failure or exception leaves cart completely untouched.
+ * 4. Missing, malformed, or non-UUID order result leaves cart completely untouched.
+ * 5. Cart deletion only occurs after verified, authoritative order creation with a valid UUID.
+ * 6. Cart deletion failure/exception after order creation does not obscure the created order.
  */
 export async function executeCheckoutOrder(
   context: CheckoutOrderContext,
@@ -132,28 +156,55 @@ export async function executeCheckoutOrder(
     country_code: context.address.country_code || "PH",
   };
 
-  // 5. Atomic RPC invocation
-  const { data: order, error: rpcError } = await deps.invokeCheckoutRpc({
-    p_customer_id: context.userId,
-    p_idempotency_key: context.idempotencyKey,
-    p_lines: linesPayload,
-    p_shipping_minor: shippingMinor,
-    p_payment_method: context.paymentMethod,
-    p_gcash_expires_at: gcashExpiresAt,
-    p_delivery: deliveryPayload,
-    p_customer_note: context.customerNote,
-  });
-
-  if (rpcError || !order) {
-    // Crucial: Cart is NOT touched on RPC failure or missing order
+  // 5. Atomic RPC invocation with exception catching
+  let rpcResponse: { data: unknown; error: unknown };
+  try {
+    rpcResponse = await deps.invokeCheckoutRpc({
+      p_customer_id: context.userId,
+      p_idempotency_key: context.idempotencyKey,
+      p_lines: linesPayload,
+      p_shipping_minor: shippingMinor,
+      p_payment_method: context.paymentMethod,
+      p_gcash_expires_at: gcashExpiresAt,
+      p_delivery: deliveryPayload,
+      p_customer_note: context.customerNote,
+    });
+  } catch {
+    if (deps.onLogServerError) {
+      deps.onLogServerError("checkout.rpc_exception", "database_rpc_threw");
+    }
     return deps.onRedirect("/checkout?error=checkout_failed");
   }
 
-  // 6. Cart deletion ONLY after successful authoritative order creation
-  const { error: cleanupError } = await deps.clearCartItems(context.cart.id);
-  if (cleanupError && deps.onLogServerError) {
-    deps.onLogServerError("checkout.cart_cleanup", "database_failure");
+  if (rpcResponse.error) {
+    if (deps.onLogServerError) {
+      deps.onLogServerError("checkout.rpc_error", "database_rpc_returned_error");
+    }
+    return deps.onRedirect("/checkout?error=checkout_failed");
   }
 
-  return deps.onRedirect(`/orders/${order.id}`);
+  // 6. Runtime validation of checkout RPC result
+  const orderId = extractValidOrderUuid(rpcResponse.data);
+  if (!orderId) {
+    if (deps.onLogServerError) {
+      deps.onLogServerError("checkout.invalid_result", "malformed_order_payload");
+    }
+    return deps.onRedirect("/checkout?error=checkout_failed");
+  }
+
+  // 7. Cart deletion ONLY after successful authoritative order creation and validation.
+  // If cart cleanup fails or throws, the order already authoritatively exists,
+  // so we log the safe failure and still proceed to the order page.
+  try {
+    const { error: cleanupError } = await deps.clearCartItems(context.cart.id);
+    if (cleanupError && deps.onLogServerError) {
+      deps.onLogServerError("checkout.cart_cleanup", "database_failure");
+    }
+  } catch {
+    if (deps.onLogServerError) {
+      deps.onLogServerError("checkout.cart_cleanup_exception", "cart_cleanup_threw");
+    }
+  }
+
+  return deps.onRedirect(`/orders/${orderId}`);
 }

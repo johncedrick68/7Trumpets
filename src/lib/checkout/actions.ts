@@ -98,7 +98,7 @@ export async function processCheckout(formData: FormData): Promise<never> {
           p_delivery: params.p_delivery as unknown as Json,
           p_customer_note: params.p_customer_note,
         });
-        return { data: data as { id: string } | null, error };
+        return { data: data as unknown, error };
       },
       clearCartItems: async (cartId) => {
         const { error } = await supabase.from("cart_items").delete().eq("cart_id", cartId);

@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   calculateGcashExpiresAt,
   executeCheckoutOrder,
+  extractValidOrderUuid,
   validateCheckoutPaymentGate,
 } from "../src/lib/checkout/pipeline.ts";
 import {
@@ -172,7 +173,43 @@ test("real production GCash validator normalizes valid formats and rejects malfo
   assert.equal(emptyConfig.accountNumber, null);
 });
 
-test("unified checkout order orchestration guarantees correct side effects across GCash, COD, and RPC failure", async () => {
+test("extractValidOrderUuid validates canonical PostgreSQL UUIDs and rejects malformed/truthy inputs", () => {
+  // Rejected non-object / non-UUID values
+  assert.equal(extractValidOrderUuid(null), null);
+  assert.equal(extractValidOrderUuid(undefined), null);
+  assert.equal(extractValidOrderUuid(false), null);
+  assert.equal(extractValidOrderUuid(0), null);
+  assert.equal(extractValidOrderUuid("order"), null);
+  assert.equal(extractValidOrderUuid([]), null);
+  assert.equal(extractValidOrderUuid([{}]), null);
+  assert.equal(extractValidOrderUuid([{ id: "550e8400-e29b-41d4-a716-446655440000" }]), null);
+  assert.equal(extractValidOrderUuid({}), null);
+  assert.equal(extractValidOrderUuid({ id: null }), null);
+  assert.equal(extractValidOrderUuid({ id: undefined }), null);
+  assert.equal(extractValidOrderUuid({ id: "" }), null);
+  assert.equal(extractValidOrderUuid({ id: "   " }), null);
+  assert.equal(extractValidOrderUuid({ id: "not-a-uuid" }), null);
+  assert.equal(extractValidOrderUuid({ id: "123" }), null);
+  assert.equal(extractValidOrderUuid({ id: 12345 }), null);
+  assert.equal(extractValidOrderUuid({ id: "550e8400-e29b-41d4-a716-44665544000g" }), null); // 'g' is invalid hex
+
+  // Valid canonical UUID values
+  assert.equal(
+    extractValidOrderUuid({ id: "550e8400-e29b-41d4-a716-446655440000" }),
+    "550e8400-e29b-41d4-a716-446655440000"
+  );
+  assert.equal(
+    extractValidOrderUuid({ id: " 550e8400-e29b-41d4-a716-446655440000 " }),
+    "550e8400-e29b-41d4-a716-446655440000"
+  );
+  assert.equal(
+    extractValidOrderUuid({ id: "A0000000-0000-0000-0000-000000000001", extra: true }),
+    "A0000000-0000-0000-0000-000000000001"
+  );
+});
+
+test("unified checkout order orchestration guarantees correct side effects across GCash, COD, RPC error/throw, invalid results, and cleanup failure", async () => {
+  const validUuid = "550e8400-e29b-41d4-a716-446655440000";
   const baseContext = {
     userId: "user-123",
     userEmail: "user@example.com",
@@ -198,126 +235,186 @@ test("unified checkout order orchestration guarantees correct side effects acros
   assert.equal(calculateGcashExpiresAt("COD"), null);
   assert.ok(typeof calculateGcashExpiresAt("MANUAL_GCASH") === "string");
 
+  // Helper to run executeCheckoutOrder and capture outcome
+  async function runOrchestration({ paymentMethod = "COD", gcashConfig, invokeCheckoutRpc, clearCartItems }) {
+    let redirectedTo = null;
+    const serverLogs = [];
+    try {
+      await executeCheckoutOrder(
+        { ...baseContext, paymentMethod },
+        {
+          gcashConfig: gcashConfig || { isConfigured: false, accountNumber: null, accountName: null },
+          invokeCheckoutRpc,
+          clearCartItems,
+          onRedirect: (url) => {
+            redirectedTo = url;
+            throw new Error("REDIRECTED");
+          },
+          onLogServerError: (scope, reason) => {
+            serverLogs.push({ scope, reason });
+          },
+        }
+      );
+    } catch (err) {
+      if (err.message !== "REDIRECTED") throw err;
+    }
+    return { redirectedTo, serverLogs };
+  }
+
   // Case 1: Unconfigured GCash -> no RPC, no cart delete, redirects to gcash_unavailable
   let rpcCalls = 0;
   let cartDeletes = 0;
-  let redirectedTo = null;
-
-  try {
-    await executeCheckoutOrder(
-      { ...baseContext, paymentMethod: "MANUAL_GCASH" },
-      {
-        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
-        invokeCheckoutRpc: async () => {
-          rpcCalls++;
-          return { data: { id: "order-1" }, error: null };
-        },
-        clearCartItems: async () => {
-          cartDeletes++;
-          return { error: null };
-        },
-        onRedirect: (url) => {
-          redirectedTo = url;
-          throw new Error("REDIRECTED");
-        },
-      }
-    );
-  } catch (err) {
-    if (err.message !== "REDIRECTED") throw err;
-  }
-
-  assert.equal(redirectedTo, "/checkout?error=gcash_unavailable");
+  const case1 = await runOrchestration({
+    paymentMethod: "MANUAL_GCASH",
+    gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
+    invokeCheckoutRpc: async () => {
+      rpcCalls++;
+      return { data: { id: validUuid }, error: null };
+    },
+    clearCartItems: async () => {
+      cartDeletes++;
+      return { error: null };
+    },
+  });
+  assert.equal(case1.redirectedTo, "/checkout?error=gcash_unavailable");
   assert.equal(rpcCalls, 0, "RPC must not be called when GCash unconfigured");
   assert.equal(cartDeletes, 0, "Cart must not be deleted when GCash unconfigured");
 
-  // Case 2: COD -> passes p_gcash_expires_at: null and completes with cart deletion
+  // Case 2: COD with valid UUID -> passes p_gcash_expires_at: null and completes with cart deletion
   let capturedRpcParams = null;
-  redirectedTo = null;
-
-  try {
-    await executeCheckoutOrder(
-      { ...baseContext, paymentMethod: "COD" },
-      {
-        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
-        invokeCheckoutRpc: async (params) => {
-          capturedRpcParams = params;
-          return { data: { id: "order-cod-success" }, error: null };
-        },
-        clearCartItems: async () => {
-          cartDeletes++;
-          return { error: null };
-        },
-        onRedirect: (url) => {
-          redirectedTo = url;
-          throw new Error("REDIRECTED");
-        },
-      }
-    );
-  } catch (err) {
-    if (err.message !== "REDIRECTED") throw err;
-  }
-
+  const case2 = await runOrchestration({
+    paymentMethod: "COD",
+    invokeCheckoutRpc: async (params) => {
+      rpcCalls++;
+      capturedRpcParams = params;
+      return { data: { id: validUuid }, error: null };
+    },
+    clearCartItems: async () => {
+      cartDeletes++;
+      return { error: null };
+    },
+  });
   assert.equal(capturedRpcParams.p_payment_method, "COD");
   assert.equal(capturedRpcParams.p_gcash_expires_at, null, "COD must explicitly pass null expiry");
   assert.equal(cartDeletes, 1, "Cart deleted only after successful order");
-  assert.equal(redirectedTo, "/orders/order-cod-success");
+  assert.equal(case2.redirectedTo, `/orders/${validUuid}`);
 
-  // Case 3: RPC failure -> cart MUST remain untouched
-  redirectedTo = null;
+  // Case 3: RPC returns error -> cart MUST remain untouched, safe redirect
   const preFailDeletes = cartDeletes;
-
-  try {
-    await executeCheckoutOrder(
-      { ...baseContext, paymentMethod: "COD" },
-      {
-        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
-        invokeCheckoutRpc: async () => {
-          return { data: null, error: new Error("RPC_FAILURE") };
-        },
-        clearCartItems: async () => {
-          cartDeletes++;
-          return { error: null };
-        },
-        onRedirect: (url) => {
-          redirectedTo = url;
-          throw new Error("REDIRECTED");
-        },
-      }
-    );
-  } catch (err) {
-    if (err.message !== "REDIRECTED") throw err;
-  }
-
-  assert.equal(redirectedTo, "/checkout?error=checkout_failed");
+  const case3 = await runOrchestration({
+    paymentMethod: "COD",
+    invokeCheckoutRpc: async () => {
+      return { data: null, error: new Error("RPC_FAILURE") };
+    },
+    clearCartItems: async () => {
+      cartDeletes++;
+      return { error: null };
+    },
+  });
+  assert.equal(case3.redirectedTo, "/checkout?error=checkout_failed");
   assert.equal(cartDeletes, preFailDeletes, "Cart must remain untouched on RPC error");
 
-  // Case 4: Missing order result (null data, no error) -> cart MUST remain untouched
-  redirectedTo = null;
+  // Case 4: RPC throws exception -> caught, cart MUST remain untouched, safe redirect
+  const case4 = await runOrchestration({
+    paymentMethod: "COD",
+    invokeCheckoutRpc: async () => {
+      throw new Error("RPC_THREW_EXCEPTION");
+    },
+    clearCartItems: async () => {
+      cartDeletes++;
+      return { error: null };
+    },
+  });
+  assert.equal(case4.redirectedTo, "/checkout?error=checkout_failed");
+  assert.equal(cartDeletes, preFailDeletes, "Cart must remain untouched on RPC exception");
+  assert.ok(case4.serverLogs.some((l) => l.scope === "checkout.rpc_exception"));
 
-  try {
-    await executeCheckoutOrder(
-      { ...baseContext, paymentMethod: "COD" },
-      {
-        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
-        invokeCheckoutRpc: async () => {
-          return { data: null, error: null };
-        },
-        clearCartItems: async () => {
-          cartDeletes++;
-          return { error: null };
-        },
-        onRedirect: (url) => {
-          redirectedTo = url;
-          throw new Error("REDIRECTED");
-        },
-      }
+  // Case 5: Invalid/malformed RPC results (truthy or malformed) -> zero cart cleanup, safe redirect
+  const malformedResults = [
+    null,
+    undefined,
+    false,
+    0,
+    "order",
+    [],
+    [{}],
+    [{ id: validUuid }],
+    {},
+    { id: null },
+    { id: undefined },
+    { id: "" },
+    { id: "   " },
+    { id: "not-a-uuid" },
+    { id: "123" },
+  ];
+
+  for (const malformed of malformedResults) {
+    const malformedCase = await runOrchestration({
+      paymentMethod: "COD",
+      invokeCheckoutRpc: async () => {
+        return { data: malformed, error: null };
+      },
+      clearCartItems: async () => {
+        cartDeletes++;
+        return { error: null };
+      },
+    });
+    assert.equal(
+      cartDeletes,
+      preFailDeletes,
+      `Cart must not be touched for malformed result: ${JSON.stringify(malformed)}`
     );
-  } catch (err) {
-    if (err.message !== "REDIRECTED") throw err;
+    assert.equal(
+      malformedCase.redirectedTo,
+      "/checkout?error=checkout_failed",
+      `Malformed result must redirect to safe failure for: ${JSON.stringify(malformed)}`
+    );
+    assert.doesNotMatch(
+      malformedCase.redirectedTo,
+      /^\/orders/,
+      `Malformed result must never redirect to /orders for: ${JSON.stringify(malformed)}`
+    );
   }
 
-  assert.equal(redirectedTo, "/checkout?error=checkout_failed");
-  assert.equal(cartDeletes, preFailDeletes, "Cart must remain untouched on missing order result");
+  // Case 6: Cart cleanup returns error after valid order creation -> order redirect still occurs
+  rpcCalls = 0;
+  const case6 = await runOrchestration({
+    paymentMethod: "COD",
+    invokeCheckoutRpc: async () => {
+      rpcCalls++;
+      return { data: { id: validUuid }, error: null };
+    },
+    clearCartItems: async () => {
+      return { error: new Error("CART_CLEANUP_DB_ERROR") };
+    },
+  });
+  assert.equal(rpcCalls, 1, "Checkout RPC must not be retried on cleanup failure");
+  assert.equal(
+    case6.redirectedTo,
+    `/orders/${validUuid}`,
+    "Customer must still reach created order even if cart cleanup returned error"
+  );
+  assert.ok(case6.serverLogs.some((l) => l.scope === "checkout.cart_cleanup"));
+
+  // Case 7: Cart cleanup throws exception after valid order creation -> order redirect still occurs
+  rpcCalls = 0;
+  const case7 = await runOrchestration({
+    paymentMethod: "COD",
+    invokeCheckoutRpc: async () => {
+      rpcCalls++;
+      return { data: { id: validUuid }, error: null };
+    },
+    clearCartItems: async () => {
+      throw new Error("CART_CLEANUP_CRASHED");
+    },
+  });
+  assert.equal(rpcCalls, 1, "Checkout RPC must not be retried on cleanup crash");
+  assert.equal(
+    case7.redirectedTo,
+    `/orders/${validUuid}`,
+    "Customer must still reach created order even if cart cleanup threw an exception"
+  );
+  assert.ok(case7.serverLogs.some((l) => l.scope === "checkout.cart_cleanup_exception"));
 });
 
 test("strict ISO timestamp parser rejects impossible calendar dates and accepts valid instants", () => {
