@@ -4,15 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getOrCreateCart } from "@/lib/cart/actions";
-import {
-  calculateGcashExpiresAt,
-  validateCheckoutPaymentGate,
-} from "@/lib/checkout/pipeline";
+import { executeCheckoutOrder } from "@/lib/checkout/pipeline";
 import { getGcashConfig } from "@/lib/payments/config";
 import { logServerError } from "@/lib/server-log";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/database";
 
-export async function processCheckout(formData: FormData) {
+export async function processCheckout(formData: FormData): Promise<never> {
   const addressId = formData.get("address_id") as string;
   const paymentMethod = formData.get("payment_method") as string;
   const idempotencyKey = (formData.get("idempotency_key") as string)?.trim();
@@ -25,16 +23,6 @@ export async function processCheckout(formData: FormData) {
 
   if (idempotencyKey.length < 16 || idempotencyKey.length > 128 || !/^[A-Za-z0-9_.-]+$/.test(idempotencyKey)) {
     redirect("/checkout?error=invalid_idempotency_key");
-  }
-
-  // 1. Authoritative payment gate validation (fails closed before any side effects)
-  const gcashConfig = getGcashConfig();
-  const gate = validateCheckoutPaymentGate(paymentMethod, gcashConfig);
-  if (!gate.valid && gate.redirectUrl) {
-    if (gate.redirectUrl.includes("gcash_unavailable")) {
-      logServerError("checkout.gcash_unavailable", "payment_destination_not_configured");
-    }
-    redirect(gate.redirectUrl);
   }
 
   const supabase = await createClient();
@@ -59,13 +47,13 @@ export async function processCheckout(formData: FormData) {
     redirect("/checkout?error=checkout_throttled");
   }
 
-  // 2. Fetch user's cart
+  // 1. Fetch user's cart
   const cart = await getOrCreateCart();
   if (!cart || cart.items.length === 0) {
     redirect("/cart?error=cart_empty");
   }
 
-  // 3. Fetch chosen address owned by user
+  // 2. Fetch chosen address owned by user
   const { data: address, error: addressError } = await supabase
     .from("addresses")
     .select("*")
@@ -77,53 +65,51 @@ export async function processCheckout(formData: FormData) {
     redirect("/checkout?error=invalid_address");
   }
 
-  // 4. Build canonical RPC input payloads
-  const linesPayload = cart.items.map((item) => ({
-    variant_id: item.variant_id,
-    quantity: item.quantity,
-  }));
-
-  const deliveryPayload = {
-    customer_email: userEmail,
-    recipient_name: address.recipient_name,
-    recipient_phone: address.phone,
-    address_line1: address.address_line1,
-    address_line2: address.address_line2 || undefined,
-    barangay: address.barangay || undefined,
-    city_municipality: address.city_municipality,
-    province: address.province,
-    postal_code: address.postal_code,
-    country_code: address.country_code || "PH",
-  };
-
-  // Authoritative shipping calculation: flat ₱150 (15000 minor units)
-  const shippingMinor = 15000;
-
-  // Authoritative expiry: future ISO date for MANUAL_GCASH, explicit null for COD
-  const gcashExpiresAt: string | null = calculateGcashExpiresAt(paymentMethod);
-
-  // 5. Execute atomic RPC via service role client
+  const gcashConfig = getGcashConfig();
   const serviceClient = createServiceClient();
-  const { data: order, error: rpcError } = await serviceClient.rpc("checkout_order", {
-    p_customer_id: userId,
-    p_idempotency_key: idempotencyKey,
-    p_lines: linesPayload,
-    p_shipping_minor: shippingMinor,
-    p_payment_method: paymentMethod,
-    p_gcash_expires_at: gcashExpiresAt as unknown as string,
-    p_delivery: deliveryPayload,
-    p_customer_note: customerNote,
-  });
 
-  if (rpcError || !order) {
-    redirect("/checkout?error=checkout_failed");
-  }
-
-  // 6. Clear the user's cart items upon successful order creation
-  const { error: cleanupError } = await supabase.from("cart_items").delete().eq("cart_id", cart.id);
-  if (cleanupError) logServerError("checkout.cart_cleanup", "database_failure");
-
-  revalidatePath("/cart");
-  revalidatePath("/orders");
-  redirect(`/orders/${order.id}`);
+  // 3. Delegate to unified checkout order orchestration
+  return executeCheckoutOrder(
+    {
+      userId,
+      userEmail,
+      paymentMethod,
+      idempotencyKey,
+      customerNote,
+      cart: {
+        id: cart.id,
+        items: cart.items.map((item) => ({
+          variant_id: item.variant_id,
+          quantity: item.quantity,
+        })),
+      },
+      address,
+    },
+    {
+      gcashConfig,
+      invokeCheckoutRpc: async (params) => {
+        const { data, error } = await serviceClient.rpc("checkout_order", {
+          p_customer_id: params.p_customer_id,
+          p_idempotency_key: params.p_idempotency_key,
+          p_lines: params.p_lines,
+          p_shipping_minor: params.p_shipping_minor,
+          p_payment_method: params.p_payment_method,
+          p_gcash_expires_at: params.p_gcash_expires_at as unknown as string,
+          p_delivery: params.p_delivery as unknown as Json,
+          p_customer_note: params.p_customer_note,
+        });
+        return { data: data as { id: string } | null, error };
+      },
+      clearCartItems: async (cartId) => {
+        const { error } = await supabase.from("cart_items").delete().eq("cart_id", cartId);
+        revalidatePath("/cart");
+        return { error };
+      },
+      onRedirect: (url) => {
+        revalidatePath("/orders");
+        redirect(url);
+      },
+      onLogServerError: logServerError,
+    }
+  );
 }

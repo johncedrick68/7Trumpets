@@ -22,6 +22,101 @@ export interface ReservationQueryDeps {
 }
 
 /**
+ * Strict parser for ISO-8601 and PostgreSQL timestamptz strings.
+ * Verifies that the parsed instant corresponds to real calendar components:
+ * - Rejects impossible calendar dates (e.g. Feb 30, April 31, Feb 29 on non-leap years)
+ * - Rejects invalid months (> 12), days (> 31), hours (> 23), minutes (> 59), seconds (> 59)
+ * - Supports valid leap years (e.g. 2028-02-29)
+ * - Supports valid timezone offsets (+HH:mm, -HH:mm, Z)
+ * - Rejects non-finite/Infinity/malformed inputs
+ * - Never throws RangeError
+ */
+export function parseStrictIsoTimestamp(
+  isoString: string | null | undefined
+): number | null {
+  if (!isoString || typeof isoString !== "string") {
+    return null;
+  }
+
+  const trimmed = isoString.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // Matches: YYYY-MM-DD[T ]HH:mm:ss(.sss)?(Z|[+-]HH(:?mm)?)?
+  const regex = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:(Z)|([+-])(\d{2})(?::?(\d{2}))?)?$/;
+  const match = trimmed.match(regex);
+  if (!match) {
+    return null;
+  }
+
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  const hour = parseInt(match[4], 10);
+  const minute = parseInt(match[5], 10);
+  const second = parseInt(match[6], 10);
+  const millisRaw = match[7];
+  const isZ = Boolean(match[8]);
+  const offsetSign = match[9];
+  const offsetHours = match[10] ? parseInt(match[10], 10) : 0;
+  const offsetMinutes = match[11] ? parseInt(match[11], 10) : 0;
+
+  // Strict calendar range checks
+  if (month < 1 || month > 12) {
+    return null;
+  }
+
+  const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInMonths = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const maxDays = daysInMonths[month - 1];
+  if (day < 1 || day > maxDays) {
+    return null;
+  }
+
+  if (hour < 0 || hour > 23) {
+    return null;
+  }
+  if (minute < 0 || minute > 59) {
+    return null;
+  }
+  if (second < 0 || second > 59) {
+    return null;
+  }
+
+  if (!isZ && !offsetSign) {
+    // Missing timezone designator for timestamptz
+    return null;
+  }
+
+  if (offsetSign) {
+    if (offsetHours < 0 || offsetHours > 23 || offsetMinutes < 0 || offsetMinutes > 59) {
+      return null;
+    }
+  }
+
+  const millis = millisRaw
+    ? parseInt(millisRaw.slice(0, 3).padEnd(3, "0"), 10)
+    : 0;
+
+  let utcMs = Date.UTC(year, month - 1, day, hour, minute, second, millis);
+  if (offsetSign) {
+    const totalOffsetMs = (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+    if (offsetSign === "+") {
+      utcMs -= totalOffsetMs;
+    } else if (offsetSign === "-") {
+      utcMs += totalOffsetMs;
+    }
+  }
+
+  if (!Number.isFinite(utcMs) || isNaN(utcMs)) {
+    return null;
+  }
+
+  return utcMs;
+}
+
+/**
  * Pure behavioral pipeline for fetching and evaluating reservation deadlines.
  * Enforces ownership verification under authenticated RLS before service-role access.
  */
@@ -57,7 +152,7 @@ export async function fetchOrderReservationDeadline(
 
 /**
  * Evaluates the authoritative reservation deadline from inventory_reservations rows.
- * Fails closed on abnormal sets, malformed timestamps, or mixed statuses.
+ * Fails closed on abnormal sets, malformed timestamps, or impossible calendar dates.
  * Never throws RangeError or uncaught exceptions on malformed dates.
  */
 export function evaluateReservationDeadline(
@@ -80,8 +175,8 @@ export function evaluateReservationDeadline(
       return { state: "INVALID_SET" };
     }
 
-    const timestamp = Date.parse(r.expires_at);
-    if (!Number.isFinite(timestamp) || isNaN(timestamp)) {
+    const timestamp = parseStrictIsoTimestamp(r.expires_at);
+    if (timestamp === null || !Number.isFinite(timestamp)) {
       return { state: "INVALID_SET" };
     }
 
@@ -115,7 +210,7 @@ export function evaluateReservationDeadline(
  * Explicitly formats an ISO reservation timestamp in Philippine Time (Asia/Manila).
  * Appends a visible timezone indicator ('PHT').
  * Never relies on the machine/server local timezone.
- * Returns null safely on invalid or non-finite timestamps without throwing.
+ * Returns null safely on invalid, impossible, or non-finite timestamps without throwing.
  */
 export function formatPhDeadline(
   isoTimestamp: string | null | undefined
@@ -124,8 +219,8 @@ export function formatPhDeadline(
     return null;
   }
 
-  const timestamp = Date.parse(isoTimestamp);
-  if (!Number.isFinite(timestamp) || isNaN(timestamp)) {
+  const timestamp = parseStrictIsoTimestamp(isoTimestamp);
+  if (timestamp === null || !Number.isFinite(timestamp)) {
     return null;
   }
 

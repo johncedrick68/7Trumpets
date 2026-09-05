@@ -253,10 +253,18 @@ export default async function OrderConfirmationPage({
                     <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200">
                       <strong>Order Cancelled:</strong> This order has been cancelled. Doorstep cash collection will not take place.
                     </div>
-                  ) : order.status === "DELIVERED" || order.status === "COMPLETED" ? (
+                  ) : payment.status === "PAID" ? (
                     <div className="p-4 text-sm text-green-800 bg-green-50 rounded-md border border-green-200">
-                      ✓ <strong>Delivered:</strong> Cash payment of{" "}
-                      <strong className="text-foreground">{formatMinorUnitsToPHP(order.total_minor)}</strong> was collected upon delivery.
+                      ✓ <strong>Payment Collected:</strong> Cash on Delivery payment of{" "}
+                      <strong className="text-foreground">{formatMinorUnitsToPHP(order.total_minor)}</strong> was received and settled.
+                    </div>
+                  ) : order.status === "DELIVERED" ? (
+                    <div className="p-4 text-sm text-amber-800 bg-amber-50 rounded-md border border-amber-200">
+                      ⏳ <strong>Delivered — Awaiting Payment Settlement:</strong> Your package was delivered. Cash payment settlement is still unconfirmed/pending.
+                    </div>
+                  ) : order.status === "COMPLETED" ? (
+                    <div className="p-4 text-sm text-amber-800 bg-amber-50 rounded-md border border-amber-200">
+                      ⏳ <strong>Completed — Awaiting Payment Settlement:</strong> Order completed. Payment settlement is pending confirmation.
                     </div>
                   ) : (
                     <>
@@ -308,10 +316,10 @@ export default async function OrderConfirmationPage({
                       </div>
                     )}
 
-                  {/* Missing/unconfigured GCash destination notice */}
+                  {/* Missing/unconfigured GCash destination notice for unpaid orders */}
                   {!gcashConfig.isConfigured &&
                     order.status === "CONFIRMED" &&
-                    (payment.status === "UNPAID" || payment.status === "REJECTED") && (
+                    payment.status === "UNPAID" && (
                       <div className="p-4 text-sm text-amber-800 bg-amber-50 rounded-md border border-amber-200 mb-6">
                         <strong>Notice:</strong> GCash payment destination is temporarily unavailable. Please contact store support to arrange payment.
                       </div>
@@ -361,11 +369,19 @@ export default async function OrderConfirmationPage({
                     </div>
                   )}
 
-                  {payment.status === "REJECTED" && order.status === "CONFIRMED" && reservationDeadline.state === "ACTIVE" && (
-                    <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6">
-                      ✕ <strong>Receipt Rejected</strong> — Please upload a corrected GCash receipt before {formattedDeadline || "the deadline"}.
-                    </div>
-                  )}
+                  {/* Rejected banner: shows retry only when GCash destination is configured; otherwise safe support notice */}
+                  {payment.status === "REJECTED" &&
+                    order.status === "CONFIRMED" &&
+                    reservationDeadline.state === "ACTIVE" &&
+                    (gcashConfig.isConfigured ? (
+                      <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6">
+                        ✕ <strong>Receipt Rejected</strong> — Please upload a corrected GCash receipt before {formattedDeadline || "the deadline"}.
+                      </div>
+                    ) : (
+                      <div className="p-4 text-sm text-amber-800 bg-amber-50 rounded-md border border-amber-200 mb-6">
+                        ✕ <strong>Receipt Rejected:</strong> Your previous receipt was rejected. GCash payment destination is temporarily unavailable to accept new payments. Please contact store support to arrange payment.
+                      </div>
+                  ))}
 
                   {canSubmitProof && (
                     <form action={submitGcashProof} className="space-y-4">

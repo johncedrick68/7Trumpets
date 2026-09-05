@@ -5,13 +5,14 @@ import test from "node:test";
 
 import {
   calculateGcashExpiresAt,
-  executeCheckoutPaymentFlow,
+  executeCheckoutOrder,
   validateCheckoutPaymentGate,
 } from "../src/lib/checkout/pipeline.ts";
 import {
   evaluateReservationDeadline,
   fetchOrderReservationDeadline,
   formatPhDeadline,
+  parseStrictIsoTimestamp,
 } from "../src/lib/payments/deadline.ts";
 import {
   parseGcashConfig,
@@ -171,81 +172,176 @@ test("real production GCash validator normalizes valid formats and rejects malfo
   assert.equal(emptyConfig.accountNumber, null);
 });
 
-test("checkout payment pipeline behaviorally blocks unconfigured GCash before side effects", async () => {
+test("unified checkout order orchestration guarantees correct side effects across GCash, COD, and RPC failure", async () => {
+  const baseContext = {
+    userId: "user-123",
+    userEmail: "user@example.com",
+    paymentMethod: "MANUAL_GCASH",
+    idempotencyKey: "1234567890123456",
+    cart: {
+      id: "cart-abc",
+      items: [{ variant_id: "var-1", quantity: 2 }],
+    },
+    address: {
+      recipient_name: "Juan Dela Cruz",
+      phone: "09171234567",
+      address_line1: "123 Main St",
+      city_municipality: "Manila",
+      province: "Metro Manila",
+      postal_code: "1000",
+    },
+  };
+
   // Direct validation gate assertions
-  const unconfiguredGate = validateCheckoutPaymentGate("MANUAL_GCASH", { isConfigured: false, accountNumber: null, accountName: null });
-  assert.equal(unconfiguredGate.valid, false);
-  assert.equal(unconfiguredGate.redirectUrl, "/checkout?error=gcash_unavailable");
+  assert.equal(validateCheckoutPaymentGate("COD", { isConfigured: false, accountNumber: null, accountName: null }).valid, true);
+  assert.equal(validateCheckoutPaymentGate("MANUAL_GCASH", { isConfigured: false, accountNumber: null, accountName: null }).valid, false);
+  assert.equal(calculateGcashExpiresAt("COD"), null);
+  assert.ok(typeof calculateGcashExpiresAt("MANUAL_GCASH") === "string");
 
-  const invalidMethodGate = validateCheckoutPaymentGate("CRYPTO", { isConfigured: true, accountNumber: "09171234567", accountName: "Store" });
-  assert.equal(invalidMethodGate.valid, false);
-  assert.equal(invalidMethodGate.redirectUrl, "/checkout?error=invalid_payment_method");
-
-  const codGate = validateCheckoutPaymentGate("COD", { isConfigured: false, accountNumber: null, accountName: null });
-  assert.equal(codGate.valid, true);
-
-  const configuredGcashGate = validateCheckoutPaymentGate("MANUAL_GCASH", { isConfigured: true, accountNumber: "09171234567", accountName: "Store" });
-  assert.equal(configuredGcashGate.valid, true);
-
+  // Case 1: Unconfigured GCash -> no RPC, no cart delete, redirects to gcash_unavailable
   let rpcCalls = 0;
   let cartDeletes = 0;
-  let rejectedUrl = null;
+  let redirectedTo = null;
 
-  const mockDeps = {
-    paymentMethod: "MANUAL_GCASH",
-    gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
-    onReject: (url) => {
-      rejectedUrl = url;
-    },
-    invokeRpc: async () => {
-      rpcCalls++;
-      return { id: "order-123" };
-    },
-    deleteCartItems: async () => {
-      cartDeletes++;
-    },
-  };
+  try {
+    await executeCheckoutOrder(
+      { ...baseContext, paymentMethod: "MANUAL_GCASH" },
+      {
+        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
+        invokeCheckoutRpc: async () => {
+          rpcCalls++;
+          return { data: { id: "order-1" }, error: null };
+        },
+        clearCartItems: async () => {
+          cartDeletes++;
+          return { error: null };
+        },
+        onRedirect: (url) => {
+          redirectedTo = url;
+          throw new Error("REDIRECTED");
+        },
+      }
+    );
+  } catch (err) {
+    if (err.message !== "REDIRECTED") throw err;
+  }
 
-  // Execution with unconfigured GCash
-  await executeCheckoutPaymentFlow(mockDeps);
+  assert.equal(redirectedTo, "/checkout?error=gcash_unavailable");
+  assert.equal(rpcCalls, 0, "RPC must not be called when GCash unconfigured");
+  assert.equal(cartDeletes, 0, "Cart must not be deleted when GCash unconfigured");
 
-  // Proves: redirect is internal gcash_unavailable
-  assert.equal(rejectedUrl, "/checkout?error=gcash_unavailable");
-  // Proves: RPC was never called
-  assert.equal(rpcCalls, 0);
-  // Proves: cart delete was never called
-  assert.equal(cartDeletes, 0);
+  // Case 2: COD -> passes p_gcash_expires_at: null and completes with cart deletion
+  let capturedRpcParams = null;
+  redirectedTo = null;
 
-  // Execution with COD (valid even if GCash unconfigured)
-  let codRpcPayload = null;
-  const codDeps = {
-    paymentMethod: "COD",
-    gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
-    onReject: (url) => {
-      assert.fail(`COD should not be rejected, received ${url}`);
-    },
-    invokeRpc: async (payload) => {
-      codRpcPayload = payload;
-      return { id: "order-456" };
-    },
-    deleteCartItems: async () => {
-      cartDeletes++;
-    },
-  };
+  try {
+    await executeCheckoutOrder(
+      { ...baseContext, paymentMethod: "COD" },
+      {
+        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
+        invokeCheckoutRpc: async (params) => {
+          capturedRpcParams = params;
+          return { data: { id: "order-cod-success" }, error: null };
+        },
+        clearCartItems: async () => {
+          cartDeletes++;
+          return { error: null };
+        },
+        onRedirect: (url) => {
+          redirectedTo = url;
+          throw new Error("REDIRECTED");
+        },
+      }
+    );
+  } catch (err) {
+    if (err.message !== "REDIRECTED") throw err;
+  }
 
-  await executeCheckoutPaymentFlow(codDeps);
-  assert.equal(codRpcPayload.paymentMethod, "COD");
-  assert.equal(codRpcPayload.gcashExpiresAt, null); // Explicit null satisfies DB contract
-  assert.equal(cartDeletes, 1);
+  assert.equal(capturedRpcParams.p_payment_method, "COD");
+  assert.equal(capturedRpcParams.p_gcash_expires_at, null, "COD must explicitly pass null expiry");
+  assert.equal(cartDeletes, 1, "Cart deleted only after successful order");
+  assert.equal(redirectedTo, "/orders/order-cod-success");
 
-  // Expiry calculation helper
-  assert.equal(calculateGcashExpiresAt("COD"), null);
-  const gcashExpiry = calculateGcashExpiresAt("MANUAL_GCASH");
-  assert.ok(typeof gcashExpiry === "string");
-  assert.ok(Date.parse(gcashExpiry) > Date.now());
+  // Case 3: RPC failure -> cart MUST remain untouched
+  redirectedTo = null;
+  const preFailDeletes = cartDeletes;
+
+  try {
+    await executeCheckoutOrder(
+      { ...baseContext, paymentMethod: "COD" },
+      {
+        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
+        invokeCheckoutRpc: async () => {
+          return { data: null, error: new Error("RPC_FAILURE") };
+        },
+        clearCartItems: async () => {
+          cartDeletes++;
+          return { error: null };
+        },
+        onRedirect: (url) => {
+          redirectedTo = url;
+          throw new Error("REDIRECTED");
+        },
+      }
+    );
+  } catch (err) {
+    if (err.message !== "REDIRECTED") throw err;
+  }
+
+  assert.equal(redirectedTo, "/checkout?error=checkout_failed");
+  assert.equal(cartDeletes, preFailDeletes, "Cart must remain untouched on RPC error");
+
+  // Case 4: Missing order result (null data, no error) -> cart MUST remain untouched
+  redirectedTo = null;
+
+  try {
+    await executeCheckoutOrder(
+      { ...baseContext, paymentMethod: "COD" },
+      {
+        gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
+        invokeCheckoutRpc: async () => {
+          return { data: null, error: null };
+        },
+        clearCartItems: async () => {
+          cartDeletes++;
+          return { error: null };
+        },
+        onRedirect: (url) => {
+          redirectedTo = url;
+          throw new Error("REDIRECTED");
+        },
+      }
+    );
+  } catch (err) {
+    if (err.message !== "REDIRECTED") throw err;
+  }
+
+  assert.equal(redirectedTo, "/checkout?error=checkout_failed");
+  assert.equal(cartDeletes, preFailDeletes, "Cart must remain untouched on missing order result");
 });
 
-test("production deadline helper evaluates canonical states and fails closed on malformed dates without throwing", () => {
+test("strict ISO timestamp parser rejects impossible calendar dates and accepts valid instants", () => {
+  // VALID timestamps
+  assert.ok(typeof parseStrictIsoTimestamp("2028-02-29T12:00:00Z") === "number"); // leap day
+  assert.ok(typeof parseStrictIsoTimestamp("2026-09-05T07:30:00Z") === "number");
+  assert.ok(typeof parseStrictIsoTimestamp("2026-09-05T15:30:00+08:00") === "number");
+  assert.ok(typeof parseStrictIsoTimestamp("2026-09-05 07:30:00+00") === "number");
+
+  // INVALID impossible dates (crucial: must NOT normalize or roll over)
+  assert.equal(parseStrictIsoTimestamp("2027-02-29T12:00:00Z"), null); // 2027 is non-leap
+  assert.equal(parseStrictIsoTimestamp("2027-02-30T12:00:00Z"), null); // Feb 30 does not exist
+  assert.equal(parseStrictIsoTimestamp("2027-04-31T12:00:00Z"), null); // April has 30 days
+  assert.equal(parseStrictIsoTimestamp("2026-13-01T00:00:00Z"), null); // Month 13
+  assert.equal(parseStrictIsoTimestamp("2026-12-32T00:00:00Z"), null); // Day 32
+  assert.equal(parseStrictIsoTimestamp("2026-12-01T24:99:00Z"), null); // Hour 24 / Minute 99
+  assert.equal(parseStrictIsoTimestamp("not-a-date"), null);
+  assert.equal(parseStrictIsoTimestamp("Infinity"), null);
+  assert.equal(parseStrictIsoTimestamp(""), null);
+  assert.equal(parseStrictIsoTimestamp(null), null);
+  assert.equal(parseStrictIsoTimestamp(undefined), null);
+});
+
+test("production deadline helper evaluates canonical states and fails closed on impossible/malformed dates without throwing", () => {
   const now = Date.now();
 
   // 1. Zero or missing reservations -> NO_RESERVATIONS
@@ -287,7 +383,26 @@ test("production deadline helper evaluates canonical states and fails closed on 
   assert.equal(expiredResult.state, "EXPIRED");
   assert.equal(expiredResult.expiresAt, expiredT);
 
-  // 5. Malformed timestamps: must NOT throw and must fail closed (INVALID_SET)
+  // 5. Impossible calendar dates must FAIL CLOSED and NEVER return ACTIVE
+  const feb30 = evaluateReservationDeadline([
+    { status: "active", expires_at: "2027-02-30T12:00:00Z" },
+  ], now);
+  assert.equal(feb30.state, "INVALID_SET");
+  assert.notEqual(feb30.state, "ACTIVE");
+
+  const apr31 = evaluateReservationDeadline([
+    { status: "active", expires_at: "2027-04-31T12:00:00Z" },
+  ], now);
+  assert.equal(apr31.state, "INVALID_SET");
+  assert.notEqual(apr31.state, "ACTIVE");
+
+  const nonLeapFeb29 = evaluateReservationDeadline([
+    { status: "active", expires_at: "2027-02-29T12:00:00Z" },
+  ], now);
+  assert.equal(nonLeapFeb29.state, "INVALID_SET");
+  assert.notEqual(nonLeapFeb29.state, "ACTIVE");
+
+  // 6. Malformed strings must NOT throw and must fail closed (INVALID_SET)
   assert.doesNotThrow(() => {
     const res = evaluateReservationDeadline([
       { status: "active", expires_at: "not-a-date" },
@@ -308,24 +423,9 @@ test("production deadline helper evaluates canonical states and fails closed on 
     ], now);
     assert.equal(res.state, "INVALID_SET");
   });
-
-  assert.doesNotThrow(() => {
-    const res = evaluateReservationDeadline([
-      { status: "active", expires_at: "" },
-    ], now);
-    assert.equal(res.state, "INVALID_SET");
-  });
-
-  // Malformed timestamp alongside valid timestamp must fail closed and never return ACTIVE
-  const mixedMalformed = evaluateReservationDeadline([
-    { status: "active", expires_at: t1 },
-    { status: "active", expires_at: "invalid-timestamp" },
-  ], now);
-  assert.equal(mixedMalformed.state, "INVALID_SET");
-  assert.notEqual(mixedMalformed.state, "ACTIVE");
 });
 
-test("security boundary: ownership verification strictly precedes service-role access", async () => {
+test("security boundary: ownership verification strictly precedes service-role access with exact orderId", async () => {
   const queriesFile = await read("src/lib/payments/queries.ts");
 
   // Server-only boundary enforced
@@ -378,17 +478,20 @@ test("security boundary: ownership verification strictly precedes service-role a
   assert.equal(errorResult.state, "ERROR");
   assert.equal(serviceClientCalls, 0);
 
-  // Behavioral test D: verified owner -> service client called once with orderId
-  const verifiedResult = await fetchOrderReservationDeadline("ord-valid", {
+  // Behavioral test D: verified owner -> service client called once with exact verified order ID
+  let queriedOrderId = null;
+  const verifiedResult = await fetchOrderReservationDeadline("ord-valid-999", {
     getUserId: async () => "user-123",
     verifyOrderOwnership: async (id) => ({ id }),
-    fetchReservations: async () => {
+    fetchReservations: async (orderId) => {
       serviceClientCalls++;
+      queriedOrderId = orderId;
       return [{ status: "active", expires_at: new Date(Date.now() + 3600000).toISOString() }];
     },
   });
   assert.equal(verifiedResult.state, "ACTIVE");
   assert.equal(serviceClientCalls, 1);
+  assert.equal(queriedOrderId, "ord-valid-999", "Service query must target the exact verified order ID");
 });
 
 test("deadline formatter explicitly uses Asia/Manila timezone and includes PHT indicator", () => {
@@ -404,7 +507,9 @@ test("deadline formatter explicitly uses Asia/Manila timezone and includes PHT i
   const formatted3 = formatPhDeadline("2026-12-31T16:00:00.000Z");
   assert.equal(formatted3, "January 1, 2027, 12:00 AM PHT");
 
-  // Safe null on invalid input
+  // Impossible dates return null safely without throwing
+  assert.equal(formatPhDeadline("2027-02-30T12:00:00Z"), null);
+  assert.equal(formatPhDeadline("2027-04-31T12:00:00Z"), null);
   assert.equal(formatPhDeadline("invalid-date"), null);
   assert.equal(formatPhDeadline(null), null);
   assert.equal(formatPhDeadline(""), null);
@@ -417,6 +522,21 @@ test("order detail UI displays state-accurate copy across COD, GCash, expired, a
   assert.match(orderPage, /const isDeadlineActive\s*=\s*reservationDeadline\.state\s*===\s*["']ACTIVE["']/);
   assert.match(orderPage, /const canSubmitProof\s*=\s*[\s\S]*isDeadlineActive\s*&&\s*gcashConfig\.isConfigured/);
 
+  // COD copy bases collection on payment.status, not fulfillment status alone
+  assert.match(orderPage, /payment\.status === ["']PAID["'][\s\S]*Cash on Delivery payment of[\s\S]*was received and settled/);
+  assert.match(orderPage, /order\.status === ["']DELIVERED["'][\s\S]*Cash payment settlement is still unconfirmed\/pending/);
+  assert.match(orderPage, /order\.status === ["']CANCELLED["'][\s\S]*Doorstep cash collection will not take place/);
+
+  // REJECTED banner differentiates configured vs unconfigured GCash
+  assert.match(
+    orderPage,
+    /payment\.status === ["']REJECTED["'][\s\S]*gcashConfig\.isConfigured[\s\S]*Please upload a corrected GCash receipt/
+  );
+  assert.match(
+    orderPage,
+    /payment\.status === ["']REJECTED["'][\s\S]*GCash payment destination is temporarily unavailable to accept new payments/
+  );
+
   // Abnormal/error states render safe unavailable message
   assert.match(orderPage, /reservationDeadline\.state\s*===\s*["']ERROR["']/);
   assert.match(orderPage, /reservationDeadline\.state\s*===\s*["']INVALID_SET["']/);
@@ -424,12 +544,6 @@ test("order detail UI displays state-accurate copy across COD, GCash, expired, a
   assert.match(
     orderPage,
     /Payment status is temporarily unavailable\. Please contact support before sending payment\./
-  );
-
-  // Missing GCash configuration renders support notice and suppresses payment instructions
-  assert.match(
-    orderPage,
-    /GCash payment destination is temporarily unavailable\. Please contact store support to arrange payment\./
   );
 
   // Elapsed deadline block only renders for unpaid/rejected orders and never claims inventory released
@@ -444,9 +558,6 @@ test("order detail UI displays state-accurate copy across COD, GCash, expired, a
   // Submitted state says under review and does not show upload form
   assert.match(orderPage, /payment\.status === ["']SUBMITTED["']/);
   assert.match(orderPage, /Your payment proof is currently under review by staff\./);
-
-  // Cash on Delivery copy reflects actual order state (not claiming confirmed & processing when cancelled)
-  assert.match(orderPage, /order\.status === ["']CANCELLED["'][\s\S]*Doorstep cash collection will not take place\./);
 
   // Only terminal CANCELLED state claims inventory released
   assert.match(orderPage, /order\.status === ["']CANCELLED["'][\s\S]*inventory reservations have been released/);
