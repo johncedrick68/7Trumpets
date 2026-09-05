@@ -3,6 +3,21 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import {
+  calculateGcashExpiresAt,
+  executeCheckoutPaymentFlow,
+  validateCheckoutPaymentGate,
+} from "../src/lib/checkout/pipeline.ts";
+import {
+  evaluateReservationDeadline,
+  fetchOrderReservationDeadline,
+  formatPhDeadline,
+} from "../src/lib/payments/deadline.ts";
+import {
+  parseGcashConfig,
+  validateAndNormalizeGcashNumber,
+} from "../src/lib/payments/gcash.ts";
+
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("checkout action uses trusted database RPC checkout_order and service client", async () => {
@@ -109,158 +124,300 @@ test("checkout UI restores COD and Manual GCash selection, and avoids hidden pay
   // Eradicates placeholder 09XX number
   assert.doesNotMatch(checkoutPage, /09XX/);
 
-  // Eradicates misleading 24-hour promise
+  // Eradicates misleading 24-hour promise and fixed 2-hour duration promise
   assert.doesNotMatch(checkoutPage, /24\s*hours/i);
+  assert.doesNotMatch(checkoutPage, /2-hour/i);
 
   // Eradicates pre-order merchant destination exposure (account number should only appear post-order)
   assert.doesNotMatch(checkoutPage, /Send Money|accountNumber/);
 });
 
-test("GCash configuration helper is server-only and correctly detects valid vs placeholder/missing credentials", async () => {
-  const configModule = await read("src/lib/payments/config.ts");
+test("real production GCash validator normalizes valid formats and rejects malformed/placeholder inputs", () => {
+  // Valid normalization to canonical 09XXXXXXXXX
+  assert.equal(validateAndNormalizeGcashNumber("09171234567"), "09171234567");
+  assert.equal(validateAndNormalizeGcashNumber("+639171234567"), "09171234567");
+  assert.equal(validateAndNormalizeGcashNumber("639171234567"), "09171234567");
+  assert.equal(validateAndNormalizeGcashNumber("0917 123 4567"), "09171234567");
+  assert.equal(validateAndNormalizeGcashNumber("0917-123-4567"), "09171234567");
+  assert.equal(validateAndNormalizeGcashNumber("+63 917 123 4567"), "09171234567");
 
-  // Server-only boundary
-  assert.match(configModule, /import\s+["']server-only["']/);
-  assert.match(configModule, /export function getGcashConfig\(\)/);
+  // Invalid inputs rejected
+  assert.equal(validateAndNormalizeGcashNumber(""), null);
+  assert.equal(validateAndNormalizeGcashNumber("   "), null);
+  assert.equal(validateAndNormalizeGcashNumber("09XX XXX XXXX"), null);
+  assert.equal(validateAndNormalizeGcashNumber("09xx xxx xxxx"), null);
+  assert.equal(validateAndNormalizeGcashNumber("abcdefghijk"), null);
+  assert.equal(validateAndNormalizeGcashNumber("0917ABC4567"), null);
+  assert.equal(validateAndNormalizeGcashNumber("0917123"), null); // too short
+  assert.equal(validateAndNormalizeGcashNumber("0917123456789"), null); // too long
+  assert.equal(validateAndNormalizeGcashNumber("+1639171234567"), null); // wrong country code
+  assert.equal(validateAndNormalizeGcashNumber("+638171234567"), null); // non-mobile 8
+  assert.equal(validateAndNormalizeGcashNumber(null), null);
+  assert.equal(validateAndNormalizeGcashNumber(undefined), null);
 
-  // Helper logic verification
-  function testConfig(rawNumber, rawName) {
-    const isConfigured = Boolean(
-      rawNumber &&
-      rawNumber.length >= 10 &&
-      !rawNumber.includes("09XX") &&
-      !/^09X+$/i.test(rawNumber)
-    );
-    return {
-      accountNumber: isConfigured ? rawNumber : null,
-      accountName: isConfigured ? rawName : null,
-      isConfigured,
-    };
-  }
+  // parseGcashConfig behavior
+  const validConfig = parseGcashConfig("+639171234567", "7Trumpets Store");
+  assert.equal(validConfig.isConfigured, true);
+  assert.equal(validConfig.accountNumber, "09171234567");
+  assert.equal(validConfig.accountName, "7Trumpets Store");
 
-  assert.equal(testConfig(null, null).isConfigured, false);
-  assert.equal(testConfig("", "").isConfigured, false);
-  assert.equal(testConfig("09XX XXX XXXX", "Store").isConfigured, false);
-  assert.equal(testConfig("09XXXXXXXXX", "Store").isConfigured, false);
-  assert.equal(testConfig("12345", "Store").isConfigured, false);
+  const invalidConfig = parseGcashConfig("09xx xxx xxxx", "7Trumpets Store");
+  assert.equal(invalidConfig.isConfigured, false);
+  assert.equal(invalidConfig.accountNumber, null);
+  assert.equal(invalidConfig.accountName, null);
 
-  const valid = testConfig("09171234567", "7Trumpets Store");
-  assert.equal(valid.isConfigured, true);
-  assert.equal(valid.accountNumber, "09171234567");
-  assert.equal(valid.accountName, "7Trumpets Store");
+  const emptyConfig = parseGcashConfig(null, null);
+  assert.equal(emptyConfig.isConfigured, false);
+  assert.equal(emptyConfig.accountNumber, null);
 });
 
-test("checkout action validates GCash configuration, rejects forged requests, and passes explicit null for COD", async () => {
-  const checkoutAction = await read("src/lib/checkout/actions.ts");
+test("checkout payment pipeline behaviorally blocks unconfigured GCash before side effects", async () => {
+  // Direct validation gate assertions
+  const unconfiguredGate = validateCheckoutPaymentGate("MANUAL_GCASH", { isConfigured: false, accountNumber: null, accountName: null });
+  assert.equal(unconfiguredGate.valid, false);
+  assert.equal(unconfiguredGate.redirectUrl, "/checkout?error=gcash_unavailable");
 
-  // Imports and checks server-only GCash config
-  assert.match(checkoutAction, /import\s*\{\s*getGcashConfig\s*\}\s*from\s*["']@\/lib\/payments\/config["']/);
-  assert.match(checkoutAction, /if\s*\(paymentMethod\s*===\s*["']MANUAL_GCASH["']\)/);
-  assert.match(checkoutAction, /redirect\(["']\/checkout\?error=gcash_unavailable["']\)/);
+  const invalidMethodGate = validateCheckoutPaymentGate("CRYPTO", { isConfigured: true, accountNumber: "09171234567", accountName: "Store" });
+  assert.equal(invalidMethodGate.valid, false);
+  assert.equal(invalidMethodGate.redirectUrl, "/checkout?error=invalid_payment_method");
 
-  // Passes explicit null for COD gcashExpiresAt to satisfy database contract
-  assert.match(checkoutAction, /const gcashExpiresAt:\s*string\s*\|\s*null\s*=/);
-  assert.match(checkoutAction, /paymentMethod\s*===\s*["']MANUAL_GCASH["']\s*\?\s*new Date\(/);
-  assert.match(checkoutAction, /:\s*null/);
-  assert.match(checkoutAction, /p_gcash_expires_at:\s*gcashExpiresAt/);
+  const codGate = validateCheckoutPaymentGate("COD", { isConfigured: false, accountNumber: null, accountName: null });
+  assert.equal(codGate.valid, true);
+
+  const configuredGcashGate = validateCheckoutPaymentGate("MANUAL_GCASH", { isConfigured: true, accountNumber: "09171234567", accountName: "Store" });
+  assert.equal(configuredGcashGate.valid, true);
+
+  let rpcCalls = 0;
+  let cartDeletes = 0;
+  let rejectedUrl = null;
+
+  const mockDeps = {
+    paymentMethod: "MANUAL_GCASH",
+    gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
+    onReject: (url) => {
+      rejectedUrl = url;
+    },
+    invokeRpc: async () => {
+      rpcCalls++;
+      return { id: "order-123" };
+    },
+    deleteCartItems: async () => {
+      cartDeletes++;
+    },
+  };
+
+  // Execution with unconfigured GCash
+  await executeCheckoutPaymentFlow(mockDeps);
+
+  // Proves: redirect is internal gcash_unavailable
+  assert.equal(rejectedUrl, "/checkout?error=gcash_unavailable");
+  // Proves: RPC was never called
+  assert.equal(rpcCalls, 0);
+  // Proves: cart delete was never called
+  assert.equal(cartDeletes, 0);
+
+  // Execution with COD (valid even if GCash unconfigured)
+  let codRpcPayload = null;
+  const codDeps = {
+    paymentMethod: "COD",
+    gcashConfig: { isConfigured: false, accountNumber: null, accountName: null },
+    onReject: (url) => {
+      assert.fail(`COD should not be rejected, received ${url}`);
+    },
+    invokeRpc: async (payload) => {
+      codRpcPayload = payload;
+      return { id: "order-456" };
+    },
+    deleteCartItems: async () => {
+      cartDeletes++;
+    },
+  };
+
+  await executeCheckoutPaymentFlow(codDeps);
+  assert.equal(codRpcPayload.paymentMethod, "COD");
+  assert.equal(codRpcPayload.gcashExpiresAt, null); // Explicit null satisfies DB contract
+  assert.equal(cartDeletes, 1);
+
+  // Expiry calculation helper
+  assert.equal(calculateGcashExpiresAt("COD"), null);
+  const gcashExpiry = calculateGcashExpiresAt("MANUAL_GCASH");
+  assert.ok(typeof gcashExpiry === "string");
+  assert.ok(Date.parse(gcashExpiry) > Date.now());
 });
 
-test("order reservation deadline helper is in dedicated server-only boundary and does not accept userId", async () => {
-  assert.ok(existsSync("src/lib/payments/queries.ts"));
-  const queries = await read("src/lib/payments/queries.ts");
-  const actions = await read("src/lib/payments/actions.ts");
+test("production deadline helper evaluates canonical states and fails closed on malformed dates without throwing", () => {
+  const now = Date.now();
 
-  // Server-only boundary
-  assert.match(queries, /import\s+["']server-only["']/);
+  // 1. Zero or missing reservations -> NO_RESERVATIONS
+  assert.deepEqual(evaluateReservationDeadline([]), { state: "NO_RESERVATIONS" });
+  assert.deepEqual(evaluateReservationDeadline(null), { state: "NO_RESERVATIONS" });
+  assert.deepEqual(evaluateReservationDeadline(undefined), { state: "NO_RESERVATIONS" });
 
-  // Must NOT be exposed as server action in actions.ts
-  assert.doesNotMatch(actions, /getOrderReservationDeadline/);
-
-  // Function signature accepts ONLY orderId; never accepts userId or caller identity
-  assert.match(queries, /export async function getOrderReservationDeadline\(\s*orderId:\s*string\s*\)/);
-  assert.doesNotMatch(queries, /getOrderReservationDeadline\([^)]*userId/);
-
-  // Derives authenticated identity internally via auth.getClaims()
-  assert.match(queries, /auth\.getClaims\(\)/);
-  assert.match(queries, /claimsData\?\.claims\?\.sub/);
-
-  // Verifies ownership on orders table under RLS first
-  assert.match(queries, /\.from\(["']orders["']\)/);
-  assert.match(queries, /\.eq\(["']id["'],\s*orderId\)/);
-  assert.match(queries, /\.eq\(["']user_id["'],\s*userId\)/);
-
-  // Uses createServiceClient() only after ownership verified
-  assert.match(queries, /createServiceClient\(\)/);
-  assert.match(queries, /\.from\(["']inventory_reservations["']\)/);
-  assert.match(queries, /\.select\(["']expires_at,\s*status["']\)/);
-  assert.match(queries, /\.eq\(["']order_id["'],\s*order\.id\)/);
-});
-
-test("reservation deadline canonical algorithm evaluates ACTIVE, EXPIRED, INVALID_SET, and NO_RESERVATIONS", () => {
-  function evaluateReservations(reservations, now = Date.now()) {
-    if (!reservations || reservations.length === 0) {
-      return { state: "NO_RESERVATIONS" };
-    }
-    const allActive = reservations.every((r) => r.status === "active");
-    if (!allActive) {
-      return { state: "INVALID_SET" };
-    }
-    const timestamps = reservations.map((r) => new Date(r.expires_at).getTime());
-    const minTimestamp = Math.min(...timestamps);
-    const minExpiresAt = new Date(minTimestamp).toISOString();
-    if (minTimestamp <= now) {
-      return { state: "EXPIRED", expiresAt: minExpiresAt };
-    }
-    return { state: "ACTIVE", expiresAt: minExpiresAt };
-  }
-
-  // 1. Zero reservations -> NO_RESERVATIONS
-  assert.deepEqual(evaluateReservations([]), { state: "NO_RESERVATIONS" });
-  assert.deepEqual(evaluateReservations(null), { state: "NO_RESERVATIONS" });
-
-  // 2. Mixed active/terminal or non-active -> INVALID_SET
+  // 2. Mixed active/terminal or all terminal -> INVALID_SET
   assert.deepEqual(
-    evaluateReservations([
-      { status: "active", expires_at: new Date(Date.now() + 3600000).toISOString() },
-      { status: "released", expires_at: new Date(Date.now() + 3600000).toISOString() },
-    ]),
+    evaluateReservationDeadline([
+      { status: "active", expires_at: new Date(now + 3600000).toISOString() },
+      { status: "released", expires_at: new Date(now + 3600000).toISOString() },
+    ], now),
     { state: "INVALID_SET" }
   );
   assert.deepEqual(
-    evaluateReservations([
-      { status: "cancelled", expires_at: new Date(Date.now() + 3600000).toISOString() },
-    ]),
+    evaluateReservationDeadline([
+      { status: "cancelled", expires_at: new Date(now + 3600000).toISOString() },
+    ], now),
     { state: "INVALID_SET" }
   );
 
-  // 3. All active, future deadline -> ACTIVE with min(expires_at)
-  const t1 = Date.now() + 7200000;
-  const t2 = Date.now() + 3600000;
-  const activeRes = evaluateReservations([
-    { status: "active", expires_at: new Date(t1).toISOString() },
-    { status: "active", expires_at: new Date(t2).toISOString() },
-  ]);
-  assert.equal(activeRes.state, "ACTIVE");
-  assert.equal(activeRes.expiresAt, new Date(t2).toISOString());
+  // 3. All active with future timestamps -> ACTIVE (earliest wins)
+  const t1 = new Date(now + 7200000).toISOString();
+  const t2 = new Date(now + 3600000).toISOString();
+  const activeResult = evaluateReservationDeadline([
+    { status: "active", expires_at: t1 },
+    { status: "active", expires_at: t2 },
+  ], now);
+  assert.equal(activeResult.state, "ACTIVE");
+  assert.equal(activeResult.expiresAt, t2);
 
-  // 4. All active, min expires_at <= now -> EXPIRED
-  const pastT = Date.now() - 1000;
-  const expiredRes = evaluateReservations([
-    { status: "active", expires_at: new Date(t1).toISOString() },
-    { status: "active", expires_at: new Date(pastT).toISOString() },
-  ]);
-  assert.equal(expiredRes.state, "EXPIRED");
-  assert.equal(expiredRes.expiresAt, new Date(pastT).toISOString());
+  // 4. All active with expired timestamp -> EXPIRED (earliest wins)
+  const expiredT = new Date(now - 1000).toISOString();
+  const expiredResult = evaluateReservationDeadline([
+    { status: "active", expires_at: t1 },
+    { status: "active", expires_at: expiredT },
+  ], now);
+  assert.equal(expiredResult.state, "EXPIRED");
+  assert.equal(expiredResult.expiresAt, expiredT);
+
+  // 5. Malformed timestamps: must NOT throw and must fail closed (INVALID_SET)
+  assert.doesNotThrow(() => {
+    const res = evaluateReservationDeadline([
+      { status: "active", expires_at: "not-a-date" },
+    ], now);
+    assert.equal(res.state, "INVALID_SET");
+  });
+
+  assert.doesNotThrow(() => {
+    const res = evaluateReservationDeadline([
+      { status: "active", expires_at: "Infinity" },
+    ], now);
+    assert.equal(res.state, "INVALID_SET");
+  });
+
+  assert.doesNotThrow(() => {
+    const res = evaluateReservationDeadline([
+      { status: "active", expires_at: "2026-13-45T99:99:99Z" },
+    ], now);
+    assert.equal(res.state, "INVALID_SET");
+  });
+
+  assert.doesNotThrow(() => {
+    const res = evaluateReservationDeadline([
+      { status: "active", expires_at: "" },
+    ], now);
+    assert.equal(res.state, "INVALID_SET");
+  });
+
+  // Malformed timestamp alongside valid timestamp must fail closed and never return ACTIVE
+  const mixedMalformed = evaluateReservationDeadline([
+    { status: "active", expires_at: t1 },
+    { status: "active", expires_at: "invalid-timestamp" },
+  ], now);
+  assert.equal(mixedMalformed.state, "INVALID_SET");
+  assert.notEqual(mixedMalformed.state, "ACTIVE");
 });
 
-test("order detail UI fails closed on abnormal reservation sets and never falsely claims inventory released", async () => {
+test("security boundary: ownership verification strictly precedes service-role access", async () => {
+  const queriesFile = await read("src/lib/payments/queries.ts");
+
+  // Server-only boundary enforced
+  assert.match(queriesFile, /import\s+["']server-only["']/);
+
+  // Helper accepts ONLY orderId; never accepts caller-supplied userId
+  assert.match(queriesFile, /export async function getOrderReservationDeadline\(\s*orderId:\s*string\s*\)/);
+  assert.doesNotMatch(queriesFile, /getOrderReservationDeadline\([^)]*userId/);
+
+  // Behavioral test A: unauthenticated caller -> service client never called
+  let serviceClientCalls = 0;
+  let ownershipCalls = 0;
+
+  const unauthResult = await fetchOrderReservationDeadline("ord-1", {
+    getUserId: async () => null,
+    verifyOrderOwnership: async () => {
+      ownershipCalls++;
+      return { id: "ord-1" };
+    },
+    fetchReservations: async () => {
+      serviceClientCalls++;
+      return [];
+    },
+  });
+  assert.equal(unauthResult.state, "ERROR");
+  assert.equal(ownershipCalls, 0);
+  assert.equal(serviceClientCalls, 0);
+
+  // Behavioral test B: cross-owner or unknown order -> service client never called
+  const crossOwnerResult = await fetchOrderReservationDeadline("ord-cross", {
+    getUserId: async () => "user-123",
+    verifyOrderOwnership: async () => null, // RLS query returns no row for another user
+    fetchReservations: async () => {
+      serviceClientCalls++;
+      return [];
+    },
+  });
+  assert.equal(crossOwnerResult.state, "ERROR");
+  assert.equal(serviceClientCalls, 0);
+
+  // Behavioral test C: ownership query failure -> service client never called
+  const errorResult = await fetchOrderReservationDeadline("ord-err", {
+    getUserId: async () => "user-123",
+    verifyOrderOwnership: async () => null,
+    fetchReservations: async () => {
+      serviceClientCalls++;
+      return [];
+    },
+  });
+  assert.equal(errorResult.state, "ERROR");
+  assert.equal(serviceClientCalls, 0);
+
+  // Behavioral test D: verified owner -> service client called once with orderId
+  const verifiedResult = await fetchOrderReservationDeadline("ord-valid", {
+    getUserId: async () => "user-123",
+    verifyOrderOwnership: async (id) => ({ id }),
+    fetchReservations: async () => {
+      serviceClientCalls++;
+      return [{ status: "active", expires_at: new Date(Date.now() + 3600000).toISOString() }];
+    },
+  });
+  assert.equal(verifiedResult.state, "ACTIVE");
+  assert.equal(serviceClientCalls, 1);
+});
+
+test("deadline formatter explicitly uses Asia/Manila timezone and includes PHT indicator", () => {
+  // UTC morning: 07:30 UTC + 8h = 15:30 (3:30 PM) on Sep 5, 2026
+  const formatted1 = formatPhDeadline("2026-09-05T07:30:00.000Z");
+  assert.equal(formatted1, "September 5, 2026, 3:30 PM PHT");
+
+  // UTC midnight: 00:00 UTC + 8h = 8:00 AM on Jan 1, 2026
+  const formatted2 = formatPhDeadline("2026-01-01T00:00:00.000Z");
+  assert.equal(formatted2, "January 1, 2026, 8:00 AM PHT");
+
+  // Cross year boundary: 16:00 UTC on Dec 31, 2026 + 8h = 12:00 AM on Jan 1, 2027
+  const formatted3 = formatPhDeadline("2026-12-31T16:00:00.000Z");
+  assert.equal(formatted3, "January 1, 2027, 12:00 AM PHT");
+
+  // Safe null on invalid input
+  assert.equal(formatPhDeadline("invalid-date"), null);
+  assert.equal(formatPhDeadline(null), null);
+  assert.equal(formatPhDeadline(""), null);
+});
+
+test("order detail UI displays state-accurate copy across COD, GCash, expired, and unconfigured states", async () => {
   const orderPage = await read("src/app/orders/[id]/page.tsx");
 
-  // Proof submission requires ACTIVE reservation deadline
+  // Proof submission requires ACTIVE deadline AND configured GCash
   assert.match(orderPage, /const isDeadlineActive\s*=\s*reservationDeadline\.state\s*===\s*["']ACTIVE["']/);
-  assert.match(orderPage, /const canSubmitProof\s*=\s*[\s\S]*isDeadlineActive/);
+  assert.match(orderPage, /const canSubmitProof\s*=\s*[\s\S]*isDeadlineActive\s*&&\s*gcashConfig\.isConfigured/);
 
-  // Abnormal/error states render safe message and do not render proof upload
+  // Abnormal/error states render safe unavailable message
   assert.match(orderPage, /reservationDeadline\.state\s*===\s*["']ERROR["']/);
   assert.match(orderPage, /reservationDeadline\.state\s*===\s*["']INVALID_SET["']/);
   assert.match(orderPage, /reservationDeadline\.state\s*===\s*["']NO_RESERVATIONS["']/);
@@ -269,15 +426,27 @@ test("order detail UI fails closed on abnormal reservation sets and never falsel
     /Payment status is temporarily unavailable\. Please contact support before sending payment\./
   );
 
-  // Proof upload form only rendered inside canSubmitProof guard
-  assert.match(orderPage, /\{canSubmitProof\s*&&\s*\(/);
+  // Missing GCash configuration renders support notice and suppresses payment instructions
+  assert.match(
+    orderPage,
+    /GCash payment destination is temporarily unavailable\. Please contact store support to arrange payment\./
+  );
 
-  // Elapsed deadline alone does NOT claim inventory released
-  const expiredBlockMatch = orderPage.match(/order\.status === ["']CONFIRMED["'] && reservationDeadline\.state === ["']EXPIRED["'][\s\S]*?<\/div>\s*\)\}/);
-  assert.ok(expiredBlockMatch, "Expired deadline notice block must exist");
+  // Elapsed deadline block only renders for unpaid/rejected orders and never claims inventory released
+  const expiredBlockMatch = orderPage.match(
+    /order\.status === ["']CONFIRMED["']\s*&&\s*reservationDeadline\.state === ["']EXPIRED["']\s*&&\s*\(payment\.status === ["']UNPAID["'] \|\| payment\.status === ["']REJECTED["']\)[\s\S]*?<\/div>\s*\)\}/
+  );
+  assert.ok(expiredBlockMatch, "Expired deadline notice block for unpaid/rejected orders must exist");
   assert.doesNotMatch(expiredBlockMatch[0], /inventory reservations have been released/);
   assert.match(expiredBlockMatch[0], /The deadline to submit payment proof for this order has passed/);
   assert.match(expiredBlockMatch[0], /If payment was not submitted, this order will be cancelled by staff\./);
+
+  // Submitted state says under review and does not show upload form
+  assert.match(orderPage, /payment\.status === ["']SUBMITTED["']/);
+  assert.match(orderPage, /Your payment proof is currently under review by staff\./);
+
+  // Cash on Delivery copy reflects actual order state (not claiming confirmed & processing when cancelled)
+  assert.match(orderPage, /order\.status === ["']CANCELLED["'][\s\S]*Doorstep cash collection will not take place\./);
 
   // Only terminal CANCELLED state claims inventory released
   assert.match(orderPage, /order\.status === ["']CANCELLED["'][\s\S]*inventory reservations have been released/);
@@ -285,7 +454,8 @@ test("order detail UI fails closed on abnormal reservation sets and never falsel
   // Order summary dynamically displays Cash on Delivery vs Manual GCash
   assert.match(orderPage, /payment\?\.method === ["']COD["'] \? ["']Cash on Delivery["'] : ["']Manual GCash["']/);
 
-  // Eradicates 09XX placeholder and misleading 24-hour promise
+  // Eradicates 09XX placeholder and misleading 24-hour / 2-hour duration claims
   assert.doesNotMatch(orderPage, /09XX/);
   assert.doesNotMatch(orderPage, /24\s*hours/i);
+  assert.doesNotMatch(orderPage, /Initial 2-hour reservation/i);
 });

@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getOrCreateCart } from "@/lib/cart/actions";
+import {
+  calculateGcashExpiresAt,
+  validateCheckoutPaymentGate,
+} from "@/lib/checkout/pipeline";
 import { getGcashConfig } from "@/lib/payments/config";
 import { logServerError } from "@/lib/server-log";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -23,16 +27,14 @@ export async function processCheckout(formData: FormData) {
     redirect("/checkout?error=invalid_idempotency_key");
   }
 
-  if (paymentMethod !== "COD" && paymentMethod !== "MANUAL_GCASH") {
-    redirect("/checkout?error=invalid_payment_method");
-  }
-
-  if (paymentMethod === "MANUAL_GCASH") {
-    const gcashConfig = getGcashConfig();
-    if (!gcashConfig.isConfigured) {
+  // 1. Authoritative payment gate validation (fails closed before any side effects)
+  const gcashConfig = getGcashConfig();
+  const gate = validateCheckoutPaymentGate(paymentMethod, gcashConfig);
+  if (!gate.valid && gate.redirectUrl) {
+    if (gate.redirectUrl.includes("gcash_unavailable")) {
       logServerError("checkout.gcash_unavailable", "payment_destination_not_configured");
-      redirect("/checkout?error=gcash_unavailable");
     }
+    redirect(gate.redirectUrl);
   }
 
   const supabase = await createClient();
@@ -57,13 +59,13 @@ export async function processCheckout(formData: FormData) {
     redirect("/checkout?error=checkout_throttled");
   }
 
-  // 1. Fetch user's cart
+  // 2. Fetch user's cart
   const cart = await getOrCreateCart();
   if (!cart || cart.items.length === 0) {
     redirect("/cart?error=cart_empty");
   }
 
-  // 2. Fetch chosen address owned by user
+  // 3. Fetch chosen address owned by user
   const { data: address, error: addressError } = await supabase
     .from("addresses")
     .select("*")
@@ -75,7 +77,7 @@ export async function processCheckout(formData: FormData) {
     redirect("/checkout?error=invalid_address");
   }
 
-  // 3. Build canonical RPC input payloads
+  // 4. Build canonical RPC input payloads
   const linesPayload = cart.items.map((item) => ({
     variant_id: item.variant_id,
     quantity: item.quantity,
@@ -97,13 +99,10 @@ export async function processCheckout(formData: FormData) {
   // Authoritative shipping calculation: flat ₱150 (15000 minor units)
   const shippingMinor = 15000;
 
-  // MANUAL_GCASH expires in 2 hours (120 minutes); COD requires explicit null
-  const gcashExpiresAt: string | null =
-    paymentMethod === "MANUAL_GCASH"
-      ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
-      : null;
+  // Authoritative expiry: future ISO date for MANUAL_GCASH, explicit null for COD
+  const gcashExpiresAt: string | null = calculateGcashExpiresAt(paymentMethod);
 
-  // 4. Execute atomic RPC via service role client
+  // 5. Execute atomic RPC via service role client
   const serviceClient = createServiceClient();
   const { data: order, error: rpcError } = await serviceClient.rpc("checkout_order", {
     p_customer_id: userId,
@@ -120,7 +119,7 @@ export async function processCheckout(formData: FormData) {
     redirect("/checkout?error=checkout_failed");
   }
 
-  // 5. Clear the user's cart items upon successful order creation
+  // 6. Clear the user's cart items upon successful order creation
   const { error: cleanupError } = await supabase.from("cart_items").delete().eq("cart_id", cart.id);
   if (cleanupError) logServerError("checkout.cart_cleanup", "database_failure");
 

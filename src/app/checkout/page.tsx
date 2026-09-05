@@ -189,7 +189,7 @@ export default async function CheckoutPage({
                           <Badge variant="default" className="text-[9px] uppercase px-1.5 py-0">Digital Transfer</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          Transfer payment via GCash after placing your order. Full account details and your 2-hour payment deadline will be displayed on your order confirmation page.
+                          Transfer payment via GCash after placing your order. Full account details and your payment reservation deadline will be displayed on your order confirmation page.
                         </p>
                       </div>
                     </label>

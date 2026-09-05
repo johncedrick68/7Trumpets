@@ -1,31 +1,23 @@
 import "server-only";
 
-export interface GcashConfig {
-  accountNumber: string | null;
-  accountName: string | null;
-  isConfigured: boolean;
-}
+import {
+  type GcashConfig,
+  parseGcashConfig,
+  validateAndNormalizeGcashNumber,
+} from "./gcash";
+
+export type { GcashConfig };
+export { parseGcashConfig, validateAndNormalizeGcashNumber };
 
 /**
  * Server-only configuration accessor for manual GCash payment instructions.
  * Protects against unconfigured or placeholder payment destinations.
  * Never leaks configuration as client-side environment variables.
+ * Never logs raw or normalized account numbers.
  */
 export function getGcashConfig(): GcashConfig {
-  const rawNumber = process.env.GCASH_ACCOUNT_NUMBER?.trim() || null;
-  const rawName = process.env.GCASH_ACCOUNT_NAME?.trim() || null;
-
-  // Destination is valid only when present, formatted, and free of placeholder tokens
-  const isConfigured = Boolean(
-    rawNumber &&
-    rawNumber.length >= 10 &&
-    !rawNumber.includes("09XX") &&
-    !/^09X+$/i.test(rawNumber)
+  return parseGcashConfig(
+    process.env.GCASH_ACCOUNT_NUMBER,
+    process.env.GCASH_ACCOUNT_NAME
   );
-
-  return {
-    accountNumber: isConfigured ? rawNumber : null,
-    accountName: isConfigured ? rawName : null,
-    isConfigured,
-  };
 }
