@@ -15,6 +15,12 @@ type Product = any;
 export function ProductImageDialog({ products, productId }: { products: Product[], productId?: string }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(productId || products[0]?.id || "");
+  const [selectedVariantId, setSelectedVariantId] = useState("none");
+
+  // Filter variants strictly to the currently selected product
+  const currentProduct = products.find((p) => p.id === selectedProductId);
+  const productVariants = currentProduct?.product_variants || [];
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -35,14 +41,21 @@ export function ProductImageDialog({ products, productId }: { products: Product[
         <DialogHeader>
           <DialogTitle>Upload Product Image</DialogTitle>
           <DialogDescription>
-            Upload a high-quality WebP, JPG, or PNG image for your product.
+            Upload a WebP image (max 5MB) for your product.
           </DialogDescription>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4 pt-4">
           
           <div className="space-y-2">
             <Label htmlFor="img_prod">Product</Label>
-            <Select name="product_id" defaultValue={productId || ""}>
+            <Select
+              name="product_id"
+              value={selectedProductId}
+              onValueChange={(val) => {
+                setSelectedProductId(val);
+                setSelectedVariantId("none"); // Clear stale variant on product change
+              }}
+            >
               <SelectTrigger id="img_prod">
                 <SelectValue placeholder="Select a product" />
               </SelectTrigger>
@@ -56,23 +69,29 @@ export function ProductImageDialog({ products, productId }: { products: Product[
 
           <div className="space-y-2">
             <Label htmlFor="img_variant">Variant (Optional)</Label>
-            <Select name="variant_id" defaultValue="">
+            <Select
+              name="variant_id"
+              value={selectedVariantId}
+              onValueChange={setSelectedVariantId}
+            >
               <SelectTrigger id="img_variant">
                 <SelectValue placeholder="All variants (Default)" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">All variants (Default)</SelectItem>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {products.flatMap((product) => product.product_variants.map((variant: any) => (
-                  <SelectItem key={variant.id} value={variant.id}>{product.name}: {variant.name || variant.sku}</SelectItem>
-                )))}
+                {productVariants.map((variant: any) => (
+                  <SelectItem key={variant.id} value={variant.id}>
+                    {variant.name || variant.sku}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="img_file">Image File (WebP/JPG/PNG)</Label>
-            <Input id="img_file" name="image" type="file" accept="image/webp,image/jpeg,image/png" required />
+            <Label htmlFor="img_file">Image File (WebP only, max 5MB)</Label>
+            <Input id="img_file" name="image" type="file" accept="image/webp" required />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

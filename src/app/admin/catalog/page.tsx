@@ -1,6 +1,12 @@
 import { redirect } from "next/navigation";
 
-import { adjustInventory, deleteProductImage } from "@/lib/admin/actions";
+import {
+  adjustInventory,
+  deleteProductImage,
+  saveOptionValue,
+  saveProductOption,
+  setVariantOptionValue,
+} from "@/lib/admin/actions";
 import { getAdminAuthContext } from "@/lib/admin/auth";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { logServerError } from "@/lib/server-log";
@@ -16,6 +22,24 @@ import { ProductDialog } from "@/components/admin/product-dialog";
 import { VariantDialog } from "@/components/admin/variant-dialog";
 import { ProductImageDialog } from "@/components/admin/product-image-dialog";
 import { Trash2, Image as ImageIcon, PackagePlus } from "lucide-react";
+
+interface OptionValueRecord {
+  id: string;
+  value: string;
+  position: number;
+}
+
+interface ProductOptionRecord {
+  id: string;
+  name: string;
+  position: number;
+  product_option_values?: OptionValueRecord[];
+}
+
+interface VariantOptionValueRecord {
+  option_id: string;
+  option_value_id: string;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +57,16 @@ export default async function AdminCatalogOverviewPage(props: {
 
   const serviceClient = createServiceClient();
 
-  // Fetch categories
-  const { data: categories } = await serviceClient
+  // Fetch categories with full metadata (fails closed on error)
+  const { data: categories, error: categoriesError } = await serviceClient
     .from("categories")
-    .select("id, name, slug, position, archived_at")
+    .select("id, name, slug, description, parent_id, position, archived_at")
     .order("position", { ascending: true });
+
+  if (categoriesError || !categories) {
+    logServerError("admin.catalog.categories", "database_failure");
+    throw new Error("ADMIN_CATALOG_UNAVAILABLE");
+  }
 
   // Fetch products with variants and inventory status
   const { data: products, error: productsError } = await serviceClient
@@ -89,7 +118,7 @@ export default async function AdminCatalogOverviewPage(props: {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <CategoryDialog />
+          <CategoryDialog categories={categoryList} />
           <ProductDialog categories={categoryList} />
           <VariantDialog products={productList} />
           <ProductImageDialog products={productList} />
@@ -107,7 +136,7 @@ export default async function AdminCatalogOverviewPage(props: {
         </div>
       )}
 
-      {/* Categories Table (Optional bonus to show they exist) */}
+      {/* Categories Table */}
       <Card>
         <CardHeader>
           <CardTitle>Categories</CardTitle>
@@ -115,14 +144,43 @@ export default async function AdminCatalogOverviewPage(props: {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {categoryList.map(cat => (
+            {categoryList.map((cat) => (
               <div key={cat.id} className="flex items-center gap-2 bg-muted/50 border border-border px-3 py-1 rounded-full text-sm">
                 <span className="font-medium">{cat.name}</span>
-                <CategoryDialog category={cat} />
+                <CategoryDialog category={cat} categories={categoryList} />
               </div>
             ))}
             {categoryList.length === 0 && <span className="text-sm text-muted-foreground">No categories defined.</span>}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Restored Create Product Option Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Product Option</CardTitle>
+          <CardDescription>Add sizing, color, or style options to a product.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={saveProductOption} className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-1 min-w-[200px]">
+              <label className="text-xs font-medium">Product</label>
+              <select name="product_id" required className="w-full h-9 px-3 text-sm rounded-md border border-input bg-background">
+                {productList.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1 min-w-[150px]">
+              <label className="text-xs font-medium">Option Name</label>
+              <Input name="name" required placeholder="e.g. Size, Color" className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1 w-24">
+              <label className="text-xs font-medium">Position</label>
+              <Input name="position" type="number" defaultValue="0" className="h-9 text-sm font-mono" />
+            </div>
+            <Button type="submit" className="h-9">Save Option</Button>
+          </form>
         </CardContent>
       </Card>
 
@@ -230,9 +288,52 @@ export default async function AdminCatalogOverviewPage(props: {
                                     Adjust
                                   </Button>
                                 </form>
+
+                                {/* Restored Option Value Assignment Form */}
+                                {product.product_options && product.product_options.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-border/40 space-y-1.5">
+                                    {(product.product_options as ProductOptionRecord[])
+                                      .sort((a, b) => a.position - b.position)
+                                      .map((option) => {
+                                        const assigned = (variant.variant_option_values as VariantOptionValueRecord[] | undefined)?.find((v) => v.option_id === option.id);
+                                        return (
+                                          <form key={option.id} action={setVariantOptionValue} className="flex gap-2 items-center flex-wrap text-xs">
+                                            <input type="hidden" name="product_id" value={product.id} />
+                                            <input type="hidden" name="variant_id" value={variant.id} />
+                                            <input type="hidden" name="option_id" value={option.id} />
+                                            <label className="text-muted-foreground font-medium" htmlFor={`${variant.id}-${option.id}`}>{option.name}:</label>
+                                            <select id={`${variant.id}-${option.id}`} name="option_value_id" defaultValue={assigned?.option_value_id || ""} required className="h-7 px-2 text-xs rounded border border-border bg-background">
+                                              <option value="">Select {option.name}</option>
+                                              {option.product_option_values?.sort((a, b) => a.position - b.position).map((val) => (
+                                                <option key={val.id} value={val.id}>{val.value}</option>
+                                              ))}
+                                            </select>
+                                            <Button type="submit" variant="outline" size="sm" className="h-7 text-xs px-2">Assign</Button>
+                                          </form>
+                                        );
+                                      })}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {/* Restored Add Option Value Form for each Option */}
+                      {product.product_options && product.product_options.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-dashed border-border/60 space-y-2">
+                          <div className="text-xs font-semibold text-muted-foreground">Product Options & Values</div>
+                          {(product.product_options as ProductOptionRecord[]).map((option) => (
+                            <form key={option.id} action={saveOptionValue} className="flex gap-2 items-center flex-wrap bg-muted/20 p-2 rounded border border-border/40 text-xs">
+                              <input type="hidden" name="product_id" value={product.id} />
+                              <input type="hidden" name="option_id" value={option.id} />
+                              <span className="font-medium">Add {option.name}:</span>
+                              <Input name="value" required placeholder="Value (e.g. Red, XL)" className="h-7 w-28 text-xs" />
+                              <Input name="position" type="number" defaultValue={option.product_option_values?.length ?? 0} aria-label={`${option.name} position`} className="h-7 w-16 text-xs font-mono" />
+                              <Button type="submit" variant="secondary" size="sm" className="h-7 text-xs px-2">Add</Button>
+                            </form>
+                          ))}
                         </div>
                       )}
                     </TableCell>

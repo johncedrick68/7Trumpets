@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveCategory } from "@/lib/admin/actions";
 import { Plus, Edit2, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Category = any;
 
-export function CategoryDialog({ category }: { category?: Category }) {
+export function CategoryDialog({
+  category,
+  categories = [],
+}: {
+  category?: Category;
+  categories?: Category[];
+}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -58,6 +65,47 @@ export function CategoryDialog({ category }: { category?: Category }) {
           <div className="space-y-2">
             <Label htmlFor={`cat_desc_${category?.id || 'new'}`}>Description</Label>
             <Textarea id={`cat_desc_${category?.id || 'new'}`} name="description" placeholder="Category details..." defaultValue={category?.description || ""} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`cat_parent_${category?.id || 'new'}`}>Parent Category (Optional)</Label>
+            <Select name="parent_id" defaultValue={category?.parent_id || "none"}>
+              <SelectTrigger id={`cat_parent_${category?.id || 'new'}`}>
+                <SelectValue placeholder="(No Parent)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">(No Parent)</SelectItem>
+                {categories
+                  .filter((c) => c.id !== category?.id)
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor={`cat_pos_${category?.id || 'new'}`}>Position</Label>
+              <Input
+                id={`cat_pos_${category?.id || 'new'}`}
+                name="position"
+                type="number"
+                defaultValue={category?.position ?? 0}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`cat_arch_${category?.id || 'new'}`}>Status</Label>
+              <Select name="archived" defaultValue={category?.archived_at ? "true" : "false"}>
+                <SelectTrigger id={`cat_arch_${category?.id || 'new'}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Active</SelectItem>
+                  <SelectItem value="true">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="pt-4 flex justify-end">

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveProduct } from "@/lib/admin/actions";
 import { Plus, Edit2, Loader2 } from "lucide-react";
@@ -48,7 +49,7 @@ export function ProductDialog({ categories, product }: { categories: Category[],
           
           <div className="space-y-2">
             <Label htmlFor={`prod_cat_${product?.id || 'new'}`}>Category</Label>
-            <Select name="category_id" defaultValue={product?.category_id || ""}>
+            <Select name="category_id" defaultValue={product?.category_id || "none"}>
               <SelectTrigger id={`prod_cat_${product?.id || 'new'}`}>
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
@@ -69,6 +70,16 @@ export function ProductDialog({ categories, product }: { categories: Category[],
           <div className="space-y-2">
             <Label htmlFor={`prod_slug_${product?.id || 'new'}`}>Slug</Label>
             <Input id={`prod_slug_${product?.id || 'new'}`} name="slug" required placeholder="e.g. kingdom-oversized-tee" defaultValue={product?.slug || ""} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`prod_desc_${product?.id || 'new'}`}>Description</Label>
+            <Textarea
+              id={`prod_desc_${product?.id || 'new'}`}
+              name="description"
+              placeholder="Product details, material, and sizing guidance..."
+              defaultValue={product?.description || ""}
+            />
           </div>
 
           <div className="space-y-2">

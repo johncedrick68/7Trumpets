@@ -28,9 +28,9 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
     }
   }
 
-  // Format price from minor units to standard string (e.g. 59900 -> "599.00")
-  const defaultPrice = variant?.price_minor ? (variant.price_minor / 100).toFixed(2) : "";
-  const defaultCompare = variant?.compare_at_price_minor ? (variant.compare_at_price_minor / 100).toFixed(2) : "";
+  // Format price from minor units to standard string (preserve valid 0 centavos)
+  const defaultPrice = typeof variant?.price_minor === "number" ? (variant.price_minor / 100).toFixed(2) : "";
+  const defaultCompare = typeof variant?.compare_at_price_minor === "number" ? (variant.compare_at_price_minor / 100).toFixed(2) : "";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -53,16 +53,25 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
           
           <div className="space-y-2">
             <Label htmlFor={`var_prod_${variant?.id || 'new'}`}>Product</Label>
-            <Select name="product_id" defaultValue={variant?.product_id || productId || ""}>
-              <SelectTrigger id={`var_prod_${variant?.id || 'new'}`}>
-                <SelectValue placeholder="Select a product" />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {variant ? (
+              <div>
+                <input type="hidden" name="product_id" value={variant.product_id || productId || ""} />
+                <div className="text-sm font-medium p-2 bg-muted rounded border border-border">
+                  {products.find((p) => p.id === (variant.product_id || productId))?.name || "Selected Product"}
+                </div>
+              </div>
+            ) : (
+              <Select name="product_id" defaultValue={productId || products[0]?.id || ""}>
+                <SelectTrigger id={`var_prod_${variant?.id || 'new'}`}>
+                  <SelectValue placeholder="Select a product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -95,7 +104,7 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
