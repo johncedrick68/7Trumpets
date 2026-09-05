@@ -4,6 +4,8 @@ import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { deriveCustomerFulfillmentStage } from "@/lib/orders/status";
 import { logServerError } from "@/lib/server-log";
 import { getReceiptSignedUrl, submitGcashProof } from "@/lib/payments/actions";
+import { getGcashConfig } from "@/lib/payments/config";
+import { getOrderReservationDeadline, type ReservationDeadlineResult } from "@/lib/payments/queries";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -95,10 +97,29 @@ export default async function OrderConfirmationPage({
 
   const stageInfo = deriveCustomerFulfillmentStage(order.status);
 
+  const reservationDeadline: ReservationDeadlineResult =
+    payment?.method === "MANUAL_GCASH"
+      ? await getOrderReservationDeadline(order.id)
+      : { state: "NO_RESERVATIONS" };
+
+  const isDeadlineActive = reservationDeadline.state === "ACTIVE";
   const canSubmitProof =
     payment?.method === "MANUAL_GCASH" &&
     order.status === "CONFIRMED" &&
-    (payment.status === "UNPAID" || payment.status === "REJECTED");
+    (payment.status === "UNPAID" || payment.status === "REJECTED") &&
+    isDeadlineActive;
+
+  const gcashConfig = getGcashConfig();
+  const formattedDeadline =
+    reservationDeadline.state === "ACTIVE" || reservationDeadline.state === "EXPIRED"
+      ? new Date(reservationDeadline.expiresAt).toLocaleDateString("en-PH", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null;
 
   return (
     <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-5xl mx-auto">
@@ -225,6 +246,24 @@ export default async function OrderConfirmationPage({
           {/* Left column (Takes up 2/3 space on large screens) */}
           <div className="lg:col-span-2 flex flex-col gap-8">
 
+            {/* Cash on Delivery Payment */}
+            {payment?.method === "COD" && (
+              <Card className="border-border shadow-sm">
+                <CardHeader className="pb-3 border-b border-border">
+                  <CardTitle className="text-lg">Cash on Delivery</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4">
+                  <div className="p-4 text-sm text-blue-900 bg-blue-50 rounded-md border border-blue-200">
+                    💵 <strong>Doorstep Payment:</strong> Please prepare the exact cash amount of{" "}
+                    <strong className="text-foreground">{formatMinorUnitsToPHP(order.total_minor)}</strong> to hand to the courier upon delivery.
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Your order is confirmed and being processed. Payment will be collected and verified upon doorstep delivery.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* GCash Payment */}
             {payment?.method === "MANUAL_GCASH" && (
               <Card className="border-border shadow-sm">
@@ -233,26 +272,69 @@ export default async function OrderConfirmationPage({
                 </CardHeader>
                 <CardContent className="pt-6">
 
-                  {payment.status === "UNPAID" && (
+                  {/* Terminal order cancellation notice */}
+                  {order.status === "CANCELLED" && (
+                    <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6">
+                      <strong>Order Cancelled:</strong> This order has been cancelled and any held inventory reservations have been released.
+                    </div>
+                  )}
+
+                  {/* Elapsed deadline notice (not yet terminally cancelled) */}
+                  {order.status === "CONFIRMED" && reservationDeadline.state === "EXPIRED" && (
+                    <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6">
+                      <strong>Payment Window Expired:</strong> The deadline to submit payment proof for this order has passed{formattedDeadline ? ` (${formattedDeadline})` : ""}. If payment was not submitted, this order will be cancelled by staff.
+                    </div>
+                  )}
+
+                  {/* Abnormal or query error state */}
+                  {order.status === "CONFIRMED" &&
+                    (reservationDeadline.state === "ERROR" ||
+                      reservationDeadline.state === "INVALID_SET" ||
+                      reservationDeadline.state === "NO_RESERVATIONS") &&
+                    (payment.status === "UNPAID" || payment.status === "REJECTED") && (
+                      <div className="p-4 text-sm text-amber-800 bg-amber-50 rounded-md border border-amber-200 mb-6">
+                        <strong>Notice:</strong> Payment status is temporarily unavailable. Please contact support before sending payment.
+                      </div>
+                    )}
+
+                  {payment.status === "UNPAID" && order.status === "CONFIRMED" && reservationDeadline.state === "ACTIVE" && (
                     <div className="mb-6 space-y-4">
                       <h3 className="font-bold text-foreground">📱 How to Pay</h3>
+                      {formattedDeadline && (
+                        <div className="p-3 bg-blue-50/70 border border-blue-200 text-blue-900 rounded-md text-xs">
+                          ⏰ <strong>Payment Deadline:</strong> {formattedDeadline} (Initial 2-hour reservation)
+                        </div>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         Send exactly <strong className="text-foreground">{formatMinorUnitsToPHP(order.total_minor)}</strong> to:
                       </p>
-                      <div className="inline-block px-4 py-3 bg-muted rounded-md font-mono text-xl font-bold tracking-wider">
-                        09XX XXX XXXX
-                      </div>
+                      {gcashConfig.isConfigured ? (
+                        <div className="space-y-1">
+                          <div className="inline-block px-4 py-3 bg-muted rounded-md font-mono text-xl font-bold tracking-wider">
+                            {gcashConfig.accountNumber}
+                          </div>
+                          {gcashConfig.accountName && (
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Account Name: <strong className="text-foreground">{gcashConfig.accountName}</strong>
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-sm text-amber-800 bg-amber-50 rounded-md border border-amber-200">
+                          GCash payment destination is temporarily unavailable. Please contact store support to arrange payment.
+                        </div>
+                      )}
                       <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2 mt-4">
-                        <li>Open GCash → Send Money → enter the number above.</li>
+                        <li>Open GCash → Send Money → enter the account number above.</li>
                         <li>Use <strong className="text-foreground">#{order.order_number}</strong> as the note/reference.</li>
-                        <li>Screenshot the confirmation and upload it below.</li>
+                        <li>Screenshot the confirmation and upload it below before the deadline.</li>
                       </ol>
                     </div>
                   )}
 
                   {payment.status === "SUBMITTED" && (
                     <div className="p-4 text-sm text-blue-800 bg-blue-50 rounded-md border border-blue-200 mb-6">
-                      ⏳ <strong>Under Review</strong> — Receipt received. We&apos;re verifying your payment.
+                      ⏳ <strong>Under Review</strong> — Receipt received. Active reservation held while staff reviews your submission.
                     </div>
                   )}
 
@@ -262,9 +344,9 @@ export default async function OrderConfirmationPage({
                     </div>
                   )}
 
-                  {payment.status === "REJECTED" && (
+                  {payment.status === "REJECTED" && order.status === "CONFIRMED" && reservationDeadline.state === "ACTIVE" && (
                     <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6">
-                      ✕ <strong>Receipt Rejected</strong> — Please upload a corrected GCash receipt below.
+                      ✕ <strong>Receipt Rejected</strong> — Please upload a corrected GCash receipt before {formattedDeadline} (Active retry window).
                     </div>
                   )}
 
@@ -398,7 +480,9 @@ export default async function OrderConfirmationPage({
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between items-center text-sm border-b border-border pb-3">
                   <span className="text-muted-foreground font-medium">Payment</span>
-                  <span className="font-medium text-foreground">Manual GCash</span>
+                  <span className="font-medium text-foreground">
+                    {payment?.method === "COD" ? "Cash on Delivery" : "Manual GCash"}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b border-border pb-3">
                   <span className="text-muted-foreground font-medium">Payment Status</span>

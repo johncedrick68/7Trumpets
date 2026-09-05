@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getOrCreateCart } from "@/lib/cart/actions";
+import { getGcashConfig } from "@/lib/payments/config";
 import { logServerError } from "@/lib/server-log";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
@@ -24,6 +25,14 @@ export async function processCheckout(formData: FormData) {
 
   if (paymentMethod !== "COD" && paymentMethod !== "MANUAL_GCASH") {
     redirect("/checkout?error=invalid_payment_method");
+  }
+
+  if (paymentMethod === "MANUAL_GCASH") {
+    const gcashConfig = getGcashConfig();
+    if (!gcashConfig.isConfigured) {
+      logServerError("checkout.gcash_unavailable", "payment_destination_not_configured");
+      redirect("/checkout?error=gcash_unavailable");
+    }
   }
 
   const supabase = await createClient();
@@ -88,11 +97,11 @@ export async function processCheckout(formData: FormData) {
   // Authoritative shipping calculation: flat ₱150 (15000 minor units)
   const shippingMinor = 15000;
 
-  // MANUAL_GCASH expires in 2 hours (120 minutes); COD expires_at is null
-  const gcashExpiresAt =
+  // MANUAL_GCASH expires in 2 hours (120 minutes); COD requires explicit null
+  const gcashExpiresAt: string | null =
     paymentMethod === "MANUAL_GCASH"
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
-      : undefined;
+      : null;
 
   // 4. Execute atomic RPC via service role client
   const serviceClient = createServiceClient();
