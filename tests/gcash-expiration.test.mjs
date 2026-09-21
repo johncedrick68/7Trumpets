@@ -12,8 +12,8 @@ test("GCash Expiration: Migration creates hardened AAL2 admin RPCs and list elig
   const migration = await read(migrationPath);
 
   // Checks both RPCs are defined
-  assert.match(migration, /CREATE FUNCTION public\.close_expired_gcash_payment/);
-  assert.match(migration, /CREATE FUNCTION public\.list_expired_gcash_payments/);
+  assert.match(migration, /CREATE (?:OR REPLACE )?FUNCTION public\.close_expired_gcash_payment/);
+  assert.match(migration, /CREATE (?:OR REPLACE )?FUNCTION public\.list_expired_gcash_payments/);
 
   // Checks security definer and hardened search_path
   assert.match(migration, /SECURITY DEFINER/);

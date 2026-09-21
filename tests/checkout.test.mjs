@@ -15,10 +15,20 @@ test("checkout action uses trusted database RPC checkout_order and service clien
   assert.match(checkoutAction, /p_lines/);
   assert.match(checkoutAction, /p_shipping_minor/);
   assert.match(checkoutAction, /p_payment_method/);
+  assert.match(checkoutAction, /p_fulfillment_method/);
   assert.match(checkoutAction, /p_delivery/);
+  assert.match(checkoutAction, /getStoreSetting/);
+  assert.doesNotMatch(checkoutAction, /\.from\("orders"\)\s*\.update\(\{ fulfillment_method/);
 
   // Assert no browser-provided financial or pricing overrides
   assert.doesNotMatch(checkoutAction, /formData.*(?:price|subtotal|grand_total|total_minor)/i);
+});
+
+test("fulfillment is committed atomically with checkout", async () => {
+  const migration = await read("supabase/migrations/20260920011000_transactional_fulfillment_checkout.sql");
+  assert.match(migration, /p_fulfillment_method text/);
+  assert.match(migration, /update public\.orders[\s\S]*set fulfillment_method = p_fulfillment_method/);
+  assert.match(migration, /revoke all on function public\.checkout_order.*from public, anon/);
 });
 
 test("checkout action strictly derives customer identity from verified session and validates address ownership", async () => {

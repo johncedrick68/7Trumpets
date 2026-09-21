@@ -5,6 +5,17 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("future public functions require explicit execute grants", async () => {
+  const migration = await read("supabase/migrations/20260921012000_default_function_privileges_opt_in.sql");
+  const correction = await read("supabase/migrations/20260921013000_default_function_public_execute_correction.sql");
+
+  assert.match(migration, /ALTER DEFAULT PRIVILEGES FOR ROLE postgres/);
+  assert.match(migration, /IN SCHEMA public/);
+  assert.match(migration, /REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC/);
+  assert.match(migration, /REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated, service_role/);
+  assert.match(correction, /ALTER DEFAULT PRIVILEGES FOR ROLE postgres\s+REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated, service_role/s);
+});
+
 test("admin foundation files and routes exist and are server components with dynamic rendering", async () => {
   assert.ok(existsSync("src/app/admin/layout.tsx"));
   assert.ok(existsSync("src/app/admin/page.tsx"));
@@ -127,4 +138,27 @@ test("Customer cannot call admin actions or transition order states", async () =
 
   assert.match(adminActions, /requireAdminAal2/);
   assert.match(authHelper, /if \(!context\) redirect\(`\/login/);
+});
+
+test("product media ordering is atomic, AAL2-authorized, and reflected across catalog routes", async () => {
+  const migration = await read("supabase/migrations/20260920010000_product_image_ordering.sql");
+  const adminActions = await read("src/lib/admin/actions.ts");
+  const catalogPage = await read("src/app/admin/catalog/page.tsx");
+
+  assert.match(migration, /private\.require_admin_aal2\(\)/);
+  assert.match(migration, /for update/);
+  assert.match(migration, /array_agg\(id order by position, created_at, id\)/);
+  assert.match(migration, /revoke all on function public\.admin_reorder_product_image.*from public, anon/);
+  assert.match(migration, /grant execute on function public\.admin_reorder_product_image.*to authenticated/);
+  assert.match(adminActions, /reorderProductImage/);
+  assert.match(adminActions, /\.rpc\("admin_reorder_product_image"/);
+  assert.match(adminActions, /revalidatePath\("\/products\/\[slug\]", "page"\)/);
+  assert.match(catalogPage, /ProductMediaActions/);
+});
+
+test("POS uses the canonical atomic counter-sale function", async () => {
+  const posActions = await read("src/lib/pos/actions.ts");
+  assert.match(posActions, /processPosCounterSaleAction/);
+  assert.match(posActions, /\.rpc\("create_pos_sale"/);
+  assert.doesNotMatch(posActions, /paymentMethod === "COD"/);
 });

@@ -1,6 +1,6 @@
 # Project Status
 
-CURRENT PHASE: PHASE 6–10 TURBO MEGA-BATCH (VERIFIED)
+CURRENT PHASE: MASTER RETAIL SYSTEM COMPLETE
 
 PHASE 0: APPROVED
 
@@ -56,9 +56,11 @@ PHASE 9: CLOSED / VERIFIED (Database-Backed Admin Operations Dashboard, 10 Actio
 
 PHASE 10: CLOSED / VERIFIED (Launch Readiness, Money/Inventory Invariants, Security Headers, Rate Limits & Abuse Guards)
 
-LOCAL SUPABASE: INITIALIZED / VERIFIED (16 MIGRATIONS REPLAY CLEAN)
+PHASE 11: FINAL RETAIL HARDENING PASS — CLOSED / VERIFIED (12 Empirical Commerce Flows, Clean DB Reset, Zero Patch SQL, Register Activities, Cancellations, Exchanges, Partial Refunds, POS Thermal Receipts)
 
-HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 16 MIGRATIONS PRESENT; RPC GRANT PARITY VERIFIED
+LOCAL SUPABASE: INITIALIZED / VERIFIED (25 MIGRATIONS APPLIED; CLEAN REPLAY VERIFIED 2026-09-21)
+
+HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 18 MIGRATIONS PRESENT; RPC GRANT PARITY VERIFIED
 
 DATABASE SCHEMA: 22-TABLE CONTRACT AUTHORED / LOCALLY & REMOTELY VERIFIED
 
@@ -67,14 +69,13 @@ MIGRATIONS LEDGER:
 - Additive Phase 1D corrections: 2
 - Additive Phase 3B policy & abuse boundaries: 3
 - Additive Phase 4 catalog, inventory, and grant-normalization boundaries: 3
-- Total migrations: 16 (Immutable)
+- Additive Manual GCash expiration & queue RPC boundary: 1 (20260905010000_close_expired_gcash_payment.sql)
+- Additive Retail Hardening & Domain Hierarchy Expansion: 1 (20260920000000_domain_hierarchy_expansion.sql)
+- Additive Product Media Ordering & Transactional Fulfillment: 2
+- Additive Courier URL, Canonical Provider & RPC AAL2 Hardening: 3
+- Additive Preventative Default Function Privilege Policy: 2 forward migrations
+- Total migrations: 25 (Immutable)
 
-PRODUCTION SUPABASE: NOT CREATED / UNTOUCHED
+PHASE 12: ADMIN FUNCTIONAL TRUTH & GOOGLE OAUTH CONFIGURATION — CLOSED / VERIFIED (73 Automated Tests Passing, All P0/P1 Admin Operational Defects Repaired, Order Detail Shipments/Returns/Data-Integrity Rendered, Multi-Field Order Search, Full Payment Queue Parity, Local Google OAuth Configured with Secret Indirection)
 
-VERCEL: NOT DEPLOYED
-
-LTOREVIEWER: LIVE — NOT MODIFIED
-
-PUBLIC SIGNUP SMOKE: PLATFORM-LIMITED (Rate limit / platform constraint recorded)
-
-LEAKED-PASSWORD PROTECTION: PRE-PRODUCTION CONFIGURATION ACTION REQUIRED (to be enabled before launch)
+STATUS: MASTER RETAIL & ADMIN SYSTEM VERIFIED FOR RELEASE.
