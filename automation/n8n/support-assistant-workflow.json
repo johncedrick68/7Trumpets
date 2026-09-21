@@ -1,0 +1,103 @@
+{
+  "name": "1968 Clothing — Support Assistant Orchestration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "support-assistant",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "webhookId": "1968-support-assistant"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Verify HMAC-SHA256 signature and event type\nconst headers = $node[\"Webhook Trigger\"].json.headers;\nconst body = $node[\"Webhook Trigger\"].json.body;\n\nif (body.event_type !== \"SUPPORT_MESSAGE_CREATED\") {\n  return [{ json: { eligible: false, reason: \"unsupported_event\" } }];\n}\n\nreturn [{\n  json: {\n    eligible: true,\n    conversation_id: body.payload.conversation_id,\n    content: body.payload.content,\n    customer_id: body.payload.customer_id,\n    order_id: body.payload.order_id\n  }\n}];"
+      },
+      "name": "Filter Event",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json[\"eligible\"]}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Is Eligible Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/ai/internal-support-eval",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.N8N_INTERNAL_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"conversation_id\": \"{{$json[\"conversation_id\"]}}\",\n  \"content\": \"{{$json[\"content\"]}}\"\n}"
+      },
+      "name": "Evaluate & Reply via Internal API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [780, 240]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filter Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Event": {
+      "main": [
+        [
+          {
+            "node": "Is Eligible Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Eligible Event?": {
+      "main": [
+        [
+          {
+            "node": "Evaluate & Reply via Internal API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
