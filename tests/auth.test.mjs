@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { safeRedirectPath } from "../src/lib/auth/redirect.ts";
+import { safeAdminRedirectPath, safeCustomerRedirectPath, safeRedirectPath } from "../src/lib/auth/redirect.ts";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -19,6 +19,19 @@ test("redirects accept only internal paths", () => {
   assert.strictEqual(safeRedirectPath("javascript:alert(1)"), "/account");
   assert.strictEqual(safeRedirectPath("data:text/html,test"), "/account");
   assert.strictEqual(safeRedirectPath(null, "/account"), "/account");
+});
+
+test("admin redirects remain inside the Admin route tree", () => {
+  assert.strictEqual(safeAdminRedirectPath("/admin/orders"), "/admin/orders");
+  assert.strictEqual(safeAdminRedirectPath("/account"), "/admin");
+  assert.strictEqual(safeAdminRedirectPath("https://evil.example"), "/admin");
+});
+
+test("customer redirects cannot enter Admin or MFA route trees", () => {
+  assert.strictEqual(safeCustomerRedirectPath("/orders"), "/orders");
+  assert.strictEqual(safeCustomerRedirectPath("/admin"), "/account");
+  assert.strictEqual(safeCustomerRedirectPath("/admin/orders"), "/account");
+  assert.strictEqual(safeCustomerRedirectPath("/mfa/enroll"), "/account");
 });
 
 test("support authentication uses the canonical login route and sanitizes return targets", async () => {
