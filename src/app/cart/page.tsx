@@ -1,154 +1,240 @@
 import Link from "next/link";
+import Image from "next/image";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { getOrCreateCart, removeCartItem, updateCartItemQuantity } from "@/lib/cart/actions";
-import { BagIcon, ShieldCheckIcon, ArrowRightIcon } from "@/components/icons";
+import { BagIcon, ArrowRightIcon, ShieldCheckIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Trash2 } from "lucide-react";
+import { getStoreSetting } from "@/lib/settings/queries";
+import { calculateShippingMinor } from "@/lib/checkout/shipping";
 
 export const dynamic = "force-dynamic";
 
 export default async function CartPage() {
-  const cart = await getOrCreateCart();
+  const [cart, fulfillmentSettings] = await Promise.all([
+    getOrCreateCart(),
+    getStoreSetting<{ shipping_fee_minor: number; free_shipping_threshold_minor?: number }>(
+      "fulfillment",
+      { shipping_fee_minor: 15000, free_shipping_threshold_minor: 350000 },
+    ),
+  ]);
 
   if (!cart) {
     return (
-      <main className="catalog-main">
-        <div className="catalog-container">
-          <div className="auth-card" style={{ textAlign: "center" }}>
-            <div style={{ display: "inline-flex", justifyContent: "center", marginBottom: "1rem", color: "var(--ink-muted)" }}>
-              <BagIcon size={36} />
-            </div>
-            <p className="eyebrow" style={{ justifyContent: "center" }}>Shopping Bag</p>
-            <h2 style={{ fontSize: "1.4rem", fontWeight: 700, margin: "0 0 0.5rem" }}>Sign in to view your bag</h2>
-            <p style={{ color: "var(--ink-secondary)", margin: "0 0 1.5rem", fontSize: "14px" }}>
-              Sign in with your account or Google to manage your streetwear pieces and proceed to checkout.
-            </p>
-            <Link href="/login?next=/cart" className="btn btn-primary" style={{ gap: "0.5rem" }}>
-              <span>Sign In</span>
-              <ArrowRightIcon size={14} />
-            </Link>
+      <main className="transaction-container page-section min-h-[60vh]">
+        <header className="mx-auto mb-8 max-w-xl text-center">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            Shopping bag
+          </p>
+          <h1 className="mt-2 text-h1 text-foreground">
+            Your bag is waiting
+          </h1>
+        </header>
+        <div className="mx-auto w-full max-w-md text-center">
+          <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <BagIcon size={24} />
           </div>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">Sign in to access your bag</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            Use your account or Google to review saved items and continue to checkout.
+          </p>
+          <Button asChild className="mt-6 h-12 w-full gap-2 bg-neutral-950 font-semibold text-white hover:bg-neutral-800" size="lg">
+            <Link href="/login?next=/cart">
+              <span>Sign In</span>
+              <ArrowRightIcon size={16} />
+            </Link>
+          </Button>
+          <Link href="/products" className="mt-4 inline-flex min-h-11 items-center justify-center text-sm font-semibold text-foreground underline-offset-4 hover:underline">
+            Continue shopping
+          </Link>
         </div>
       </main>
     );
   }
 
-  return (
-    <main className="catalog-main">
-      <div className="catalog-container">
-        <header style={{ marginBottom: "1.75rem" }}>
-          <p className="eyebrow">Shopping Bag</p>
-          <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: "0 0 0.25rem", letterSpacing: "-0.02em" }}>
-            Your Bag ({cart.item_count} {cart.item_count === 1 ? "piece" : "pieces"})
-          </h1>
-        </header>
+  const shippingMinor = calculateShippingMinor(cart.subtotal_minor, "SHIPMENT", fulfillmentSettings);
+  const totalMinor = cart.subtotal_minor + shippingMinor;
 
-        {cart.items.length === 0 ? (
-          <div className="card-surface" style={{ textAlign: "center", padding: "4rem 1.5rem" }}>
-            <div style={{ display: "inline-flex", justifyContent: "center", marginBottom: "1rem", color: "var(--ink-muted)" }}>
-              <BagIcon size={40} />
-            </div>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 0.5rem" }}>Your bag is empty</h2>
-            <p style={{ color: "var(--ink-secondary)", margin: "0 0 1.5rem", fontSize: "14px" }}>
-              Explore the latest 1968 Clothing archival collection drops.
-            </p>
-            <Link href="/products" className="btn btn-primary" style={{ gap: "0.5rem" }}>
-              <span>Explore Collection</span>
-              <ArrowRightIcon size={14} />
-            </Link>
+  return (
+    <main className="transaction-container page-section min-h-screen">
+      {/* Page Header */}
+      <header className="mb-8 md:mb-10">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          Shopping Bag
+        </p>
+        <h1 className="mt-1 text-h1 text-foreground">
+          Your Bag ({cart.item_count} {cart.item_count === 1 ? "piece" : "pieces"})
+        </h1>
+      </header>
+
+      {cart.items.length === 0 ? (
+        <div className="py-20 text-center max-w-lg mx-auto rounded-xl border border-border border-dashed bg-muted/10 p-8">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground mx-auto mb-4">
+            <BagIcon size={32} />
           </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem", alignItems: "start" }}>
-            {/* Items List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {cart.items.map((item) => (
-                <article key={item.id} className="card-surface" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
-                  <div style={{ flex: "1 1 200px" }}>
-                    <h2 style={{ fontSize: "1.05rem", fontWeight: 700, margin: "0 0 0.25rem" }}>
-                      <Link href={`/products/${item.product_slug}`}>
+          <h2 className="text-h2 text-foreground">Your shopping bag is empty</h2>
+          <p className="text-sm text-muted-foreground mt-1 mb-6 leading-relaxed">
+            Explore the latest 1968 Clothing archival drop pieces and find your fit.
+          </p>
+          <Button asChild size="lg" className="bg-neutral-950 text-white hover:bg-neutral-800 font-semibold px-6">
+            <Link href="/products" className="flex items-center gap-2">
+              <span>Explore Collection</span>
+              <ArrowRightIcon size={16} />
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          {/* Cart Items List */}
+          <div className="lg:col-span-7 xl:col-span-8 divide-y divide-border border-y border-border">
+            {cart.items.map((item) => (
+              <div
+                key={item.id}
+                className="py-6 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between"
+              >
+                <div className="flex gap-4 sm:gap-5 items-start w-full sm:w-auto">
+                  {/* Item Image Thumbnail */}
+                  <Link
+                    href={`/products/${item.product_slug}`}
+                    className="relative w-20 h-24 sm:w-24 sm:h-28 rounded-md bg-neutral-100 dark:bg-neutral-900 overflow-hidden border border-border/60 shrink-0 block"
+                    aria-label={item.product_name}
+                  >
+                    <Image
+                      src={item.image_path || "/images/1968%20CLOTHING%20V1.webp"}
+                      alt={item.product_name}
+                      fill
+                      sizes="96px"
+                      className="object-cover object-center"
+                    />
+                  </Link>
+
+                  {/* Item Details */}
+                  <div className="flex flex-col gap-1 min-w-0 flex-1">
+                    <h2 className="text-body font-bold text-foreground">
+                      <Link
+                        href={`/products/${item.product_slug}`}
+                        className="hover:underline underline-offset-4"
+                      >
                         {item.product_name}
                       </Link>
                     </h2>
-                    {item.variant_name && (
-                      <p style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--ink-muted)", margin: "0 0 0.25rem" }}>
-                        SIZE: {item.variant_name}
-                      </p>
-                    )}
-                    <p style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--ink-muted)", margin: "0 0 0.5rem" }}>
-                      SKU: {item.sku}
-                    </p>
-                    <p style={{ fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-mono)", margin: 0 }}>
+
+                    <div className="flex items-center gap-2 flex-wrap font-mono text-xs text-muted-foreground mt-0.5">
+                      {item.variant_name && (
+                        <span className="font-semibold text-foreground uppercase">
+                          Size: {item.variant_name}
+                        </span>
+                      )}
+                      <span>·</span>
+                      <span>SKU: {item.sku}</span>
+                    </div>
+
+                    <div className="font-mono text-xs text-muted-foreground mt-1">
                       {formatMinorUnitsToPHP(item.price_minor)} each
-                    </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quantity Controls & Line Total */}
+                <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-0 border-border/50">
+                  <form action={updateCartItemQuantity} className="flex items-center gap-2">
+                    <input type="hidden" name="item_id" value={item.id} />
+                    <label htmlFor={`qty-${item.id}`} className="sr-only">
+                      Quantity for {item.product_name}
+                    </label>
+                    <Input
+                      id={`qty-${item.id}`}
+                      type="number"
+                      name="quantity"
+                      min="1"
+                      max="99"
+                      defaultValue={item.quantity}
+                      className="w-16 h-10 text-center font-mono text-sm"
+                    />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="sm"
+                      className="h-10 px-3 text-xs font-semibold"
+                    >
+                      Update
+                    </Button>
+                  </form>
+
+                  <div className="font-mono font-bold text-base text-foreground text-right min-w-[90px]">
+                    {formatMinorUnitsToPHP(item.line_total_minor)}
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-                    <form action={updateCartItemQuantity} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <input type="hidden" name="item_id" value={item.id} />
-                      <input
-                        id={`qty-${item.id}`}
-                        type="number"
-                        name="quantity"
-                        min="1"
-                        max="99"
-                        defaultValue={item.quantity}
-                        style={{ width: "55px", padding: "0.35rem", minHeight: "36px", textAlign: "center" }}
-                      />
-                      <button type="submit" className="btn btn-secondary small-btn" style={{ minHeight: "36px", padding: "0.3rem 0.6rem" }}>
-                        Update
-                      </button>
-                    </form>
-
-                    <span style={{ fontSize: "1.1rem", fontWeight: 800, fontFamily: "var(--font-mono)", minWidth: "80px", textAlign: "right" }}>
-                      {formatMinorUnitsToPHP(item.line_total_minor)}
-                    </span>
-
-                    <form action={removeCartItem}>
-                      <input type="hidden" name="item_id" value={item.id} />
-                      <button type="submit" style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: "1.4rem", padding: "0.4rem" }} title="Remove item">
-                        &times;
-                      </button>
-                    </form>
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            {/* Summary Sidebar */}
-            <aside className="card-surface" style={{ padding: "1.5rem" }}>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 1rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem" }}>
-                Order Summary
-              </h2>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", marginBottom: "0.75rem" }}>
-                <span style={{ color: "var(--ink-secondary)" }}>Subtotal ({cart.item_count} pieces)</span>
-                <strong style={{ fontFamily: "var(--font-mono)" }}>{formatMinorUnitsToPHP(cart.subtotal_minor)}</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--ink-muted)", marginBottom: "1.25rem" }}>
-                <span>Shipping</span>
-                <span>Calculated at checkout</span>
-              </div>
-              <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.2rem" }}>
-                  <span>Total Amount</span>
-                  <strong style={{ color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{formatMinorUnitsToPHP(cart.subtotal_minor)}</strong>
+                  <form action={removeCartItem}>
+                    <input type="hidden" name="item_id" value={item.id} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-9 h-9"
+                      title="Remove item"
+                      aria-label={`Remove ${item.product_name} from bag`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </form>
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                <Link href="/checkout" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", gap: "0.4rem" }}>
-                  <span>Proceed to Checkout</span>
-                  <ArrowRightIcon size={14} />
-                </Link>
-                <Link href="/products" className="btn btn-secondary" style={{ width: "100%", justifyContent: "center" }}>
-                  Continue Shopping
-                </Link>
+            ))}
+          </div>
+
+          {/* Sticky Order Summary Sidebar */}
+          <aside className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-xs">
+              <h2 className="text-xl font-bold tracking-tight text-foreground mb-4">
+                Order Summary
+              </h2>
+
+              <div className="space-y-3 font-mono text-sm border-b border-border pb-5 mb-5">
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Subtotal ({cart.item_count} items)</span>
+                  <span className="font-bold text-foreground">
+                    {formatMinorUnitsToPHP(cart.subtotal_minor)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>{shippingMinor === 0 ? "Free delivery" : "Standard delivery"}</span>
+                  <span className="font-bold text-foreground">
+                    {formatMinorUnitsToPHP(shippingMinor)}
+                  </span>
+                </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1.25rem", color: "var(--ink-muted)", fontSize: "12px", justifyContent: "center" }}>
-                <ShieldCheckIcon size={14} />
-                <span>Encrypted checkout &amp; GCash protection</span>
+              <div className="flex justify-between items-baseline mb-6">
+                <div>
+                  <span className="text-base font-bold text-foreground block">Total</span>
+                  <span className="text-[11px] text-muted-foreground font-mono">Includes VAT</span>
+                </div>
+                <span className="font-mono text-2xl font-black text-foreground">
+                  {formatMinorUnitsToPHP(totalMinor)}
+                </span>
               </div>
-            </aside>
-          </div>
-        )}
-      </div>
+
+              <Button
+                asChild
+                size="lg"
+                className="w-full h-13 bg-neutral-950 text-white hover:bg-neutral-800 font-bold text-sm uppercase tracking-wider rounded-md transition-all shadow-xs flex items-center justify-center gap-2"
+              >
+                <Link href="/checkout">
+                  <span>Proceed to Checkout</span>
+                  <ArrowRightIcon size={16} />
+                </Link>
+              </Button>
+
+              <div className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground font-mono">
+                <ShieldCheckIcon size={15} />
+                <span>Secure Checkout · Doorstep COD / GCash</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </main>
   );
 }

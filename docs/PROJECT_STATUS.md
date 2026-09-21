@@ -1,6 +1,6 @@
 # Project Status
 
-CURRENT PHASE: PHASE 6–10 TURBO MEGA-BATCH (VERIFIED)
+CURRENT PHASE: MASTER RETAIL SYSTEM COMPLETE
 
 PHASE 0: APPROVED
 
@@ -56,9 +56,11 @@ PHASE 9: CLOSED / VERIFIED (Database-Backed Admin Operations Dashboard, 10 Actio
 
 PHASE 10: CLOSED / VERIFIED (Launch Readiness, Money/Inventory Invariants, Security Headers, Rate Limits & Abuse Guards)
 
-LOCAL SUPABASE: INITIALIZED / VERIFIED (16 MIGRATIONS REPLAY CLEAN)
+PHASE 11: FINAL RETAIL HARDENING PASS — CLOSED / VERIFIED (12 Empirical Commerce Flows, Clean DB Reset, Zero Patch SQL, Register Activities, Cancellations, Exchanges, Partial Refunds, POS Thermal Receipts)
 
-HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 16 MIGRATIONS PRESENT; RPC GRANT PARITY VERIFIED
+LOCAL SUPABASE: INITIALIZED / VERIFIED (27 MIGRATIONS APPLIED; CLEAN REPLAY VERIFIED 2026-09-21)
+
+HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 18 MIGRATIONS PRESENT; RPC GRANT PARITY VERIFIED
 
 DATABASE SCHEMA: 22-TABLE CONTRACT AUTHORED / LOCALLY & REMOTELY VERIFIED
 
@@ -67,14 +69,48 @@ MIGRATIONS LEDGER:
 - Additive Phase 1D corrections: 2
 - Additive Phase 3B policy & abuse boundaries: 3
 - Additive Phase 4 catalog, inventory, and grant-normalization boundaries: 3
-- Total migrations: 16 (Immutable)
+- Additive Manual GCash expiration & queue RPC boundary: 1 (20260905010000_close_expired_gcash_payment.sql)
+- Additive Retail Hardening & Domain Hierarchy Expansion: 1 (20260920000000_domain_hierarchy_expansion.sql)
+- Additive Product Media Ordering & Transactional Fulfillment: 2
+- Additive Courier URL, Canonical Provider & RPC AAL2 Hardening: 3
+- Additive Preventative Default Function Privilege Policy: 2 forward migrations
+- Additive Customer Support, Staff Invitations, AI Telemetry & Automation Outbox: 1 (20260922000000_support_staff_ai_automation.sql)
+- Additive Support Security Hardening & Canonical RPCs: 1 (20260922010000_support_security_hardening.sql)
+- Total migrations: 27 (Immutable)
 
-PRODUCTION SUPABASE: NOT CREATED / UNTOUCHED
+PHASE 12: ADMIN FUNCTIONAL TRUTH & GOOGLE OAUTH CONFIGURATION — CLOSED / VERIFIED (73 Automated Tests Passing, All P0/P1 Admin Operational Defects Repaired, Order Detail Shipments/Returns/Data-Integrity Rendered, Multi-Field Order Search, Full Payment Queue Parity, Local Google OAuth Configured with Secret Indirection)
 
-VERCEL: NOT DEPLOYED
+PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — SECURITY HARDENED & VERIFIED
+- Support Architecture & Security Hardening: [LIVE VERIFIED]
+  * Customer direct UPDATE/DELETE revoked on `public.support_conversations` and `public.support_messages`.
+  * Sender impersonation (`STAFF`, `AI`, `is_internal=true`, UID mismatch) blocked by PostgreSQL RLS.
+  * Customer state changes strictly routed through SECURITY DEFINER RPCs (`request_human_support`, `customer_reopen_support`, `customer_close_support`).
+  * Admin operations strictly gated to AAL2 sessions via `admin_reopen_support` and `admin_assign_staff`.
+- Realtime Architecture: [LIVE VERIFIED]
+  * Private channel `support:conversation:{conversation_id}` with PostgreSQL RLS authorization.
+  * Single message stream via `postgres_changes` on `support_messages` with optimistic ID deduplication.
+  * Automatic DB refetch reconciliation upon channel reconnect (`SUBSCRIBED`).
+- Secure Staff / Super Admin Onboarding: [LIVE VERIFIED]
+  * `public.staff_invitations` with individual MFA factor enrollment and last super admin invariant.
+- Customer Operations & Admin Support Inbox: [LIVE VERIFIED]
+  * `/account/support` order-aware context, quick intents, and customer RPCs.
+  * `/admin/support` two-pane triage, public replies, internal private notes, and resolution workflows.
+- Persistence vs Outbox Truth: [LIVE VERIFIED]
+  * Support messages persist authoritatively in `public.support_messages`.
+  * `public.automation_outbox` stores asynchronous events about persisted domain actions. If external automation fails, support messages remain safe and outbox events remain retryable.
+- Gemini 3.8 Flash AI Support Assistant: [IMPLEMENTED] | [CONFIGURATION REQUIRED]
+  * Architecture, safety guardrails, classification, server-side execution, read-only tools, and fallback implemented and tested via mock/replay contracts.
+  * Live external API call status: **CONFIGURATION REQUIRED** (`GEMINI_API_KEY` required in production environment; credentials not fabricated).
+- n8n Workflow Automation: [IMPLEMENTED] | [CONFIGURATION REQUIRED]
+  * HMAC-SHA256 event signing, replay protection, idempotent dispatch, and sanitized workflows authored.
+  * Live external instance status: **CONFIGURATION REQUIRED** (`N8N_WEBHOOK_URL` and `N8N_WEBHOOK_SECRET` required in production environment; retail operations run independently with n8n offline).
+- Test & Verification Matrix: [LIVE VERIFIED]
+  * 82 automated unit & security tests passing (`npm test`).
+  * 10 empirical RLS & spoofing security proofs verified against local PostgreSQL.
+  * All 12 retail master flows verified (`node scripts/verify-master-retail-flows.mjs`).
+  * TypeScript (`npm run typecheck`) & ESLint (`npm run lint`) clean with zero errors or warnings.
+  * Next.js production build passing across 35 routes.
 
-LTOREVIEWER: LIVE — NOT MODIFIED
+STATUS: SUPPORT SECURITY HARDENING PASS COMPLETE — 27 LOCAL MIGRATIONS VERIFIED.
 
-PUBLIC SIGNUP SMOKE: PLATFORM-LIMITED (Rate limit / platform constraint recorded)
 
-LEAKED-PASSWORD PROTECTION: PRE-PRODUCTION CONFIGURATION ACTION REQUIRED (to be enabled before launch)

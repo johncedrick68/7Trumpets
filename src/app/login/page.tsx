@@ -1,91 +1,149 @@
 import Link from "next/link";
-import { signIn, signInWithGoogle } from "@/lib/auth/actions";
-import { GoogleIcon } from "@/components/icons";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; next?: string; signedOut?: string }>;
-}) {
+import { signIn, signInWithGoogle } from "@/lib/auth/actions";
+import { AuthFrame } from "@/components/auth-frame";
+import { GoogleIcon } from "@/components/icons";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Label } from "@/components/ui/label";
+import { AlertCircle } from "lucide-react";
+import { AuthSubmitButton } from "@/components/auth-submit-button";
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; signedOut?: string }> }) {
   const params = await searchParams;
+  const isCredentialsError = params.error === "credentials";
+  const oauthError = params.error === "oauth"
+    ? "Google sign-in could not be completed. Try email sign-in or check the provider configuration."
+    : null;
 
   return (
-    <main style={{ minHeight: "calc(100vh - 120px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem var(--pad-page)" }}>
-      <section className="auth-card" aria-labelledby="login-title">
-        <p className="eyebrow">Customer Account</p>
-        <h1 id="login-title" style={{ fontSize: "1.8rem", fontWeight: 800, margin: "0 0 0.4rem", letterSpacing: "-0.02em" }}>
-          Welcome back
-        </h1>
-        <p style={{ color: "var(--ink-secondary)", fontSize: "14px", margin: "0 0 1.5rem" }}>
-          Sign in to access your orders and account settings.
+    <AuthFrame>
+      <div className="w-full">
+        <div className="mb-7">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Customer Account
+          </p>
+          <h1 className="mt-2 text-h2 text-foreground">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Sign in to manage orders, delivery details, and account settings.
+          </p>
+        </div>
+
+        <div className="space-y-5">
+          {params.signedOut === "1" && (
+            <Alert className="border-border">
+              <AlertDescription>You have been signed out.</AlertDescription>
+            </Alert>
+          )}
+
+          {/* OAuth */}
+          <form action={signInWithGoogle}>
+            <input type="hidden" name="next" value={params.next ?? "/account"} />
+            <AuthSubmitButton pendingText="Connecting…" variant="outline" className="gap-2.5 border-border hover:bg-muted/40">
+              <GoogleIcon size={17} />
+              <span>Continue with Google</span>
+            </AuthSubmitButton>
+          </form>
+
+          {oauthError && (
+            <p
+              id="oauth-error"
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              {oauthError}
+            </p>
+          )}
+
+          <div className="flex items-center gap-3 my-5" aria-label="or continue with email">
+            <span className="h-px flex-1 bg-border" />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              or continue with email
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* Email / Password Form */}
+          <form action={signIn} className="space-y-4">
+            <input type="hidden" name="next" value={params.next ?? "/account"} />
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-semibold text-foreground">
+                Email address
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                maxLength={254}
+                required
+                placeholder="you@example.com"
+                className="h-12 bg-background text-sm"
+              />
+            </div>
+
+            {/* Password + inline credentials error + Sign In */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label
+                  htmlFor="password"
+                  className="text-xs font-semibold text-foreground"
+                >
+                  Password
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <PasswordInput
+                id="password"
+                name="password"
+                autoComplete="current-password"
+                required
+                placeholder="••••••••"
+                aria-describedby={isCredentialsError ? "login-error" : undefined}
+                aria-invalid={isCredentialsError ? true : undefined}
+              />
+            </div>
+
+            {/* Inline credentials error — between password and Sign In */}
+            {isCredentialsError && (
+              <p
+                id="login-error"
+                role="alert"
+                aria-live="assertive"
+                className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                The email or password is incorrect. Try again or reset your password.
+              </p>
+            )}
+
+            {/* Primary Action */}
+            <div className="pt-1">
+              <AuthSubmitButton pendingText="Signing in…">Sign In</AuthSubmitButton>
+            </div>
+          </form>
+        </div>
+
+        <p className="mt-8 border-t border-border pt-6 pb-2 text-sm text-center text-muted-foreground">
+          New to 1968 Clothing?{" "}
+          <Link
+            href="/signup"
+            className="font-semibold text-foreground underline-offset-4 hover:underline"
+          >
+            Create an account
+          </Link>
         </p>
-
-        {params.signedOut === "1" && (
-          <p className="notice" role="status">
-            You are signed out.
-          </p>
-        )}
-        {params.error === "credentials" && (
-          <p className="error" role="alert">
-            Invalid email or password.
-          </p>
-        )}
-        {params.error === "oauth" && (
-          <p className="error" role="alert">
-            Google authentication failed. Please check your provider configuration.
-          </p>
-        )}
-
-        {/* Google OAuth action */}
-        <form action={signInWithGoogle} style={{ marginBottom: "1rem" }}>
-          <input type="hidden" name="next" value={params.next ?? "/account"} />
-          <button type="submit" className="btn btn-secondary" style={{ width: "100%", justifyContent: "center" }}>
-            <GoogleIcon size={16} />
-            <span>Continue with Google</span>
-          </button>
-        </form>
-
-        <div style={{ display: "flex", alignItems: "center", margin: "1.25rem 0", color: "var(--ink-muted)" }}>
-          <hr style={{ flex: 1, borderColor: "var(--border)" }} />
-          <span style={{ padding: "0 0.75rem", fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            or continue with email
-          </span>
-          <hr style={{ flex: 1, borderColor: "var(--border)" }} />
-        </div>
-
-        <form action={signIn}>
-          <input type="hidden" name="next" value={params.next ?? "/account"} />
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            maxLength={254}
-            required
-            placeholder="you@example.com"
-          />
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            placeholder="••••••••"
-          />
-          <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }}>
-            Sign In &rarr;
-          </button>
-        </form>
-
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.5rem", borderTop: "1px solid var(--border)", paddingTop: "1rem", fontSize: "13px", color: "var(--ink-muted)" }}>
-          <Link href="/forgot-password" style={{ textDecoration: "underline" }}>Forgot password?</Link>
-          <span>
-            New here? <Link href="/signup" style={{ color: "var(--ink)", fontWeight: 600 }}>Create account &rarr;</Link>
-          </span>
-        </div>
-      </section>
-    </main>
+      </div>
+    </AuthFrame>
   );
 }

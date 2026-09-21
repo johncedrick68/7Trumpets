@@ -1,155 +1,191 @@
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowRight, ShieldCheck, Truck, Sparkles, MapPin } from "lucide-react";
 import { formatMinorUnitsToPHP, getCategories, getProducts } from "@/lib/catalog/queries";
-import { ArrowRightIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+
+import { getStoreSetting } from "@/lib/settings/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [categories, products] = await Promise.all([
+  const [categories, products, heroSetting] = await Promise.all([
     getCategories(),
     getProducts(),
+    getStoreSetting("hero", {
+      title: "Wear the legacy.\nMove the culture.",
+      subtitle: "Limited-run garments shaped by community, heritage, and the streets of Manila. Heavyweight custom cotton with archival screenprint artwork.",
+      cta_text: "Explore Collection",
+      cta_link: "/products",
+    }),
   ]);
 
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
+
   return (
-    <>
-      {/* Editorial Hero */}
-      <section className="hero" aria-labelledby="hero-title">
-        <div className="hero-inner">
-          <p className="eyebrow" style={{ justifyContent: "center" }}>
+    <div className="flex flex-col min-h-screen">
+      {/* ── Editorial Hero ─────────────────────────────────────────── */}
+      <section className="border-b border-border bg-background py-16 sm:py-20 lg:py-24" aria-labelledby="hero-title">
+        <div className="store-container text-center">
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground">
             01 / Drop 01 Archive
           </p>
 
-          <div style={{ margin: "1.25rem auto 1.5rem", maxWidth: "500px" }}>
+          <div className="mx-auto my-6 max-w-[420px] px-4">
             <Image
               src="/images/1968%20Clothing%20Banner%20transparent.png"
               alt="1968 Clothing"
               width={500}
               height={120}
               priority
-              className="hero-banner-img"
-              style={{ width: "100%", height: "auto", objectFit: "contain" }}
+              sizes="(max-width: 768px) 85vw, 420px"
+              className="w-full h-auto object-contain"
             />
           </div>
 
-          <h1 id="hero-title" className="hero-title">
-            Wear the legacy.<br />Move the culture.
+          <h1 id="hero-title" className="text-hero text-foreground max-w-2xl mx-auto whitespace-pre-line">
+            {heroSetting.title}
           </h1>
-          <p className="hero-intro">
-            Limited-run garments shaped by community, history, and the streets we call home. Heavyweight custom cotton with archival screenprint artwork.
+
+          <p className="mt-5 text-body text-muted-foreground max-w-xl mx-auto">
+            {heroSetting.subtitle}
           </p>
 
-          <div className="hero-actions">
-            <Link href="/products" className="btn btn-primary" style={{ padding: "0.8rem 1.8rem" }}>
-              <span>View Collection</span>
-              <ArrowRightIcon size={14} />
-            </Link>
-            <Link href="#story" className="btn btn-secondary">
-              Our Story
-            </Link>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+            <Button asChild size="lg" className="h-12 px-8 font-semibold bg-primary text-primary-foreground rounded-full">
+              <Link href={heroSetting.cta_link || "/products"} className="flex items-center gap-2">
+                <span>{heroSetting.cta_text || "Explore Collection"}</span>
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="h-12 px-8 font-semibold rounded-full">
+              <Link href="#story">
+                Our Story
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* Technical Qualities Strip */}
-      <div className="trust-strip">
-        <div className="trust-item">
-          <div>
-            <strong>01 — Limited Releases</strong>
-            <span>Numbered archival production runs</span>
-          </div>
-        </div>
-        <div className="trust-item">
-          <div>
-            <strong>02 — Designed in Manila</strong>
-            <span>Rooted in Philippine streetwear</span>
-          </div>
-        </div>
-        <div className="trust-item">
-          <div>
-            <strong>03 — Doorstep Delivery</strong>
-            <span>Secure Cash on Delivery &amp; GCash</span>
-          </div>
-        </div>
-        <div className="trust-item">
-          <div>
-            <strong>04 — Guaranteed Genuine</strong>
-            <span>100% Official 1968 merchandise</span>
-          </div>
-        </div>
-      </div>
-
-      <main className="catalog-main">
-        <div className="catalog-container">
-        {/* Drop 01 Releases */}
-        <section aria-labelledby="collection-title">
-          <div className="section-header">
-            <div>
-              <p className="eyebrow">The Current Release</p>
-              <h2 id="collection-title" className="section-title">Drop 01 Pieces</h2>
+      {/* ── Brand Trust & Value Propositions ───────────────────────── */}
+      <section className="border-b border-border bg-muted/30" aria-label="Brand Qualities">
+        <div className="store-container py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-md bg-background border border-border text-foreground shrink-0">
+                <Sparkles className="size-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">01 — Limited Releases</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Archival numbered runs</p>
+              </div>
             </div>
-            <Link href="/products" className="btn btn-secondary small-btn">
-              <span>View All ({products.length})</span>
-              <ArrowRightIcon size={12} />
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-md bg-background border border-border text-foreground shrink-0">
+                <MapPin className="size-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">02 — Manila Heritage</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Rooted in street culture</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-md bg-background border border-border text-foreground shrink-0">
+                <Truck className="size-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">03 — Doorstep Delivery</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Secure COD &amp; GCash</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-md bg-background border border-border text-foreground shrink-0">
+                <ShieldCheck className="size-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">04 — Guaranteed Official</p>
+                <p className="text-xs text-muted-foreground mt-0.5">100% genuine craftsmanship</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Curated Releases ───────────────────────────────────────── */}
+      <main className="store-container store-page flex-1">
+        <section aria-labelledby="collection-heading">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border pb-6">
+            <div>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                Current Release
+              </p>
+              <h2 id="collection-heading" className="mt-1 text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+                Drop 01 Pieces
+              </h2>
+            </div>
+
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-foreground hover:text-muted-foreground transition-colors"
+            >
+              <span>View all {products.length} pieces</span>
+              <ArrowRight className="size-3.5" />
             </Link>
           </div>
 
-          {categories.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "1.75rem" }}>
-              <Link href="/products" className="category-pill active">
-                All
-              </Link>
-              {categories.map((cat) => (
-                <Link key={cat.id} href={`/categories/${cat.slug}`} className="category-pill">
-                  {cat.name}
-                </Link>
-              ))}
-            </div>
-          )}
-
+          {/* Product Grid */}
           {products.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "4rem 1rem", background: "var(--surface)", borderRadius: "var(--radius-sm)" }}>
-              <p style={{ color: "var(--ink-muted)", fontFamily: "var(--font-mono)", fontSize: "13px" }}>
-                Catalog updating...
+            <div className="py-20 text-center rounded-xl border border-dashed border-border bg-muted/20 p-8">
+              <p className="font-bold text-foreground text-base mb-1">
+                Archival Releases Loading
               </p>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+                Our Drop 01 streetwear archive is currently being prepared. Check back shortly or read our story below.
+              </p>
+              <Button asChild variant="outline">
+                <Link href="/products">Browse Catalog</Link>
+              </Button>
             </div>
           ) : (
-            <div className="product-grid">
-              {products.map((product) => {
+            <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4">
+              {products.slice(0, 4).map((product, index) => {
                 const imagePath = product.primary_image_path || "/images/1968%20CLOTHING%20V1.webp";
+                const categoryName = product.category_id ? categoryMap[product.category_id] : null;
 
                 return (
-                  <article key={product.id} className="product-card">
-                    <Link href={`/products/${product.slug}`} className="product-image-wrap" tabIndex={-1} aria-hidden="true">
+                  <article key={product.id} className="group flex flex-col">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="relative block aspect-[4/5] w-full overflow-hidden rounded-lg border border-border bg-neutral-100 transition-colors active:border-foreground/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:border-foreground/40 dark:bg-neutral-900"
+                      aria-label={`View ${product.name}`}
+                    >
                       <Image
                         src={imagePath}
                         alt={product.name}
-                        width={400}
-                        height={400}
-                        loading="lazy"
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        fill
+                        sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
+                        priority={index < 4}
+                        className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
                       />
-                      <span className="badge new">New</span>
+                      {categoryName && (
+                        <span className="absolute top-2.5 left-2.5 bg-neutral-950/90 text-white font-mono text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-xs">
+                          {categoryName}
+                        </span>
+                      )}
                     </Link>
 
-                    <div className="product-card-body">
-                      <h3 className="product-card-title">
-                        <Link href={`/products/${product.slug}`}>{product.name}</Link>
+                    <div className="mt-3 flex flex-col">
+                      <h3 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1">
+                        <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4">
+                          {product.name}
+                        </Link>
                       </h3>
-                      {product.description && (
-                        <p style={{ fontSize: "13px", color: "var(--ink-muted)", margin: "0 0 0.85rem", flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 }}>
-                          {product.description}
-                        </p>
-                      )}
-                      <div className="product-card-prices">
-                        <span className="price-current">
-                          {formatMinorUnitsToPHP(product.min_price_minor)}
-                        </span>
-                      </div>
-                      <Link href={`/products/${product.slug}`} className="btn btn-secondary small-btn" style={{ width: "100%", justifyContent: "center" }}>
-                        <span>Select Size</span>
-                        <ArrowRightIcon size={12} />
-                      </Link>
+                      <p className="mt-1 font-mono text-sm font-bold text-foreground">
+                        {formatMinorUnitsToPHP(product.min_price_minor)}
+                      </p>
                     </div>
                   </article>
                 );
@@ -158,28 +194,38 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* Story Section */}
-        <section id="story" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "clamp(2rem, 5vw, 4rem)", marginTop: "4rem" }}>
-          <div style={{ maxWidth: "700px", margin: "0 auto", textAlign: "center" }}>
-            <p className="eyebrow" style={{ justifyContent: "center" }}>Heritage &amp; Identity</p>
-            <h2 style={{ fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)", fontWeight: 800, margin: "0.5rem 0 1.25rem", letterSpacing: "-0.02em", color: "var(--ink)" }}>
+        {/* ── Brand Heritage Story ────────────────────────────────── */}
+        <section
+          id="story"
+          className="mt-20 sm:mt-28 rounded-2xl border border-border bg-muted/40 p-8 sm:p-12 lg:p-16 text-center"
+          aria-labelledby="story-heading"
+        >
+          <div className="max-w-2xl mx-auto">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Heritage &amp; Identity
+            </p>
+            <h2 id="story-heading" className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-foreground">
               Built by the culture.<br />Worn by the community.
             </h2>
-            <p style={{ fontSize: "15px", color: "var(--ink-secondary)", lineHeight: 1.75, margin: "0 0 2rem" }}>
-              1968 is not just a number—it represents principles of brotherhood, resilience, and creative independence. Every release is a wearable statement built for the daily journey, engineered to carry a story across every street.
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-muted-foreground">
+              1968 is not merely a label—it embodies principles of resilience, brotherhood, and creative independence. Every garment is engineered for the daily journey, crafted to carry heritage across every avenue.
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <Link href="/products" className="btn btn-primary">
-                Shop the Collection &rarr;
-              </Link>
-              <Link href="/orders" className="btn btn-secondary">
-                Track Existing Order
-              </Link>
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button asChild size="lg" className="h-11 px-6 font-semibold bg-primary text-primary-foreground rounded-full">
+                <Link href="/products" className="flex items-center gap-2">
+                  <span>Shop the Collection</span>
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="h-11 px-6 font-semibold rounded-full">
+                <Link href="/orders">
+                  Track Existing Order
+                </Link>
+              </Button>
             </div>
           </div>
         </section>
-        </div>
       </main>
-    </>
+    </div>
   );
 }

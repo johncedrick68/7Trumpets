@@ -16,6 +16,7 @@ export interface CartItemDetail {
   product_id: string;
   product_name: string;
   product_slug: string;
+  image_path?: string | null;
   line_total_minor: number;
 }
 
@@ -75,7 +76,11 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
         products (
           id,
           name,
-          slug
+          slug,
+          product_images (
+            storage_path,
+            position
+          )
         )
       )
     `)
@@ -99,6 +104,16 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
     subtotal += lineTotal;
     totalCount += item.quantity;
 
+    type RawImage = { storage_path?: string; position?: number };
+    const rawImages: RawImage[] = ((product as unknown as { product_images?: RawImage[] })?.product_images || []);
+    const sortedImages = [...rawImages].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const rawPath = sortedImages[0]?.storage_path;
+    const imagePath = rawPath
+      ? rawPath.startsWith("/") || rawPath.startsWith("http")
+        ? rawPath
+        : `/images/${rawPath.split("/").pop()}`
+      : "/images/1968%20CLOTHING%20V1.webp";
+
     return {
       id: item.id,
       variant_id: item.variant_id,
@@ -109,6 +124,7 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
       product_id: variant?.product_id ?? "",
       product_name: product?.name ?? "Unknown Product",
       product_slug: product?.slug ?? "",
+      image_path: imagePath,
       line_total_minor: lineTotal,
     };
   });
@@ -215,6 +231,7 @@ export async function addToCart(formData: FormData) {
   }
 
   revalidatePath("/cart");
+  revalidatePath("/", "layout");  // update header CartBadge across all pages
   redirect("/cart");
 }
 
@@ -247,6 +264,7 @@ export async function updateCartItemQuantity(formData: FormData) {
   }
 
   revalidatePath("/cart");
+  revalidatePath("/", "layout");  // update header CartBadge
   redirect("/cart");
 }
 
@@ -266,5 +284,6 @@ export async function removeCartItem(formData: FormData) {
   }
 
   revalidatePath("/cart");
+  revalidatePath("/", "layout");  // update header CartBadge
   redirect("/cart");
 }

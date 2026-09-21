@@ -15,17 +15,17 @@ export interface CourierInfo {
 export const SUPPORTED_COURIERS: Record<CourierProvider, CourierInfo> = {
   MANUAL: {
     provider: "MANUAL",
-    name: "Standard Direct / In-House Delivery",
+    name: "Standard / In-House",
   },
   LBC: {
     provider: "LBC",
     name: "LBC Express",
-    trackingUrlTemplate: (ref) => `https://www.lbcexpress.com/track/?tracking_no=${encodeURIComponent(ref)}`,
+    trackingUrlTemplate: () => "https://www.lbcexpress.com/ph/track",
   },
   JNT: {
     provider: "JNT",
     name: "J&T Express",
-    trackingUrlTemplate: (ref) => `https://www.jtexpress.ph/index/query/gzquery.html?bills=${encodeURIComponent(ref)}`,
+    trackingUrlTemplate: (ref) => `https://www.jtexpress.ph/track-and-trace?waybillNo=${encodeURIComponent(ref)}`,
   },
   GOGO: {
     provider: "GOGO",
@@ -38,6 +38,21 @@ export const SUPPORTED_COURIERS: Record<CourierProvider, CourierInfo> = {
   },
 };
 
+export function normalizeCourierProvider(provider: string | undefined | null): CourierProvider {
+  const normalized = (provider || "MANUAL").trim().toUpperCase();
+  const compact = normalized.replace(/[^A-Z0-9]/g, "");
+
+  if (compact === "JT" || compact === "JNT") return "JNT";
+  if (normalized === "LBC") return "LBC";
+  if (normalized === "GOGO") return "GOGO";
+  if (normalized === "MANUAL") return "MANUAL";
+  return "OTHER";
+}
+
+export function getCourierDisplayName(provider: string | undefined | null): string {
+  return SUPPORTED_COURIERS[normalizeCourierProvider(provider)].name;
+}
+
 /**
  * Derives a tracking URL for a given provider and tracking reference number.
  */
@@ -49,7 +64,7 @@ export function getCourierTrackingUrl(
     return null;
   }
   const cleanRef = trackingReference.trim();
-  const normalizedProvider = (provider || "MANUAL").toUpperCase() as CourierProvider;
+  const normalizedProvider = normalizeCourierProvider(provider);
   const courier = SUPPORTED_COURIERS[normalizedProvider];
   if (courier && courier.trackingUrlTemplate) {
     return courier.trackingUrlTemplate(cleanRef);

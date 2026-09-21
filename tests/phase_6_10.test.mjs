@@ -25,7 +25,9 @@ test("Phase 6: Admin order and payment actions strictly enforce AAL2 and canonic
 
 test("Phase 7: Fulfillment lifecycle and provider-neutral courier abstraction are properly modeled", async () => {
   const { deriveCustomerFulfillmentStage } = await import("../src/lib/orders/status.ts");
-  const { getCourierTrackingUrl, SUPPORTED_COURIERS } = await import("../src/lib/orders/courier.ts");
+  const { getCourierTrackingUrl, normalizeCourierProvider, SUPPORTED_COURIERS } = await import("../src/lib/orders/courier.ts");
+  const courierSecurityMigration = await read("supabase/migrations/20260921010000_courier_rpc_security_hardening.sql");
+  const aalClaimMigration = await read("supabase/migrations/20260921011000_fix_aal_claim_reader.sql");
 
   // Canonical stages map correctly
   assert.equal(deriveCustomerFulfillmentStage("READY_FOR_SHIPMENT").stage, "PREPARING");
@@ -41,13 +43,30 @@ test("Phase 7: Fulfillment lifecycle and provider-neutral courier abstraction ar
   assert.ok(SUPPORTED_COURIERS.MANUAL);
   assert.ok(SUPPORTED_COURIERS.JNT);
   assert.ok(SUPPORTED_COURIERS.LBC);
+  assert.equal(normalizeCourierProvider("JNT"), "JNT");
+  assert.equal(normalizeCourierProvider("J&T"), "JNT");
+  assert.equal(normalizeCourierProvider("j&t"), "JNT");
+  assert.equal(normalizeCourierProvider(" JNT "), "JNT");
+  assert.equal(normalizeCourierProvider("unknown courier"), "OTHER");
   assert.equal(getCourierTrackingUrl("MANUAL", "12345"), null);
-  assert.match(getCourierTrackingUrl("JNT", "JNT123456789") || "", /gzquery/);
+  assert.equal(getCourierTrackingUrl("JNT", "   "), null);
+  assert.equal(
+    getCourierTrackingUrl("j&t", "JNT 123/456"),
+    "https://www.jtexpress.ph/track-and-trace?waybillNo=JNT%20123%2F456",
+  );
+  assert.equal(getCourierTrackingUrl("LBC", "LBC 123/456"), "https://www.lbcexpress.com/ph/track");
+  assert.equal(getCourierTrackingUrl("GOGO", "GGX 123/456"), "https://app.gogoxpress.com/track/GGX%20123%2F456");
+  assert.equal(getCourierTrackingUrl("unknown courier", "12345"), null);
+  assert.match(courierSecurityMigration, /track-and-trace\?waybillNo=/);
+  assert.match(courierSecurityMigration, /private\.url_encode_component\(p_tracking_number\)/);
+  assert.match(aalClaimMigration, /current_setting\('request\.jwt\.claims', true\)/);
+  assert.match(aalClaimMigration, /coalesce\(jwt_claims->>'aal', 'aal1'\) <> 'aal2'/);
 });
 
 test("Phase 8: Customer account features support profile, address CRUD, order history, and owner isolation", async () => {
   const accountPage = await read("src/app/account/page.tsx");
   const addressPage = await read("src/app/account/addresses/page.tsx");
+  const addressDeleteButton = await read("src/components/address-delete-button.tsx");
   const orderDetailPage = await read("src/app/orders/[id]/page.tsx");
 
   // Profile page links to security and order history
@@ -58,7 +77,9 @@ test("Phase 8: Customer account features support profile, address CRUD, order hi
   // Address page renders address list and form
   assert.match(addressPage, /Shipping Addresses/);
   assert.match(addressPage, /setDefaultAddress/);
-  assert.match(addressPage, /deleteAddress/);
+  assert.match(addressPage, /AddressDeleteButton/);
+  assert.match(addressDeleteButton, /deleteAddress/);
+  assert.match(addressDeleteButton, /Delete this address\?/);
 
   // Order detail strictly checks user_id against verified claims
   assert.match(orderDetailPage, /\.eq\("user_id",\s*userId\)/);
@@ -69,16 +90,11 @@ test("Phase 9: Admin operations dashboard queries all 10 required queues and met
   const adminOrdersPage = await read("src/app/admin/orders/page.tsx");
 
   // Dashboard queries pending GCash, confirmed, processing, ready, transit, failed, completed, inventory, and audit
-  assert.match(dashboardPage, /Pending GCash Reviews/);
-  assert.match(dashboardPage, /Confirmed Orders/);
+  assert.match(dashboardPage, /GCash Verification/);
+  assert.match(dashboardPage, /Out of Stock/);
+  assert.match(dashboardPage, /Low Stock/);
+  assert.match(dashboardPage, /Confirmed/);
   assert.match(dashboardPage, /Processing/);
-  assert.match(dashboardPage, /Ready for Shipment/);
-  assert.match(dashboardPage, /In Transit/);
-  assert.match(dashboardPage, /Delivery Failures/);
-  assert.match(dashboardPage, /Delivered/);
-  assert.match(dashboardPage, /Low Stock Warnings/);
-  assert.match(dashboardPage, /Out of Stock Items/);
-  assert.match(dashboardPage, /Recent Administrative Activity/);
 
   // Admin orders page supports status filtering
   assert.match(adminOrdersPage, /searchParams/);

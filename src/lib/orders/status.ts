@@ -30,15 +30,21 @@ export interface FulfillmentStageInfo {
  * - CANCELLED -> CANCELLED (Exception)
  * - DELIVERY_FAILED -> DELIVERY_FAILED (Exception)
  */
-export function deriveCustomerFulfillmentStage(status: string): FulfillmentStageInfo {
+export function deriveCustomerFulfillmentStage(
+  status: string,
+  fulfillmentMethod: "SHIPMENT" | "STORE_PICKUP" = "SHIPMENT"
+): FulfillmentStageInfo {
   const normalized = status.toUpperCase();
+  const isPickup = fulfillmentMethod === "STORE_PICKUP";
 
   switch (normalized) {
     case "CONFIRMED":
       return {
         stage: "CONFIRMED",
         label: "Order Confirmed",
-        description: "Your order has been received and confirmed.",
+        description: isPickup
+          ? "Your order has been confirmed and scheduled for in-store preparation."
+          : "Your order has been received and confirmed.",
         isTerminal: false,
         isException: false,
         stepIndex: 1,
@@ -46,14 +52,27 @@ export function deriveCustomerFulfillmentStage(status: string): FulfillmentStage
 
     case "PROCESSING":
     case "PACKING":
-    case "READY_FOR_SHIPMENT":
       return {
         stage: "PREPARING",
-        label: "Preparing Order",
-        description: "We are carefully assembling and packaging your devotional items.",
+        label: isPickup ? "Preparing in Store" : "Preparing Order",
+        description: isPickup
+          ? "Our staff is assembling and packaging your pieces at the flagship store."
+          : "We are carefully assembling and packaging your streetwear pieces.",
         isTerminal: false,
         isException: false,
         stepIndex: 2,
+      };
+
+    case "READY_FOR_SHIPMENT":
+      return {
+        stage: isPickup ? "ARRIVING" : "PREPARING",
+        label: isPickup ? "Ready for Pickup" : "Ready for Shipment",
+        description: isPickup
+          ? "Your order is packaged and ready for collection at the 1968 Flagship Store counter."
+          : "Your order is packaged and awaiting courier collection.",
+        isTerminal: false,
+        isException: false,
+        stepIndex: isPickup ? 4 : 2,
       };
 
     case "SHIPPED":
@@ -81,8 +100,10 @@ export function deriveCustomerFulfillmentStage(status: string): FulfillmentStage
     case "COMPLETED":
       return {
         stage: "DELIVERED",
-        label: "Delivered",
-        description: "Your package has been successfully delivered.",
+        label: isPickup ? "Picked Up" : "Delivered",
+        description: isPickup
+          ? "Your order has been successfully picked up at the store counter."
+          : "Your package has been successfully delivered.",
         isTerminal: true,
         isException: false,
         stepIndex: 5,

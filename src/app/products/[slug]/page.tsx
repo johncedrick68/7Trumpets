@@ -1,10 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { addToCart } from "@/lib/cart/actions";
-import { formatMinorUnitsToPHP, getProductBySlug } from "@/lib/catalog/queries";
+import { formatMinorUnitsToPHP, getCategories, getProductBySlug } from "@/lib/catalog/queries";
 import { ProductPurchaseForm } from "@/components/product-purchase-form";
-import { BagIcon } from "@/components/icons";
+import { ProductGallery } from "@/components/product-gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +12,10 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const [product, categories] = await Promise.all([
+    getProductBySlug(slug),
+    getCategories(),
+  ]);
 
   if (!product) {
     notFound();
@@ -22,129 +23,102 @@ export default async function ProductDetailPage({
 
   const activePrices = product.variants.map((v) => v.price_minor);
   const minPrice = activePrices.length > 0 ? Math.min(...activePrices) : 0;
+  const formattedPrice = formatMinorUnitsToPHP(minPrice);
+
+  const categoryName = product.category_id
+    ? (categories.find((c) => c.id === product.category_id)?.name ?? "1968 Clothing")
+    : "1968 Clothing";
 
   return (
-    <main className="catalog-main">
-      <div className="catalog-container">
-        <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.4rem", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-muted)", marginBottom: "1.5rem", textTransform: "uppercase" }}>
-          <Link href="/products" style={{ color: "var(--ink-muted)" }}>Collection</Link>
+    <main className="store-container store-page min-h-screen">
+      <div className="w-full">
+        {/* Breadcrumb */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-8">
+          <Link href="/products" className="hover:text-foreground transition-colors">Collection</Link>
           <span>/</span>
-          <span style={{ color: "var(--ink)" }}>{product.name}</span>
+          <span className="text-foreground font-bold">{product.name}</span>
         </nav>
 
-        <div className="product-detail-layout">
-          {/* Gallery Column */}
-          <div>
-            <div className="gallery-main-wrap">
-              {product.images.length > 0 ? (
-                <Image
-                  src={
-                    product.images[0].storage_path.startsWith("http")
-                      ? product.images[0].storage_path
-                      : `/images/${product.images[0].storage_path.split("/").pop()}`
-                  }
-                  alt={product.name}
-                  width={600}
-                  height={600}
-                  priority
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : (
-                <Image
-                  src="/images/1968%20CLOTHING%20V1.webp"
-                  alt={product.name}
-                  width={600}
-                  height={600}
-                  priority
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
+        {/* Mobile-only header — shown above gallery on small screens */}
+        <header className="mb-5 lg:hidden">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {categoryName}
+          </p>
+          <h1 className="mt-2 text-h2 text-foreground">
+            {product.name}
+          </h1>
+          <p className="mt-3 text-h3 text-foreground">
+            {formattedPrice}
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] lg:gap-16 xl:gap-20">
+
+          {/* ── Gallery Column ────────────────────────────────── */}
+          <ProductGallery
+            productName={product.name}
+            images={(product.images.length > 0 ? product.images : [{ id: "fallback", storage_path: "/images/1968%20CLOTHING%20V1.0.webp", alt_text: product.name, position: 0, variant_id: null }]).map((image) => ({ id: image.id, url: image.storage_path, alt: image.alt_text || product.name, position: image.position, variantId: image.variant_id }))}
+          />
+
+          {/* ── Info Column ──────────────────────────────────── */}
+          <div className="flex w-full min-w-0 flex-col lg:sticky lg:top-24 lg:self-start">
+
+            {/* Desktop-only product identity — hidden on mobile (shown above gallery) */}
+            <div className="hidden lg:block">
+              {/* eyebrow → title: 8px */}
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {categoryName}
+              </p>
+              {/* title */}
+              <h1 className="mt-2 text-h1 text-foreground">
+                {product.name}
+              </h1>
+              {/* title → price: 12px */}
+              <p className="mt-3 text-h2 text-foreground">
+                {formattedPrice}
+              </p>
+              {/* price → description: 12–16px */}
+              {product.description && (
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                  {product.description}
+                </p>
               )}
             </div>
 
-            {product.images.length > 1 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {product.images.slice(0, 4).map((img, idx) => (
-                  <div key={img.id || idx} style={{ borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--border)", background: "var(--surface)" }}>
-                    <Image
-                      src={
-                        img.storage_path.startsWith("http")
-                          ? img.storage_path
-                          : `/images/${img.storage_path.split("/").pop()}`
-                      }
-                      alt={img.alt_text || product.name}
-                      width={150}
-                      height={150}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Info Column */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <p className="eyebrow">
-              Archival Garment
-            </p>
-
-            <h1 style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800, margin: "0 0 0.85rem", letterSpacing: "-0.02em" }}>
-              {product.name}
-            </h1>
-
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "1.4rem", fontWeight: 800, color: "var(--ink)", marginBottom: "1.5rem" }}>
-              {formatMinorUnitsToPHP(minPrice)}
-            </div>
-
-            {product.description && (
-              <div style={{ color: "var(--ink-secondary)", fontSize: "14px", lineHeight: 1.7, marginBottom: "1.75rem", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "1rem 0" }}>
-                <p style={{ margin: 0 }}>{product.description}</p>
+            {/* description → size block: 32px */}
+            {product.variants.length > 0 && (
+              <div className="mt-8 lg:mt-8">
+                <ProductPurchaseForm
+                  options={product.options}
+                  variants={product.variants.map((variant) => ({
+                    ...variant,
+                    formatted_price: formatMinorUnitsToPHP(variant.price_minor),
+                  }))}
+                />
               </div>
             )}
 
-            {product.options.length > 0 && (
-              <ProductPurchaseForm
-                options={product.options}
-                variants={product.variants.map((variant) => ({
-                  ...variant,
-                  formatted_price: formatMinorUnitsToPHP(variant.price_minor),
-                }))}
-              />
-            )}
-
-            {product.options.length === 0 && product.variants.length > 0 && (
-              <div style={{ marginTop: "0.5rem" }}>
-                <label style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ink-muted)", marginBottom: "0.75rem" }}>
-                  Select Size &amp; Add to Bag
-                </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                  {product.variants.map((variant) => (
-                    <form key={variant.id} action={addToCart} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.65rem 0.85rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)" }}>
-                      <input type="hidden" name="variant_id" value={variant.id} />
-                      <input type="hidden" name="quantity" value="1" />
-                      <div>
-                        <strong style={{ fontSize: "13px" }}>{variant.name || variant.sku}</strong>
-                        <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-muted)" }}>SKU: {variant.sku}</div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
-                        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "13px" }}>{formatMinorUnitsToPHP(variant.price_minor)}</span>
-                        <button type="submit" className="btn btn-primary small-btn" style={{ gap: "0.35rem" }}>
-                          <BagIcon size={12} />
-                          <span>Add to Bag</span>
-                        </button>
-                      </div>
-                    </form>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Specifications Box */}
-            <div style={{ marginTop: "2rem", padding: "1rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", display: "flex", flexDirection: "column", gap: "0.5rem", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-muted)" }}>
-              <div><strong>FABRIC:</strong> 100% Heavyweight Pre-Shrunk Cotton (220-240 GSM)</div>
-              <div><strong>PRINT:</strong> Archival High-Density Plastisol Screenprint</div>
-              <div><strong>SHIPPING:</strong> Metro Manila 2-3 business days · Provincial 3-6 business days</div>
-              <div><strong>PAYMENTS:</strong> Doorstep Cash on Delivery (COD) · Manual GCash</div>
+            {/* Add to Bag → product information: 32px */}
+            <div className="mt-8 grid gap-6 border-t border-border pt-6 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <section aria-labelledby="product-details-heading">
+                <h2 id="product-details-heading" className="font-semibold text-foreground">
+                  Product Details
+                </h2>
+                {product.description && <p className="mt-2 leading-relaxed lg:hidden">{product.description}</p>}
+                <ul className="mt-2 space-y-1.5 leading-relaxed">
+                  <li>Heavyweight pre-shrunk cotton, 220–240 GSM</li>
+                  <li>High-density plastisol screenprint</li>
+                </ul>
+              </section>
+              <section aria-labelledby="delivery-payment-heading">
+                <h2 id="delivery-payment-heading" className="font-semibold text-foreground">
+                  Delivery &amp; Payment
+                </h2>
+                <ul className="mt-2 space-y-1.5 leading-relaxed">
+                  <li>Metro Manila 2–3 days; provincial 3–6 days</li>
+                  <li>Cash on Delivery or manually verified GCash</li>
+                </ul>
+              </section>
             </div>
           </div>
         </div>

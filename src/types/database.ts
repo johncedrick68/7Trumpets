@@ -88,6 +88,83 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_daily_briefs: {
+        Row: {
+          brief_date: string
+          created_at: string
+          generated_by: string
+          id: string
+          metrics_snapshot: Json
+          summary: string
+        }
+        Insert: {
+          brief_date: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          metrics_snapshot: Json
+          summary: string
+        }
+        Update: {
+          brief_date?: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          metrics_snapshot?: Json
+          summary?: string
+        }
+        Relationships: []
+      }
+      ai_usage_logs: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          error_code: string | null
+          estimated_cost_minor: number | null
+          feature: string
+          id: string
+          input_tokens: number | null
+          latency_ms: number
+          model: string
+          output_tokens: number | null
+          success: boolean
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          estimated_cost_minor?: number | null
+          feature: string
+          id?: string
+          input_tokens?: number | null
+          latency_ms: number
+          model: string
+          output_tokens?: number | null
+          success: boolean
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          estimated_cost_minor?: number | null
+          feature?: string
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number
+          model?: string
+          output_tokens?: number | null
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -133,6 +210,48 @@ export type Database = {
           old_values?: Json | null
           request_id?: string | null
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      automation_outbox: {
+        Row: {
+          aggregate_id: string
+          aggregate_type: string
+          attempt_count: number
+          available_at: string
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          aggregate_id: string
+          aggregate_type: string
+          attempt_count?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          aggregate_id?: string
+          aggregate_type?: string
+          attempt_count?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -533,6 +652,7 @@ export type Database = {
           customer_note: string | null
           delivery_failure_reason: string | null
           discount_minor: number
+          fulfillment_method: string
           id: string
           idempotency_key: string
           order_number: string
@@ -541,6 +661,8 @@ export type Database = {
           province: string
           recipient_name: string
           recipient_phone: string
+          register_session_id: string | null
+          sales_channel: string
           shipping_minor: number
           status: string
           subtotal_minor: number
@@ -561,6 +683,7 @@ export type Database = {
           customer_note?: string | null
           delivery_failure_reason?: string | null
           discount_minor?: number
+          fulfillment_method?: string
           id?: string
           idempotency_key: string
           order_number?: string
@@ -569,6 +692,8 @@ export type Database = {
           province: string
           recipient_name: string
           recipient_phone: string
+          register_session_id?: string | null
+          sales_channel?: string
           shipping_minor?: number
           status?: string
           subtotal_minor: number
@@ -589,6 +714,7 @@ export type Database = {
           customer_note?: string | null
           delivery_failure_reason?: string | null
           discount_minor?: number
+          fulfillment_method?: string
           id?: string
           idempotency_key?: string
           order_number?: string
@@ -597,6 +723,8 @@ export type Database = {
           province?: string
           recipient_name?: string
           recipient_phone?: string
+          register_session_id?: string | null
+          sales_channel?: string
           shipping_minor?: number
           status?: string
           subtotal_minor?: number
@@ -604,7 +732,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_register_session_fk"
+            columns: ["register_session_id"]
+            isOneToOne: false
+            referencedRelation: "register_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_events: {
         Row: {
@@ -987,6 +1123,451 @@ export type Database = {
         }
         Relationships: []
       }
+      refunds: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          currency_code: string
+          id: string
+          method: string
+          order_id: string
+          payment_id: string
+          processed_by: string | null
+          reason: string
+          reference_number: string | null
+          return_request_id: string | null
+          status: string
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          currency_code?: string
+          id?: string
+          method: string
+          order_id: string
+          payment_id: string
+          processed_by?: string | null
+          reason: string
+          reference_number?: string | null
+          return_request_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          currency_code?: string
+          id?: string
+          method?: string
+          order_id?: string
+          payment_id?: string
+          processed_by?: string | null
+          reason?: string
+          reference_number?: string | null
+          return_request_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_return_request_id_fkey"
+            columns: ["return_request_id"]
+            isOneToOne: false
+            referencedRelation: "return_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      register_session_activities: {
+        Row: {
+          activity_type: string
+          amount_minor: number
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          order_id: string | null
+          reference_id: string | null
+          running_balance_minor: number
+          session_id: string
+        }
+        Insert: {
+          activity_type: string
+          amount_minor: number
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          reference_id?: string | null
+          running_balance_minor: number
+          session_id: string
+        }
+        Update: {
+          activity_type?: string
+          amount_minor?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          reference_id?: string | null
+          running_balance_minor?: number
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "register_session_activities_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "register_session_activities_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "register_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      register_sessions: {
+        Row: {
+          actual_cash_minor: number | null
+          cash_difference_minor: number | null
+          cashier_id: string
+          closed_at: string | null
+          created_at: string
+          expected_cash_minor: number
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_cash_minor: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_cash_minor?: number | null
+          cash_difference_minor?: number | null
+          cashier_id: string
+          closed_at?: string | null
+          created_at?: string
+          expected_cash_minor?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_cash_minor?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_cash_minor?: number | null
+          cash_difference_minor?: number | null
+          cashier_id?: string
+          closed_at?: string | null
+          created_at?: string
+          expected_cash_minor?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_cash_minor?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      return_requests: {
+        Row: {
+          admin_notes: string | null
+          approved_refund_minor: number | null
+          created_at: string
+          exchange_variant_id: string | null
+          id: string
+          order_id: string
+          proof_storage_paths: string[]
+          reason: string
+          reason_details: string | null
+          requested_refund_minor: number
+          status: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_refund_minor?: number | null
+          created_at?: string
+          exchange_variant_id?: string | null
+          id?: string
+          order_id: string
+          proof_storage_paths?: string[]
+          reason: string
+          reason_details?: string | null
+          requested_refund_minor?: number
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_refund_minor?: number | null
+          created_at?: string
+          exchange_variant_id?: string | null
+          id?: string
+          order_id?: string
+          proof_storage_paths?: string[]
+          reason?: string
+          reason_details?: string | null
+          requested_refund_minor?: number
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_requests_exchange_variant_id_fkey"
+            columns: ["exchange_variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          actual_delivery_at: string | null
+          carrier_notes: string | null
+          created_at: string
+          estimated_delivery_at: string | null
+          id: string
+          order_id: string
+          provider: string
+          shipped_at: string | null
+          status: string
+          tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_delivery_at?: string | null
+          carrier_notes?: string | null
+          created_at?: string
+          estimated_delivery_at?: string | null
+          id?: string
+          order_id: string
+          provider?: string
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_delivery_at?: string | null
+          carrier_notes?: string | null
+          created_at?: string
+          estimated_delivery_at?: string | null
+          id?: string
+          order_id?: string
+          provider?: string
+          shipped_at?: string | null
+          status?: string
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          invited_by: string
+          requested_role: string
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          full_name: string
+          id?: string
+          invited_by: string
+          requested_role: string
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invited_by?: string
+          requested_role?: string
+          status?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
+      store_settings: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      support_conversations: {
+        Row: {
+          ai_state: string
+          assigned_staff_id: string | null
+          category: string
+          created_at: string
+          customer_id: string
+          id: string
+          last_message_at: string
+          order_id: string | null
+          priority: string
+          resolved_at: string | null
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_state?: string
+          assigned_staff_id?: string | null
+          category: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          last_message_at?: string
+          order_id?: string | null
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_state?: string
+          assigned_staff_id?: string | null
+          category?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          last_message_at?: string
+          order_id?: string | null
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_conversations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_internal: boolean
+          metadata: Json
+          sender_type: string
+          sender_user_id: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          metadata?: Json
+          sender_type: string
+          sender_user_id?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          metadata?: Json
+          sender_type?: string
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       variant_option_values: {
         Row: {
           option_id: string
@@ -1045,8 +1626,132 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_create_shipment: {
+        Args: {
+          p_carrier_notes?: string
+          p_order_id: string
+          p_provider: string
+          p_tracking_number: string
+        }
+        Returns: {
+          actual_delivery_at: string | null
+          carrier_notes: string | null
+          created_at: string
+          estimated_delivery_at: string | null
+          id: string
+          order_id: string
+          provider: string
+          shipped_at: string | null
+          status: string
+          tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_delete_product_image: {
         Args: { p_image_id: string }
+        Returns: boolean
+      }
+      admin_issue_refund: {
+        Args: {
+          p_amount_minor: number
+          p_method: string
+          p_order_id: string
+          p_reason: string
+          p_reference_number?: string
+          p_return_request_id?: string
+        }
+        Returns: {
+          amount_minor: number
+          created_at: string
+          currency_code: string
+          id: string
+          method: string
+          order_id: string
+          payment_id: string
+          processed_by: string | null
+          reason: string
+          reference_number: string | null
+          return_request_id: string | null
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_process_exchange: {
+        Args: {
+          p_cash_tendered_minor?: number
+          p_new_variant_id: string
+          p_order_id: string
+          p_orig_variant_id: string
+          p_reason: string
+          p_register_session_id?: string
+        }
+        Returns: Json
+      }
+      admin_process_return_request: {
+        Args: {
+          p_admin_notes?: string
+          p_approved_refund_minor?: number
+          p_decision: string
+          p_return_id: string
+        }
+        Returns: {
+          admin_notes: string | null
+          approved_refund_minor: number | null
+          created_at: string
+          exchange_variant_id: string | null
+          id: string
+          order_id: string
+          proof_storage_paths: string[]
+          reason: string
+          reason_details: string | null
+          requested_refund_minor: number
+          status: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "return_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_reorder_product_image: {
+        Args: { p_action: string; p_image_id: string }
+        Returns: boolean
+      }
+      admin_assign_staff: {
+        Args: { p_conversation_id: string; p_staff_id: string }
+        Returns: boolean
+      }
+      admin_reopen_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      admin_reply_support: {
+        Args: {
+          p_content: string
+          p_conversation_id: string
+          p_is_internal?: boolean
+          p_new_status?: string
+        }
+        Returns: string
+      }
+      admin_resolve_support: {
+        Args: { p_conversation_id: string; p_resolution_note?: string }
         Returns: boolean
       }
       admin_save_category: {
@@ -1122,6 +1827,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      admin_settle_pickup_payment: {
+        Args: {
+          p_notes?: string
+          p_order_id: string
+          p_register_session_id?: string
+          p_tendered_minor?: number
+        }
+        Returns: Json
+      }
       admin_transition_order: {
         Args: {
           p_idempotency_key: string
@@ -1144,6 +1858,7 @@ export type Database = {
           customer_note: string | null
           delivery_failure_reason: string | null
           discount_minor: number
+          fulfillment_method: string
           id: string
           idempotency_key: string
           order_number: string
@@ -1152,6 +1867,8 @@ export type Database = {
           province: string
           recipient_name: string
           recipient_phone: string
+          register_session_id: string | null
+          sales_channel: string
           shipping_minor: number
           status: string
           subtotal_minor: number
@@ -1187,11 +1904,52 @@ export type Database = {
         Args: { p_submission_id: string }
         Returns: string
       }
+      cancel_order: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: {
+          address_line1: string
+          address_line2: string | null
+          barangay: string | null
+          cancellation_reason: string | null
+          city_municipality: string
+          country_code: string
+          created_at: string
+          currency_code: string
+          customer_email: string
+          customer_note: string | null
+          delivery_failure_reason: string | null
+          discount_minor: number
+          fulfillment_method: string
+          id: string
+          idempotency_key: string
+          order_number: string
+          placed_at: string
+          postal_code: string
+          province: string
+          recipient_name: string
+          recipient_phone: string
+          register_session_id: string | null
+          sales_channel: string
+          shipping_minor: number
+          status: string
+          subtotal_minor: number
+          total_minor: number
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       checkout_order: {
         Args: {
           p_customer_id: string
           p_customer_note?: string
           p_delivery: Json
+          p_fulfillment_method: string
           p_gcash_expires_at: string
           p_idempotency_key: string
           p_lines: Json
@@ -1211,6 +1969,7 @@ export type Database = {
           customer_note: string | null
           delivery_failure_reason: string | null
           discount_minor: number
+          fulfillment_method: string
           id: string
           idempotency_key: string
           order_number: string
@@ -1219,6 +1978,8 @@ export type Database = {
           province: string
           recipient_name: string
           recipient_phone: string
+          register_session_id: string | null
+          sales_channel: string
           shipping_minor: number
           status: string
           subtotal_minor: number
@@ -1233,7 +1994,119 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      close_expired_gcash_payment: {
+        Args: {
+          p_idempotency_key: string
+          p_payment_id: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      close_register_session: {
+        Args: {
+          p_actual_cash_minor: number
+          p_notes?: string
+          p_session_id: string
+        }
+        Returns: {
+          actual_cash_minor: number | null
+          cash_difference_minor: number | null
+          cashier_id: string
+          closed_at: string | null
+          created_at: string
+          expected_cash_minor: number
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_cash_minor: number
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "register_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_customer_return_request: {
+        Args: {
+          p_exchange_variant_id?: string
+          p_order_id: string
+          p_proof_paths?: string[]
+          p_reason: string
+          p_reason_details: string
+          p_requested_refund_minor: number
+          p_type: string
+        }
+        Returns: {
+          admin_notes: string | null
+          approved_refund_minor: number | null
+          created_at: string
+          exchange_variant_id: string | null
+          id: string
+          order_id: string
+          proof_storage_paths: string[]
+          reason: string
+          reason_details: string | null
+          requested_refund_minor: number
+          status: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "return_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_pos_sale: {
+        Args: {
+          p_customer_email?: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_idempotency_key?: string
+          p_items: Json
+          p_payment_method: string
+          p_register_session_id?: string
+          p_tendered_minor: number
+        }
+        Returns: Json
+      }
+      create_support_conversation: {
+        Args: {
+          p_category: string
+          p_initial_message: string
+          p_order_id?: string
+        }
+        Returns: string
+      }
+      customer_close_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      customer_reopen_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
       current_user_role: { Args: never; Returns: string }
+      get_customer_growth_analytics: { Args: never; Returns: Json }
+      list_expired_gcash_payments: {
+        Args: never
+        Returns: {
+          active_reservation_count: number
+          amount_minor: number
+          customer_email: string
+          order_id: string
+          order_number: string
+          payment_id: string
+          payment_status: string
+          recipient_name: string
+          reservation_expires_at: string
+        }[]
+      }
       list_staff_roles: {
         Args: never
         Returns: {
@@ -1247,6 +2120,29 @@ export type Database = {
         Args: { p_assign: boolean; p_role: string; p_user_id: string }
         Returns: boolean
       }
+      open_register_session: {
+        Args: { p_notes?: string; p_opening_cash_minor: number }
+        Returns: {
+          actual_cash_minor: number | null
+          cash_difference_minor: number | null
+          cashier_id: string
+          closed_at: string | null
+          created_at: string
+          expected_cash_minor: number
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_cash_minor: number
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "register_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reject_gcash_submission: {
         Args: {
           p_idempotency_key: string
@@ -1254,6 +2150,14 @@ export type Database = {
           p_rejection_reason: string
           p_submission_id: string
         }
+        Returns: string
+      }
+      request_human_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      send_customer_support_message: {
+        Args: { p_content: string; p_conversation_id: string }
         Returns: string
       }
       settle_cod_payment: {
@@ -1300,6 +2204,7 @@ export type Database = {
           customer_note: string | null
           delivery_failure_reason: string | null
           discount_minor: number
+          fulfillment_method: string
           id: string
           idempotency_key: string
           order_number: string
@@ -1308,6 +2213,8 @@ export type Database = {
           province: string
           recipient_name: string
           recipient_phone: string
+          register_session_id: string | null
+          sales_channel: string
           shipping_minor: number
           status: string
           subtotal_minor: number
@@ -1457,4 +2364,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
