@@ -3,18 +3,19 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type AccountSection = "profile" | "orders" | "addresses" | "security";
+export type AccountSection = "profile" | "orders" | "addresses" | "support" | "security";
 
 const items: Array<{ id: AccountSection; href: string; label: string }> = [
   { id: "profile", href: "/account", label: "Profile" },
   { id: "orders", href: "/orders", label: "Orders" },
   { id: "addresses", href: "/account/addresses", label: "Addresses" },
+  { id: "support", href: "/account/support", label: "Support" },
   { id: "security", href: "/update-password", label: "Password" },
 ];
 
 export function AccountNavigation({ current }: { current: AccountSection }) {
   return (
-    <nav className="mb-8 grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 sm:grid-cols-4" aria-label="Account navigation">
+    <nav className="mb-8 grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 sm:grid-cols-5" aria-label="Account navigation">
       {items.map((item) => {
         const active = current === item.id;
         return (

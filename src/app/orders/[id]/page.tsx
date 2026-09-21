@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { GcashPaymentPanel } from "@/components/gcash-payment-panel";
 import { ReturnRequestDialog } from "@/components/return-request-dialog";
 import { CancelOrderDialog } from "@/components/cancel-order-dialog";
-import { ExternalLink, Store, Truck } from "lucide-react";
+import { ExternalLink, Store, Truck, MessageSquare } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -140,23 +140,35 @@ export default async function OrderConfirmationPage({
         </nav>
 
         {/* Page header */}
-        <header className="mb-8">
-          <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
-            Order Details
-          </p>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mt-1 mb-2">
-            Order #{order.order_number}
-          </h1>
-          <p className="text-sm font-mono text-muted-foreground">
-            Placed on{" "}
-            {new Date(order.placed_at).toLocaleDateString("en-PH", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
+        <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
+              Order Details
+            </p>
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mt-1 mb-2">
+              Order #{order.order_number}
+            </h1>
+            <p className="text-sm font-mono text-muted-foreground">
+              Placed on{" "}
+              {new Date(order.placed_at).toLocaleDateString("en-PH", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/account/support?order_id=${order.id}&category=ORDER_STATUS`}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border border-input bg-card hover:bg-muted text-foreground transition-colors shadow-xs"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-primary" />
+              Need Help with this Order?
+            </Link>
+          </div>
         </header>
 
         {/* Flash notices */}
