@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -88,6 +88,83 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_daily_briefs: {
+        Row: {
+          brief_date: string
+          created_at: string
+          generated_by: string
+          id: string
+          metrics_snapshot: Json
+          summary: string
+        }
+        Insert: {
+          brief_date: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          metrics_snapshot: Json
+          summary: string
+        }
+        Update: {
+          brief_date?: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          metrics_snapshot?: Json
+          summary?: string
+        }
+        Relationships: []
+      }
+      ai_usage_logs: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          error_code: string | null
+          estimated_cost_minor: number | null
+          feature: string
+          id: string
+          input_tokens: number | null
+          latency_ms: number
+          model: string
+          output_tokens: number | null
+          success: boolean
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          estimated_cost_minor?: number | null
+          feature: string
+          id?: string
+          input_tokens?: number | null
+          latency_ms: number
+          model: string
+          output_tokens?: number | null
+          success: boolean
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          estimated_cost_minor?: number | null
+          feature?: string
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number
+          model?: string
+          output_tokens?: number | null
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -133,6 +210,48 @@ export type Database = {
           old_values?: Json | null
           request_id?: string | null
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      automation_outbox: {
+        Row: {
+          aggregate_id: string
+          aggregate_type: string
+          attempt_count: number
+          available_at: string
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          aggregate_id: string
+          aggregate_type: string
+          attempt_count?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          aggregate_id?: string
+          aggregate_type?: string
+          attempt_count?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -1289,6 +1408,45 @@ export type Database = {
           },
         ]
       }
+      staff_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          invited_by: string
+          requested_role: string
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          full_name: string
+          id?: string
+          invited_by: string
+          requested_role: string
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invited_by?: string
+          requested_role?: string
+          status?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       store_settings: {
         Row: {
           description: string | null
@@ -1312,6 +1470,103 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      support_conversations: {
+        Row: {
+          ai_state: string
+          assigned_staff_id: string | null
+          category: string
+          created_at: string
+          customer_id: string
+          id: string
+          last_message_at: string
+          order_id: string | null
+          priority: string
+          resolved_at: string | null
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_state?: string
+          assigned_staff_id?: string | null
+          category: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          last_message_at?: string
+          order_id?: string | null
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_state?: string
+          assigned_staff_id?: string | null
+          category?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          last_message_at?: string
+          order_id?: string | null
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_conversations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_internal: boolean
+          metadata: Json
+          sender_type: string
+          sender_user_id: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          metadata?: Json
+          sender_type: string
+          sender_user_id?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          metadata?: Json
+          sender_type?: string
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       variant_option_values: {
         Row: {
@@ -1403,10 +1658,6 @@ export type Database = {
         Args: { p_image_id: string }
         Returns: boolean
       }
-      admin_reorder_product_image: {
-        Args: { p_action: string; p_image_id: string }
-        Returns: boolean
-      }
       admin_issue_refund: {
         Args: {
           p_amount_minor: number
@@ -1477,6 +1728,23 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_reorder_product_image: {
+        Args: { p_action: string; p_image_id: string }
+        Returns: boolean
+      }
+      admin_reply_support: {
+        Args: {
+          p_content: string
+          p_conversation_id: string
+          p_is_internal?: boolean
+          p_new_status?: string
+        }
+        Returns: string
+      }
+      admin_resolve_support: {
+        Args: { p_conversation_id: string; p_resolution_note?: string }
+        Returns: boolean
       }
       admin_save_category: {
         Args: {
@@ -1799,7 +2067,16 @@ export type Database = {
         }
         Returns: Json
       }
+      create_support_conversation: {
+        Args: {
+          p_category: string
+          p_initial_message: string
+          p_order_id?: string
+        }
+        Returns: string
+      }
       current_user_role: { Args: never; Returns: string }
+      get_customer_growth_analytics: { Args: never; Returns: Json }
       list_expired_gcash_payments: {
         Args: never
         Returns: {
@@ -1857,6 +2134,14 @@ export type Database = {
           p_rejection_reason: string
           p_submission_id: string
         }
+        Returns: string
+      }
+      request_human_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      send_customer_support_message: {
+        Args: { p_content: string; p_conversation_id: string }
         Returns: string
       }
       settle_cod_payment: {
@@ -2063,4 +2348,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
