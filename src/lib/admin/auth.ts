@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { safeRedirectPath } from "@/lib/auth/redirect";
+import { safeAdminRedirectPath } from "@/lib/auth/redirect";
 import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 
@@ -45,8 +45,18 @@ export async function getAdminAuthContext(): Promise<AdminAuthContext | null> {
 
 export async function requireAdminAal2(next = "/admin") {
   const context = await getAdminAuthContext();
-  const safeNext = safeRedirectPath(next, "/admin");
+  const safeNext = safeAdminRedirectPath(next, "/admin");
   if (!context) redirect(`/login?next=${encodeURIComponent(safeNext)}`);
-  if (context.aal !== "aal2") redirect(`/admin-mfa?next=${encodeURIComponent(safeNext)}`);
+  if (context.aal !== "aal2") {
+    const supabase = await createClient();
+    const { data: factors, error } = await supabase.auth.mfa.listFactors();
+    if (error) {
+      logServerError("admin.auth.mfa_factors", "auth_provider_failure");
+      redirect(`/mfa/verify?next=${encodeURIComponent(safeNext)}`);
+    }
+    const hasVerifiedTotp = factors.totp.some((factor) => factor.status === "verified");
+    const route = hasVerifiedTotp ? "/mfa/verify" : "/mfa/enroll";
+    redirect(`${route}?next=${encodeURIComponent(safeNext)}`);
+  }
   return context;
 }

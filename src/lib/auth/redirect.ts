@@ -20,3 +20,8 @@ export function safeRedirectPath(value: string | null | undefined, fallback = "/
     return fallback;
   }
 }
+
+export function safeAdminRedirectPath(value: string | null | undefined, fallback = "/admin") {
+  const path = safeRedirectPath(value, fallback);
+  return path === "/admin" || path.startsWith("/admin/") ? path : fallback;
+}

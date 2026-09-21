@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { safeRedirectPath } from "@/lib/auth/redirect";
+import { resolvePostLoginDestination } from "@/lib/auth/destination";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     if (exchangeError) {
       redirect("/auth/error");
     }
-    redirect(safeRedirectPath(next, "/account"));
+    redirect(await resolvePostLoginDestination(supabase, next));
   }
 
   // 2. Handle Token Hash verification (Email confirmation / Password reset)

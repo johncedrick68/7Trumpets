@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { safeRedirectPath } from "@/lib/auth/redirect";
+import { resolvePostLoginDestination } from "@/lib/auth/destination";
 import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 
@@ -71,7 +72,7 @@ export async function signIn(formData: FormData) {
     redirect("/login?error=credentials");
   }
 
-  redirect(safeRedirectPath(next, "/account"));
+  redirect(await resolvePostLoginDestination(supabase, next));
 }
 
 /**
