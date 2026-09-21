@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { signIn, signInWithGoogle } from "@/lib/auth/actions";
+import { safeRedirectPath } from "@/lib/auth/redirect";
 import { AuthFrame } from "@/components/auth-frame";
 import { GoogleIcon } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 import { AuthSubmitButton } from "@/components/auth-submit-button";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; signedOut?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; return_to?: string; signedOut?: string }> }) {
   const params = await searchParams;
+  const next = safeRedirectPath(params.return_to ?? params.next, "/account");
   const isCredentialsError = params.error === "credentials";
   const oauthError = params.error === "oauth"
     ? "Google sign-in could not be completed. Try email sign-in or check the provider configuration."
@@ -41,7 +43,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
           {/* OAuth */}
           <form action={signInWithGoogle}>
-            <input type="hidden" name="next" value={params.next ?? "/account"} />
+            <input type="hidden" name="next" value={next} />
             <AuthSubmitButton pendingText="Connecting…" variant="outline" className="gap-2.5 border-border hover:bg-muted/40">
               <GoogleIcon size={17} />
               <span>Continue with Google</span>
@@ -69,7 +71,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
           {/* Email / Password Form */}
           <form action={signIn} className="space-y-4">
-            <input type="hidden" name="next" value={params.next ?? "/account"} />
+            <input type="hidden" name="next" value={next} />
 
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-semibold text-foreground">

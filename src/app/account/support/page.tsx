@@ -28,7 +28,7 @@ export default async function CustomerSupportPage({
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login?return_to=/account/support");
+    redirect("/login?return_to=/account/support");
   }
 
   const { id: selectedId, order_id: preselectedOrderId, category: preselectedCategory } = await searchParams;
