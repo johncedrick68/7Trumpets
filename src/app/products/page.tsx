@@ -1,11 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Search } from "lucide-react";
 import { formatMinorUnitsToPHP, getCategories, getProducts } from "@/lib/catalog/queries";
-import { SearchIcon, ArrowRightIcon } from "@/components/icons";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const dynamic = "force-dynamic";
 
@@ -26,127 +25,164 @@ export default async function ProductsPage(props: {
     sort: sort,
   });
 
+  // Build a category name lookup for card eyebrows
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
+
   return (
-    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-7xl mx-auto">
-      <div>
-        <header className="mb-8">
-          <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
-            1968 Archive
-          </p>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mt-1 mb-2">
-            {activeCategory ? activeCategory.name : "All Streetwear Pieces"}
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm md:text-base">
-            {activeCategory?.description || "Independent Filipino streetwear. Limited archival releases, made to be worn."}
-          </p>
-        </header>
+    <main className="store-container store-page min-h-screen">
 
-        {/* Collection Controls */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-8">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Category filters">
-            <Button
-              variant={!categorySlug ? "default" : "outline"}
-              asChild
-              className="rounded-full"
-            >
-              <Link href="/products">
-                All ({products.length})
-              </Link>
-            </Button>
-            {categories.map((cat) => (
-              <Button
-                key={cat.id}
-                variant={categorySlug === cat.slug ? "default" : "outline"}
-                asChild
-                className="rounded-full"
-              >
-                <Link href={`/products?category=${cat.slug}${search ? `&q=${encodeURIComponent(search)}` : ""}`}>
-                  {cat.name}
-                </Link>
-              </Button>
-            ))}
-          </div>
+      {/* ── Page Header ─────────────────────────────────────────── */}
+      <header className="mb-10">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          Shop
+        </p>
+        <h1 className="mt-1.5 text-h1 text-foreground">
+          {activeCategory ? activeCategory.name : "1968 Collection"}
+        </h1>
+      </header>
 
-          <form method="GET" action="/products" className="w-full md:w-auto relative">
-            {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
-            <div className="relative flex items-center">
-              <SearchIcon size={14} className="absolute left-3 text-muted-foreground pointer-events-none" />
-              <Input
-                type="search"
-                name="q"
-                defaultValue={search}
-                placeholder="Search pieces..."
-                aria-label="Search products"
-                className="pl-9 w-full md:w-64 rounded-full"
-              />
-            </div>
-          </form>
+      <form method="GET" action="/products" className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-2" role="search">
+        {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
+        {sort !== "newest" && <input type="hidden" name="sort" value={sort} />}
+        <label htmlFor="catalog-search" className="sr-only">Search products</label>
+        <div className="relative min-w-0">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            id="catalog-search"
+            type="search"
+            name="q"
+            defaultValue={search}
+            placeholder="Search products…"
+            enterKeyHint="search"
+            autoComplete="off"
+            className="h-11 rounded-full !pl-11 !pr-4"
+          />
         </div>
+        <Button type="submit" variant="outline" className="h-11 rounded-full px-5 font-mono text-[11px] uppercase tracking-widest">
+          Search
+        </Button>
+      </form>
 
-        {products.length === 0 ? (
-          <div className="text-center py-16 px-4 bg-muted/30 rounded-xl border border-border border-dashed">
-            <p className="text-muted-foreground font-mono text-sm mb-4">
-              No pieces found matching your criteria.
-            </p>
-            <Button variant="outline" asChild>
-              <Link href="/products">
-                Reset Filters
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" aria-label="Products">
-            {products.map((product) => {
-              const imagePath = product.primary_image_path || "/images/1968%20CLOTHING%20V1.webp";
-
-              return (
-                <Card key={product.id} className="overflow-hidden flex flex-col group border-border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="relative aspect-square bg-muted">
-                    <Link href={`/products/${product.slug}`} tabIndex={-1} aria-hidden="true" className="block w-full h-full">
-                      <Image
-                        src={imagePath}
-                        alt={product.name}
-                        width={400}
-                        height={400}
-                        loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </Link>
-                    <Badge className="absolute top-3 right-3 font-mono text-[10px] uppercase tracking-widest pointer-events-none">
-                      New
-                    </Badge>
-                  </div>
-
-                  <CardContent className="flex flex-col flex-1 p-5 gap-2">
-                    <h2 className="font-bold text-lg leading-tight">
-                      <Link href={`/products/${product.slug}`} className="hover:underline decoration-2 underline-offset-4">
-                        {product.name}
-                      </Link>
-                    </h2>
-                    {product.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
-                    <div className="mt-auto pt-4 font-mono font-bold text-lg">
-                      {formatMinorUnitsToPHP(product.min_price_minor)}
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="p-5 pt-0 mt-auto">
-                    <Button variant="secondary" className="w-full flex items-center justify-center gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors" asChild>
-                      <Link href={`/products/${product.slug}`}>
-                        <span>Select Size</span>
-                        <ArrowRightIcon size={12} className="opacity-70 group-hover:opacity-100" />
-                      </Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-          </section>
-        )}
+      {/* ── Category Pills ───────────────────────────────────────── */}
+      <div
+        className="mb-6 flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="group"
+        aria-label="Category filters"
+      >
+        <Link
+          href={`/products${sort !== "newest" ? `?sort=${sort}` : ""}`}
+          className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors ${
+            !categorySlug
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
+          }`}
+          aria-current={!categorySlug ? "true" : undefined}
+        >
+          All
+        </Link>
+        {categories.map((cat) => (
+          <Link
+            key={cat.id}
+            href={`/products?category=${cat.slug}${search ? `&q=${encodeURIComponent(search)}` : ""}${sort !== "newest" ? `&sort=${sort}` : ""}`}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors ${
+              categorySlug === cat.slug
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
+            }`}
+            aria-current={categorySlug === cat.slug ? "true" : undefined}
+          >
+            {cat.name}
+          </Link>
+        ))}
       </div>
+
+      {/* ── Count + Sort row ────────────────────────────────────── */}
+      <div className="mb-8 flex flex-col items-stretch gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <span className="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
+          {products.length} {products.length === 1 ? "product" : "products"}
+        </span>
+
+        <form method="GET" action="/products" className="grid w-full grid-cols-[1fr_auto] items-end gap-2 sm:flex sm:w-auto sm:items-center">
+          {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
+          {search && <input type="hidden" name="q" value={search} />}
+          <label htmlFor="product-sort" className="col-span-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground sm:col-auto">Sort products</label>
+          <Select name="sort" defaultValue={sort}>
+            <SelectTrigger id="product-sort" className="w-full rounded-full font-mono text-[11px] uppercase tracking-widest text-foreground sm:w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="price_asc">Price ↑</SelectItem>
+              <SelectItem value="price_desc">Price ↓</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button type="submit" variant="outline" className="rounded-full font-mono text-[11px] uppercase tracking-widest">Apply</Button>
+        </form>
+      </div>
+
+      {/* ── Empty State ──────────────────────────────────────────── */}
+      {products.length === 0 ? (
+        <div className="py-24 text-center">
+          <p className="text-sm text-muted-foreground mb-6">
+            {search ? <>No products match “{search}”. Try another term or clear the filters.</> : <>No products match these filters.</>}
+          </p>
+          <Link
+            href="/products"
+            className="inline-block rounded-full border border-border px-6 py-2.5 font-mono text-[11px] uppercase tracking-widest text-foreground hover:border-foreground transition-colors"
+          >
+            View all
+          </Link>
+        </div>
+      ) : (
+        /* ── Product Grid ────────────────────────────────────────── */
+        <section
+          className="grid grid-cols-1 gap-x-4 gap-y-10 sm:grid-cols-2 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-4"
+          aria-label="Products"
+        >
+          {products.map((product, index) => {
+            const imagePath = product.primary_image_path || "/images/1968%20CLOTHING%20V1.webp";
+            const categoryName = product.category_id ? categoryMap[product.category_id] : null;
+
+            return (
+              <article key={product.id} className="group flex flex-col">
+                {/* Product image */}
+                <Link
+                  href={`/products/${product.slug}`}
+                  className="relative block aspect-[4/5] w-full overflow-hidden rounded-md border border-border/70 bg-neutral-100 transition-[border-color,transform] hover:border-foreground/50 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 dark:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  aria-label={`View ${product.name}`}
+                >
+                  <Image
+                    src={imagePath}
+                    alt={product.name}
+                    fill
+                    sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, (min-width: 640px) 46vw, 100vw"
+                    priority={index < 4}
+                    className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                  />
+                </Link>
+
+                {/* Card metadata — no description text */}
+                <div className="mt-3.5 flex flex-col gap-0.5">
+                  {categoryName && (
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {categoryName}
+                    </p>
+                  )}
+                  <h2 className="text-body font-semibold leading-snug text-foreground">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="hover:underline underline-offset-4"
+                    >
+                      {product.name}
+                    </Link>
+                  </h2>
+                  <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                    {formatMinorUnitsToPHP(product.min_price_minor)}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
     </main>
   );
 }

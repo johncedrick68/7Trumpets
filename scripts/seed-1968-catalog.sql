@@ -12,7 +12,7 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.desc
 INSERT INTO public.products (id, category_id, name, slug, description, status)
 VALUES
   ('b1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'Rise to Defend', 'rise-to-defend', 'Premium heavyweight cotton streetwear tee featuring the iconic Rise to Defend backprint artwork.', 'published'),
-  ('b1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000001', 'TGP — Triskelion', 'tgp-triskelion', 'Signature Tau Gamma Phi fraternity tribute streetwear tee crafted with high-density screenprint detailing.', 'published'),
+  ('b1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000001', 'TGP Triskelion', 'tgp-triskelion', 'Signature Tau Gamma Phi fraternity tribute streetwear tee crafted with high-density screenprint detailing.', 'published'),
   ('b1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000001', 'Triskelion Supreme', 'triskelion-supreme', 'Refined heritage edition streetwear shirt featuring the Triskelion Supreme emblem.', 'published'),
   ('b1000000-0000-0000-0000-000000000004', 'c1000000-0000-0000-0000-000000000003', '1968 Classic', '1968-classic', 'The founding emblem tee. Clean typography and enduring heavyweight finish.', 'published'),
   ('b1000000-0000-0000-0000-000000000005', 'c1000000-0000-0000-0000-000000000001', 'Street Edition', 'street-edition', 'Urban streetwear silhouette built for comfort, movement, and daily expression.', 'published'),
@@ -34,7 +34,7 @@ VALUES
   ('a1000000-0001-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000001', 'PROD-001-XL', 'Size XL', 49900, 59900, 'active'),
   ('a1000000-0001-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000001', 'PROD-001-2XL', 'Size 2XL', 49900, 59900, 'active'),
 
-  -- TGP — Triskelion (₱499, old ₱599)
+  -- TGP Triskelion (₱499, old ₱599)
   ('a1000000-0002-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002', 'PROD-002-S', 'Size S', 49900, 59900, 'active'),
   ('a1000000-0002-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000002', 'PROD-002-M', 'Size M', 49900, 59900, 'active'),
   ('a1000000-0002-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000002', 'PROD-002-L', 'Size L', 49900, 59900, 'active'),

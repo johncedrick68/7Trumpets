@@ -73,9 +73,16 @@ export function formatMinorUnitsToPHP(minorUnits: number): string {
   }).format(php);
 }
 
-function productImageUrl(path: string): string {
+export function productImageUrl(path: string): string {
   if (path.startsWith("/") || path.startsWith("http")) {
     return path;
+  }
+  // Seeded catalog media ships with the application. Newly uploaded media uses
+  // the public product-images bucket. Keeping both forms supported makes the
+  // admin migration path safe and prevents percent-encoded filenames from
+  // being encoded a second time.
+  if (path.startsWith("images/")) {
+    return `/${path}`;
   }
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!baseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");

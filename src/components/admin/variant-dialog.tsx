@@ -95,7 +95,7 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>

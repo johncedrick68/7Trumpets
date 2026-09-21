@@ -60,6 +60,13 @@ export function CategoryDialog({ category }: { category?: Category }) {
             <Textarea id={`cat_desc_${category?.id || 'new'}`} name="description" placeholder="Category details..." defaultValue={category?.description || ""} />
           </div>
 
+          {category && (
+            <label className="flex min-h-11 items-center gap-3 rounded-md border p-3 text-sm">
+              <input type="checkbox" name="archived" defaultChecked={Boolean(category.archived_at)} className="size-4" />
+              <span><strong>{category.archived_at ? "Keep archived" : "Archive category"}</strong><span className="block text-xs text-muted-foreground">Hides this collection from customers without deleting product or order history.</span></span>
+            </label>
+          )}
+
           <div className="pt-4 flex justify-end">
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

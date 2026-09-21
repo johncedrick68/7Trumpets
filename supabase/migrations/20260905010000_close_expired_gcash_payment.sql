@@ -1,6 +1,6 @@
 -- Expose authenticated AAL2 admin expiration RPC and database eligibility listing.
 
-CREATE FUNCTION public.close_expired_gcash_payment(
+CREATE OR REPLACE FUNCTION public.close_expired_gcash_payment(
   p_payment_id UUID,
   p_idempotency_key TEXT,
   p_reason TEXT DEFAULT 'Payment window expired without verified receipt'
@@ -37,7 +37,7 @@ ALTER FUNCTION public.close_expired_gcash_payment(UUID, TEXT, TEXT) OWNER TO pos
 REVOKE ALL ON FUNCTION public.close_expired_gcash_payment(UUID, TEXT, TEXT) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.close_expired_gcash_payment(UUID, TEXT, TEXT) TO authenticated;
 
-CREATE FUNCTION public.list_expired_gcash_payments()
+CREATE OR REPLACE FUNCTION public.list_expired_gcash_payments()
 RETURNS TABLE (
   payment_id UUID,
   order_id UUID,

@@ -71,19 +71,15 @@ export function ProductImageDialog({ products, productId }: { products: Product[
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="img_file">Image File (WebP/JPG/PNG)</Label>
-            <Input id="img_file" name="image" type="file" accept="image/webp,image/jpeg,image/png" required />
+            <Label htmlFor="img_file">Image file</Label>
+            <Input id="img_file" name="image" type="file" accept="image/webp,image/jpeg,image/png" required className="h-11 cursor-pointer file:mr-3" />
+            <p className="text-xs text-muted-foreground">WebP, JPG, or PNG · maximum 5 MB.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="img_alt">Alt Text</Label>
-              <Input id="img_alt" name="alt_text" required placeholder="Description of image" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="img_pos">Position (Order)</Label>
-              <Input id="img_pos" name="position" type="number" required defaultValue="0" />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="img_alt">Alt text</Label>
+            <Input id="img_alt" name="alt_text" required placeholder="Front view of black shirt" />
+            <p className="text-xs text-muted-foreground">New media is added after the existing images. Reorder it after upload.</p>
           </div>
 
           <div className="pt-4 flex justify-end">

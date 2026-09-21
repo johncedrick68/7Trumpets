@@ -1,10 +1,11 @@
-import { deleteAddress, getCustomerAddresses, saveAddress, setDefaultAddress } from "@/lib/addresses/actions";
+import { getCustomerAddresses, saveAddress, setDefaultAddress } from "@/lib/addresses/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AccountNavigation } from "@/components/account-navigation";
+import { AddressDeleteButton } from "@/components/address-delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function AddressesPage({
   ]);
 
   return (
-    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-5xl mx-auto">
+    <main className="account-container page-section min-h-screen">
       <div className="w-full">
         <header className="mb-8">
           <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
@@ -53,6 +54,11 @@ export default async function AddressesPage({
         {params.error === "missing_fields" && (
           <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6" role="alert">
             Please fill in all required address fields.
+          </div>
+        )}
+        {params.error === "address_required_for_checkout" && (
+          <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+            Add a delivery and contact profile before checkout. We use it for courier delivery or to verify the authorized store-pickup collector.
           </div>
         )}
         {params.error === "save_failed" && (
@@ -100,12 +106,7 @@ export default async function AddressesPage({
                             </Button>
                           </form>
                         )}
-                        <form action={deleteAddress}>
-                          <input type="hidden" name="address_id" value={addr.id} />
-                          <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                            Delete
-                          </Button>
-                        </form>
+                        <AddressDeleteButton addressId={addr.id} label={addr.label || addr.recipient_name} />
                       </div>
                     </CardContent>
                   </Card>

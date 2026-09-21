@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { getOrCreateCart } from "@/lib/cart/actions";
 import { logServerError } from "@/lib/server-log";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { getStoreSetting } from "@/lib/settings/queries";
+import { calculateShippingMinor } from "@/lib/checkout/shipping";
 
 export async function processCheckout(formData: FormData) {
   const addressId = formData.get("address_id") as string;
@@ -13,6 +15,7 @@ export async function processCheckout(formData: FormData) {
   const idempotencyKey = (formData.get("idempotency_key") as string)?.trim();
   const customerNoteRaw = (formData.get("customer_note") as string)?.trim();
   const customerNote = customerNoteRaw && customerNoteRaw.length > 0 ? customerNoteRaw : undefined;
+  const fulfillmentMethod = (formData.get("fulfillment_method") as string)?.trim() || "SHIPMENT";
 
   if (!addressId || !paymentMethod || !idempotencyKey) {
     redirect("/checkout?error=missing_fields");
@@ -22,8 +25,16 @@ export async function processCheckout(formData: FormData) {
     redirect("/checkout?error=invalid_idempotency_key");
   }
 
-  if (paymentMethod !== "COD" && paymentMethod !== "MANUAL_GCASH") {
-    redirect("/checkout?error=invalid_payment_method");
+  if (fulfillmentMethod === "STORE_PICKUP") {
+    if (paymentMethod !== "CASH" && paymentMethod !== "MANUAL_GCASH") {
+      redirect("/checkout?error=invalid_payment_method");
+    }
+  } else if (fulfillmentMethod === "SHIPMENT") {
+    if (paymentMethod !== "COD" && paymentMethod !== "MANUAL_GCASH") {
+      redirect("/checkout?error=invalid_payment_method");
+    }
+  } else {
+    redirect("/checkout?error=invalid_fulfillment_method");
   }
 
   const supabase = await createClient();
@@ -85,8 +96,16 @@ export async function processCheckout(formData: FormData) {
     country_code: address.country_code || "PH",
   };
 
-  // Authoritative shipping calculation: flat ₱150 (15000 minor units)
-  const shippingMinor = 15000;
+  // Re-read the trusted setting during submission; browser totals are never authoritative.
+  const fulfillmentSettings = await getStoreSetting<{ shipping_fee_minor: number; free_shipping_threshold_minor?: number }>(
+    "fulfillment",
+    { shipping_fee_minor: 15000, free_shipping_threshold_minor: 350000 },
+  );
+  const shippingMinor = calculateShippingMinor(
+    cart.subtotal_minor,
+    fulfillmentMethod as "SHIPMENT" | "STORE_PICKUP",
+    fulfillmentSettings,
+  );
 
   // MANUAL_GCASH expires in 2 hours (120 minutes); COD expires_at is null
   const gcashExpiresAt =
@@ -102,6 +121,7 @@ export async function processCheckout(formData: FormData) {
     p_lines: linesPayload,
     p_shipping_minor: shippingMinor,
     p_payment_method: paymentMethod,
+    p_fulfillment_method: fulfillmentMethod,
     p_gcash_expires_at: gcashExpiresAt as unknown as string,
     p_delivery: deliveryPayload,
     p_customer_note: customerNote,

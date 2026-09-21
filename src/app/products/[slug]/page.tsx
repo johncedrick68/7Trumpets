@@ -1,12 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { addToCart } from "@/lib/cart/actions";
-import { formatMinorUnitsToPHP, getProductBySlug } from "@/lib/catalog/queries";
+import { formatMinorUnitsToPHP, getCategories, getProductBySlug } from "@/lib/catalog/queries";
 import { ProductPurchaseForm } from "@/components/product-purchase-form";
-import { BagIcon } from "@/components/icons";
-import { Button } from "@/components/ui/button";
-import { SizeChartDialog } from "@/components/size-chart-dialog";
+import { ProductGallery } from "@/components/product-gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +12,10 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const [product, categories] = await Promise.all([
+    getProductBySlug(slug),
+    getCategories(),
+  ]);
 
   if (!product) {
     notFound();
@@ -24,130 +23,102 @@ export default async function ProductDetailPage({
 
   const activePrices = product.variants.map((v) => v.price_minor);
   const minPrice = activePrices.length > 0 ? Math.min(...activePrices) : 0;
+  const formattedPrice = formatMinorUnitsToPHP(minPrice);
+
+  const categoryName = product.category_id
+    ? (categories.find((c) => c.id === product.category_id)?.name ?? "1968 Clothing")
+    : "1968 Clothing";
 
   return (
-    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-7xl mx-auto">
-      <div className="w-full max-w-6xl mx-auto">
+    <main className="store-container store-page min-h-screen">
+      <div className="w-full">
+        {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-8">
           <Link href="/products" className="hover:text-foreground transition-colors">Collection</Link>
           <span>/</span>
           <span className="text-foreground font-bold">{product.name}</span>
         </nav>
 
-        <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
-          {/* Gallery Column */}
-          <div className="w-full lg:w-3/5 flex flex-col gap-4">
-            <div className="aspect-[4/5] md:aspect-square w-full rounded-xl overflow-hidden bg-muted border border-border relative">
-              {product.images.length > 0 ? (
-                <Image
-                  src={
-                    product.images[0].storage_path.startsWith("http")
-                      ? product.images[0].storage_path
-                      : `/images/${product.images[0].storage_path.split("/").pop()}`
-                  }
-                  alt={product.name}
-                  width={800}
-                  height={1000}
-                  priority
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Image
-                  src="/images/1968%20CLOTHING%20V1.webp"
-                  alt={product.name}
-                  width={800}
-                  height={1000}
-                  priority
-                  className="w-full h-full object-cover"
-                />
+        {/* Mobile-only header — shown above gallery on small screens */}
+        <header className="mb-5 lg:hidden">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {categoryName}
+          </p>
+          <h1 className="mt-2 text-h2 text-foreground">
+            {product.name}
+          </h1>
+          <p className="mt-3 text-h3 text-foreground">
+            {formattedPrice}
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] lg:gap-16 xl:gap-20">
+
+          {/* ── Gallery Column ────────────────────────────────── */}
+          <ProductGallery
+            productName={product.name}
+            images={(product.images.length > 0 ? product.images : [{ id: "fallback", storage_path: "/images/1968%20CLOTHING%20V1.0.webp", alt_text: product.name, position: 0, variant_id: null }]).map((image) => ({ id: image.id, url: image.storage_path, alt: image.alt_text || product.name, position: image.position, variantId: image.variant_id }))}
+          />
+
+          {/* ── Info Column ──────────────────────────────────── */}
+          <div className="flex w-full min-w-0 flex-col lg:sticky lg:top-24 lg:self-start">
+
+            {/* Desktop-only product identity — hidden on mobile (shown above gallery) */}
+            <div className="hidden lg:block">
+              {/* eyebrow → title: 8px */}
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {categoryName}
+              </p>
+              {/* title */}
+              <h1 className="mt-2 text-h1 text-foreground">
+                {product.name}
+              </h1>
+              {/* title → price: 12px */}
+              <p className="mt-3 text-h2 text-foreground">
+                {formattedPrice}
+              </p>
+              {/* price → description: 12–16px */}
+              {product.description && (
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                  {product.description}
+                </p>
               )}
             </div>
 
-            {product.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-3">
-                {product.images.slice(0, 4).map((img, idx) => (
-                  <div key={img.id || idx} className="aspect-square rounded-lg overflow-hidden border border-border bg-muted relative">
-                    <Image
-                      src={
-                        img.storage_path.startsWith("http")
-                          ? img.storage_path
-                          : `/images/${img.storage_path.split("/").pop()}`
-                      }
-                      alt={img.alt_text || product.name}
-                      width={150}
-                      height={150}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Info Column */}
-          <div className="w-full lg:w-2/5 flex flex-col">
-            <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-2">
-              Archival Garment
-            </p>
-
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">
-              {product.name}
-            </h1>
-
-            <div className="font-mono text-2xl font-bold text-foreground mb-8">
-              {formatMinorUnitsToPHP(minPrice)}
-            </div>
-
-            {product.description && (
-              <div className="text-muted-foreground text-sm leading-relaxed mb-8 py-6 border-y border-border">
-                <p>{product.description}</p>
+            {/* description → size block: 32px */}
+            {product.variants.length > 0 && (
+              <div className="mt-8 lg:mt-8">
+                <ProductPurchaseForm
+                  options={product.options}
+                  variants={product.variants.map((variant) => ({
+                    ...variant,
+                    formatted_price: formatMinorUnitsToPHP(variant.price_minor),
+                  }))}
+                />
               </div>
             )}
 
-            {product.options.length > 0 && (
-              <ProductPurchaseForm
-                options={product.options}
-                variants={product.variants.map((variant) => ({
-                  ...variant,
-                  formatted_price: formatMinorUnitsToPHP(variant.price_minor),
-                }))}
-              />
-            )}
-
-            {product.options.length === 0 && product.variants.length > 0 && (
-              <div className="mt-4">
-                <label className="block font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4">
-                  Select Size &amp; Add to Bag
-                </label>
-                <SizeChartDialog />
-                <div className="flex flex-col gap-3">
-                  {product.variants.map((variant) => (
-                    <form key={variant.id} action={addToCart} className="flex justify-between items-center p-4 bg-muted/30 border border-border rounded-lg">
-                      <input type="hidden" name="variant_id" value={variant.id} />
-                      <input type="hidden" name="quantity" value="1" />
-                      <div>
-                        <strong className="text-sm">{variant.name || variant.sku}</strong>
-                        <div className="font-mono text-[11px] text-muted-foreground mt-1">SKU: {variant.sku}</div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono font-bold text-sm">{formatMinorUnitsToPHP(variant.price_minor)}</span>
-                        <Button type="submit" size="sm" className="gap-2">
-                          <BagIcon size={14} />
-                          <span>Add to Bag</span>
-                        </Button>
-                      </div>
-                    </form>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Specifications Box */}
-            <div className="mt-10 p-5 bg-muted/40 border border-border rounded-lg flex flex-col gap-3 font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
-              <div><strong className="text-foreground">FABRIC:</strong> 100% Heavyweight Pre-Shrunk Cotton (220-240 GSM)</div>
-              <div><strong className="text-foreground">PRINT:</strong> Archival High-Density Plastisol Screenprint</div>
-              <div><strong className="text-foreground">SHIPPING:</strong> Metro Manila 2-3 business days · Provincial 3-6 business days</div>
-              <div><strong className="text-foreground">PAYMENTS:</strong> Doorstep Cash on Delivery (COD) · Manual GCash</div>
+            {/* Add to Bag → product information: 32px */}
+            <div className="mt-8 grid gap-6 border-t border-border pt-6 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <section aria-labelledby="product-details-heading">
+                <h2 id="product-details-heading" className="font-semibold text-foreground">
+                  Product Details
+                </h2>
+                {product.description && <p className="mt-2 leading-relaxed lg:hidden">{product.description}</p>}
+                <ul className="mt-2 space-y-1.5 leading-relaxed">
+                  <li>Heavyweight pre-shrunk cotton, 220–240 GSM</li>
+                  <li>High-density plastisol screenprint</li>
+                </ul>
+              </section>
+              <section aria-labelledby="delivery-payment-heading">
+                <h2 id="delivery-payment-heading" className="font-semibold text-foreground">
+                  Delivery &amp; Payment
+                </h2>
+                <ul className="mt-2 space-y-1.5 leading-relaxed">
+                  <li>Metro Manila 2–3 days; provincial 3–6 days</li>
+                  <li>Cash on Delivery or manually verified GCash</li>
+                </ul>
+              </section>
             </div>
           </div>
         </div>

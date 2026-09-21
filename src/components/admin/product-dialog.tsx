@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveProduct } from "@/lib/admin/actions";
@@ -69,6 +70,12 @@ export function ProductDialog({ categories, product }: { categories: Category[],
           <div className="space-y-2">
             <Label htmlFor={`prod_slug_${product?.id || 'new'}`}>Slug</Label>
             <Input id={`prod_slug_${product?.id || 'new'}`} name="slug" required placeholder="e.g. kingdom-oversized-tee" defaultValue={product?.slug || ""} />
+            <p className="text-xs text-muted-foreground">Used in the product URL.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`prod_description_${product?.id || 'new'}`}>Description</Label>
+            <Textarea id={`prod_description_${product?.id || 'new'}`} name="description" rows={5} placeholder="Describe the fit, fabric, and story behind this piece." defaultValue={product?.description ?? ""} />
           </div>
 
           <div className="space-y-2">

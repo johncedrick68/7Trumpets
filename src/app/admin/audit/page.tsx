@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -45,14 +46,7 @@ export default async function AdminAuditLogsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight mb-2">Audit Logs</h1>
-          <p className="text-muted-foreground text-sm max-w-2xl">
-            Immutable append-only audit trail for administrative and transactional events.
-          </p>
-        </div>
-      </header>
+      <AdminPageHeader eyebrow="System" title="Audit Logs" description="Immutable append-only history for administrative and transactional events." />
 
       <Card>
         <CardHeader>

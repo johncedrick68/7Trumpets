@@ -34,7 +34,7 @@ export default async function OrderHistoryPage() {
   const orderList = orders || [];
 
   return (
-    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-5xl mx-auto">
+    <main className="account-container page-section min-h-screen">
       <div className="w-full">
         <header className="mb-8">
           <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">

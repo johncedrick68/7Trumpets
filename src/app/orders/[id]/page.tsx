@@ -2,14 +2,17 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { deriveCustomerFulfillmentStage } from "@/lib/orders/status";
+import { getCourierDisplayName } from "@/lib/orders/courier";
 import { logServerError } from "@/lib/server-log";
 import { getReceiptSignedUrl, submitGcashProof } from "@/lib/payments/actions";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { GcashPaymentPanel } from "@/components/gcash-payment-panel";
+import { ReturnRequestDialog } from "@/components/return-request-dialog";
+import { CancelOrderDialog } from "@/components/cancel-order-dialog";
+import { ExternalLink, Store, Truck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +23,7 @@ export default async function OrderConfirmationPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ notice?: string; error?: string }>;
 }) {
+  void submitGcashProof;
   const [{ id }, search] = await Promise.all([params, searchParams]);
 
   const supabase = await createClient();
@@ -45,8 +49,8 @@ export default async function OrderConfirmationPage({
     notFound();
   }
 
-  // 2. Fetch order items, payment, and payment submissions
-  const [itemsRes, paymentRes] = await Promise.all([
+  // 2. Fetch order items, payment, active reservations, shipment, and returns
+  const [itemsRes, paymentRes, reservationsRes, shipmentRes, returnRequestsRes] = await Promise.all([
     supabase
       .from("order_items")
       .select("*")
@@ -57,10 +61,32 @@ export default async function OrderConfirmationPage({
       .select("*")
       .eq("order_id", order.id)
       .single(),
+    supabase
+      .from("inventory_reservations")
+      .select("expires_at, status")
+      .eq("order_id", order.id)
+      .eq("status", "active")
+      .order("expires_at", { ascending: true })
+      .limit(1),
+    supabase
+      .from("shipments")
+      .select("*")
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: false })
+      .maybeSingle(),
+    supabase
+      .from("return_requests")
+      .select("*")
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const items = itemsRes.data || [];
   const payment = paymentRes.data;
+  const activeReservation = reservationsRes.data?.[0];
+  const shipment = shipmentRes.data;
+  const returnRequests = returnRequestsRes.data || [];
+
   if (itemsRes.error || paymentRes.error) {
     logServerError("order.detail_relations", "database_failure");
     throw new Error("ORDER_UNAVAILABLE");
@@ -93,7 +119,10 @@ export default async function OrderConfirmationPage({
     ? await getReceiptSignedUrl(latestSubmission.receipt_storage_path)
     : null;
 
-  const stageInfo = deriveCustomerFulfillmentStage(order.status);
+  const stageInfo = deriveCustomerFulfillmentStage(
+    order.status,
+    order.fulfillment_method === "STORE_PICKUP" ? "STORE_PICKUP" : "SHIPMENT"
+  );
 
   const canSubmitProof =
     payment?.method === "MANUAL_GCASH" &&
@@ -101,7 +130,7 @@ export default async function OrderConfirmationPage({
     (payment.status === "UNPAID" || payment.status === "REJECTED");
 
   return (
-    <main className="w-full min-h-screen px-4 py-8 md:py-12 max-w-5xl mx-auto">
+    <main className="account-container page-section min-h-screen">
       <div className="w-full">
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-8">
@@ -225,121 +254,19 @@ export default async function OrderConfirmationPage({
           {/* Left column (Takes up 2/3 space on large screens) */}
           <div className="lg:col-span-2 flex flex-col gap-8">
 
-            {/* GCash Payment */}
+            {/* GCash Payment Panel */}
             {payment?.method === "MANUAL_GCASH" && (
-              <Card className="border-border shadow-sm">
-                <CardHeader className="pb-3 border-b border-border">
-                  <CardTitle className="text-lg">GCash Payment</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-
-                  {payment.status === "UNPAID" && (
-                    <div className="mb-6 space-y-4">
-                      <h3 className="font-bold text-foreground">📱 How to Pay</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Send exactly <strong className="text-foreground">{formatMinorUnitsToPHP(order.total_minor)}</strong> to:
-                      </p>
-                      <div className="inline-block px-4 py-3 bg-muted rounded-md font-mono text-xl font-bold tracking-wider">
-                        09XX XXX XXXX
-                      </div>
-                      <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2 mt-4">
-                        <li>Open GCash → Send Money → enter the number above.</li>
-                        <li>Use <strong className="text-foreground">#{order.order_number}</strong> as the note/reference.</li>
-                        <li>Screenshot the confirmation and upload it below.</li>
-                      </ol>
-                    </div>
-                  )}
-
-                  {payment.status === "SUBMITTED" && (
-                    <div className="p-4 text-sm text-blue-800 bg-blue-50 rounded-md border border-blue-200 mb-6">
-                      ⏳ <strong>Under Review</strong> — Receipt received. We&apos;re verifying your payment.
-                    </div>
-                  )}
-
-                  {payment.status === "PAID" && (
-                    <div className="p-4 text-sm text-green-800 bg-green-50 rounded-md border border-green-200 mb-6">
-                      ✓ <strong>Payment Verified</strong> — Your GCash payment has been confirmed.
-                    </div>
-                  )}
-
-                  {payment.status === "REJECTED" && (
-                    <div className="p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200 mb-6">
-                      ✕ <strong>Receipt Rejected</strong> — Please upload a corrected GCash receipt below.
-                    </div>
-                  )}
-
-                  {canSubmitProof && (
-                    <form action={submitGcashProof} className="space-y-4">
-                      <input type="hidden" name="order_id" value={order.id} />
-
-                      <div className="space-y-2">
-                        <Label htmlFor="reference_number">GCash Reference No. (Optional)</Label>
-                        <Input
-                          id="reference_number"
-                          type="text"
-                          name="reference_number"
-                          placeholder="e.g. 1002 9382 1928"
-                          maxLength={100}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="receipt_file">
-                          Upload Payment Screenshot (JPG, PNG, WebP · max 2MB) *
-                        </Label>
-                        <Input
-                          id="receipt_file"
-                          type="file"
-                          name="receipt_file"
-                          accept="image/jpeg,image/png,image/webp"
-                          required
-                          className="cursor-pointer file:cursor-pointer"
-                        />
-                      </div>
-
-                      <Button type="submit" className="w-full">
-                        Submit GCash Proof &rarr;
-                      </Button>
-                    </form>
-                  )}
-
-                  {submissions.length > 0 && (
-                    <div className="mt-8 pt-6 border-t border-border">
-                      <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground mb-4">
-                        Submission History
-                      </h4>
-                      <div className="space-y-3">
-                        {submissions.map((sub, idx) => (
-                          <div key={sub.id} className="p-4 bg-muted/50 border border-border rounded-lg text-sm flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                            <div>
-                              <strong className="block mb-1">Submission #{submissions.length - idx}</strong>
-                              <span className="text-xs font-mono text-muted-foreground block">
-                                {new Date(sub.created_at).toLocaleDateString("en-PH", {
-                                  year: "numeric", month: "short", day: "numeric",
-                                  hour: "2-digit", minute: "2-digit",
-                                })}
-                              </span>
-                              {sub.reference_number && (
-                                <div className="text-xs font-mono text-muted-foreground mt-2">
-                                  Ref: {sub.reference_number}
-                                </div>
-                              )}
-                            </div>
-                            
-                            {idx === 0 && latestSignedUrl && (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={latestSignedUrl} target="_blank" rel="noopener noreferrer">
-                                  View Receipt ↗
-                                </a>
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <GcashPaymentPanel
+                orderId={order.id}
+                orderNumber={order.order_number}
+                amountMinor={order.total_minor}
+                formattedAmount={formatMinorUnitsToPHP(order.total_minor)}
+                paymentStatus={payment.status}
+                reservationExpiresAt={activeReservation?.expires_at}
+                canSubmitProof={canSubmitProof}
+                submissions={submissions}
+                latestSignedUrl={latestSignedUrl}
+              />
             )}
 
             {/* Items Ordered */}
@@ -371,22 +298,126 @@ export default async function OrderConfirmationPage({
               </CardContent>
             </Card>
 
-            {/* Delivery Address */}
-            <Card className="border-border shadow-sm">
-              <CardHeader className="pb-3 border-b border-border">
-                <CardTitle className="text-lg">Delivery Address</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="text-sm leading-relaxed text-foreground">
-                  <strong>{order.recipient_name}</strong><br />
-                  {order.recipient_phone}<br />
-                  {order.address_line1}
-                  {order.address_line2 && <>, {order.address_line2}</>}
-                  {order.barangay && <>, Brgy. {order.barangay}</>}<br />
-                  {order.city_municipality}, {order.province} {order.postal_code}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Fulfillment & Delivery Details */}
+            {order.fulfillment_method === "STORE_PICKUP" ? (
+              <Card className="border-border shadow-sm">
+                <CardHeader className="pb-3 border-b border-border">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Store className="size-5 text-primary" />
+                    Flagship Store Pickup
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="text-sm leading-relaxed text-foreground">
+                    <p className="font-bold text-base">1968 Flagship Store — Makati</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      Ground Floor, Archival Retail Center, Makati City, Metro Manila
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Pickup Hours: Monday to Sunday · 11:00 AM – 8:00 PM
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-muted/40 rounded-lg text-xs space-y-1 font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Authorized Collector:</span>
+                      <span className="font-bold text-foreground">{order.recipient_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Contact Phone:</span>
+                      <span className="text-foreground">{order.recipient_phone}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Pickup Reference:</span>
+                      <span className="font-bold text-primary">#{order.order_number}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-border shadow-sm">
+                <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Truck className="size-5 text-primary" />
+                    Delivery &amp; Shipment
+                  </CardTitle>
+                  {shipment && (
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {getCourierDisplayName(shipment.provider)} · {shipment.status}
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  {/* Courier tracking details if available */}
+                  {shipment && (
+                    <div className="p-3.5 bg-muted/40 border border-border rounded-lg text-xs space-y-2 font-mono">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Courier Provider:</span>
+                        <span className="font-bold text-foreground">{getCourierDisplayName(shipment.provider)}</span>
+                      </div>
+                      {shipment.tracking_number && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Tracking No:</span>
+                          <span className="font-bold text-foreground select-all">{shipment.tracking_number}</span>
+                        </div>
+                      )}
+                      {shipment.carrier_notes && (
+                        <div className="text-muted-foreground text-[11px] pt-1 border-t border-border">
+                          {shipment.carrier_notes}
+                        </div>
+                      )}
+                      {shipment.tracking_url && (
+                        <div className="pt-1">
+                          <Button asChild size="sm" variant="outline" className="w-full text-xs gap-1.5 h-8">
+                            <a href={shipment.tracking_url} target="_blank" rel="noopener noreferrer">
+                              <span>Track on Courier Portal</span>
+                              <ExternalLink className="size-3" />
+                            </a>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="text-sm leading-relaxed text-foreground">
+                    <strong>{order.recipient_name}</strong><br />
+                    {order.recipient_phone}<br />
+                    {order.address_line1}
+                    {order.address_line2 && <>, {order.address_line2}</>}
+                    {order.barangay && <>, Brgy. {order.barangay}</>}<br />
+                    {order.city_municipality}, {order.province} {order.postal_code}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Return / Exchange Status or Submission Block */}
+            {returnRequests.length > 0 && (
+              <Card className="border-border shadow-sm">
+                <CardHeader className="pb-3 border-b border-border">
+                  <CardTitle className="text-base font-bold">Return / Exchange History</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-3">
+                  {returnRequests.map((req) => (
+                    <div key={req.id} className="p-3 rounded-lg bg-muted/30 border border-border text-xs space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold uppercase tracking-wider font-mono">{req.type}</span>
+                        <Badge variant={req.status === "APPROVED" ? "default" : req.status === "REJECTED" ? "destructive" : "secondary"} className="text-[10px] font-mono">
+                          {req.status}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground">Reason: {req.reason.replace(/_/g, " ")}</p>
+                      {req.reason_details && <p className="text-foreground italic">&ldquo;{req.reason_details}&rdquo;</p>}
+                      {req.admin_notes && (
+                        <div className="pt-1 border-t border-border/50 text-xs text-primary font-medium">
+                          Note from Merchant: {req.admin_notes}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Right column — Order Summary */}
@@ -394,11 +425,21 @@ export default async function OrderConfirmationPage({
             <CardHeader className="pb-4 border-b border-border">
               <CardTitle className="text-lg">Order Summary</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 pb-6">
-              <div className="space-y-4 mb-6">
+            <CardContent className="pt-6 pb-6 space-y-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-sm border-b border-border pb-3">
+                  <span className="text-muted-foreground font-medium">Channel</span>
+                  <span className="font-mono text-xs uppercase text-foreground">{order.sales_channel || "STOREFRONT"}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b border-border pb-3">
+                  <span className="text-muted-foreground font-medium">Fulfillment</span>
+                  <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-widest px-2">
+                    {order.fulfillment_method === "STORE_PICKUP" ? "Store Pickup" : "Courier Delivery"}
+                  </Badge>
+                </div>
                 <div className="flex justify-between items-center text-sm border-b border-border pb-3">
                   <span className="text-muted-foreground font-medium">Payment</span>
-                  <span className="font-medium text-foreground">Manual GCash</span>
+                  <span className="font-medium text-foreground">{payment?.method || "MANUAL_GCASH"}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b border-border pb-3">
                   <span className="text-muted-foreground font-medium">Payment Status</span>
@@ -417,19 +458,42 @@ export default async function OrderConfirmationPage({
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-mono font-bold">{formatMinorUnitsToPHP(order.subtotal_minor)}</span>
+                  <span className="font-semibold tabular-nums">{formatMinorUnitsToPHP(order.subtotal_minor)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="font-mono font-bold">{formatMinorUnitsToPHP(order.shipping_minor)}</span>
+                  <span className="font-mono font-bold">
+                    {order.shipping_minor > 0 ? formatMinorUnitsToPHP(order.shipping_minor) : "₱0.00 (Free)"}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t-2 border-primary mt-2">
                   <span className="font-bold">Total</span>
-                  <span className="font-mono font-bold text-lg">{formatMinorUnitsToPHP(order.total_minor)}</span>
+                  <span className="text-lg font-bold tabular-nums">{formatMinorUnitsToPHP(order.total_minor)}</span>
                 </div>
               </div>
 
-              <Button variant="secondary" className="w-full mt-8" asChild>
+              {/* Order Cancellation Before Shipment */}
+              {(order.status === "CONFIRMED" || order.status === "PROCESSING") && (
+                <div className="pt-2 border-t border-border">
+                  <CancelOrderDialog
+                    orderId={order.id}
+                    orderNumber={order.order_number}
+                  />
+                </div>
+              )}
+
+              {/* Return / Exchange Button if Delivered */}
+              {(order.status === "DELIVERED" || order.status === "COMPLETED") && returnRequests.length === 0 && (
+                <div className="pt-2 border-t border-border">
+                  <ReturnRequestDialog
+                    orderId={order.id}
+                    orderNumber={order.order_number}
+                    totalMinor={order.total_minor}
+                  />
+                </div>
+              )}
+
+              <Button variant="secondary" className="w-full mt-4" asChild>
                 <Link href="/orders">
                   &larr; Back to All Orders
                 </Link>

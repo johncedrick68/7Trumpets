@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 
-import { adjustInventory, deleteProductImage } from "@/lib/admin/actions";
+import { adjustInventory } from "@/lib/admin/actions";
 import { getAdminAuthContext } from "@/lib/admin/auth";
-import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
+import { formatMinorUnitsToPHP, productImageUrl } from "@/lib/catalog/queries";
 import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -15,9 +16,36 @@ import { CategoryDialog } from "@/components/admin/category-dialog";
 import { ProductDialog } from "@/components/admin/product-dialog";
 import { VariantDialog } from "@/components/admin/variant-dialog";
 import { ProductImageDialog } from "@/components/admin/product-image-dialog";
-import { Trash2, Image as ImageIcon, PackagePlus } from "lucide-react";
+import { PackagePlus } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { ProductMediaActions } from "@/components/admin/product-media-actions";
+import { ProductOptionsPanel } from "@/components/admin/product-options-panel";
 
 export const dynamic = "force-dynamic";
+
+const catalogNotices: Record<string, string> = {
+  product_image_saved: "Product image uploaded.",
+  product_image_deleted: "Product image deleted.",
+  product_image_reordered: "Product image order updated.",
+  inventory_adjusted: "Inventory updated.",
+  category_saved: "Category saved.",
+  product_saved: "Product saved.",
+  variant_saved: "Variant saved.",
+  option_saved: "Product option saved.",
+  option_value_saved: "Option value saved.",
+  variant_option_saved: "Variant option saved.",
+};
+
+const catalogErrors: Record<string, string> = {
+  invalid_product_image: "Choose a product, add descriptive alt text, and upload an image under 5 MB.",
+  product_image_type_mismatch: "The file contents do not match its image type. Use a valid WebP, JPG, or PNG file.",
+  product_image_upload_failed: "The image could not be uploaded. Please try again.",
+  save_product_image_failed: "The image uploaded but could not be attached to the product.",
+  product_image_not_found: "That image no longer exists.",
+  delete_product_image_failed: "The image could not be deleted. Please try again.",
+  invalid_image_order: "That image-order change was not valid.",
+  reorder_product_image_failed: "The image order could not be updated. Please try again.",
+};
 
 export default async function AdminCatalogOverviewPage(props: {
   searchParams?: Promise<{ notice?: string; error?: string }>;
@@ -36,7 +64,7 @@ export default async function AdminCatalogOverviewPage(props: {
   // Fetch categories
   const { data: categories } = await serviceClient
     .from("categories")
-    .select("id, name, slug, position, archived_at")
+    .select("id, name, slug, description, position, archived_at")
     .order("position", { ascending: true });
 
   // Fetch products with variants and inventory status
@@ -81,29 +109,26 @@ export default async function AdminCatalogOverviewPage(props: {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight mb-2">Catalog & Inventory</h1>
-          <p className="text-muted-foreground text-sm max-w-2xl">
-            Operational management of categories, archival pieces, sizing, and stock levels.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
+      <AdminPageHeader
+        eyebrow="Merchandise"
+        title="Catalog & Inventory"
+        description="Manage products, categories, variants, media, pricing, and stock availability."
+        actions={<>
           <CategoryDialog />
           <ProductDialog categories={categoryList} />
           <VariantDialog products={productList} />
           <ProductImageDialog products={productList} />
-        </div>
-      </header>
+        </>}
+      />
 
       {notice && (
-        <div className="p-4 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400">
-          Action completed: {notice}
+        <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+          {catalogNotices[notice] ?? "Catalog updated."}
         </div>
       )}
       {error && (
-        <div className="p-4 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
-          Error: {error}
+        <div role="alert" className="rounded-md border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+          {catalogErrors[error] ?? "The catalog could not be updated. Please try again."}
         </div>
       )}
 
@@ -138,7 +163,34 @@ export default async function AdminCatalogOverviewPage(props: {
             No products found in the catalog. Click &quot;Add Product&quot; to create one.
           </CardContent>
         ) : (
-          <div className="border-t">
+          <>
+          <div className="divide-y border-t xl:hidden">
+            {productList.map((product) => (
+              <details key={product.id} className="group">
+                <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden">
+                  <div className="min-w-0"><p className="truncate font-semibold">{product.name}</p><p className="truncate text-xs text-muted-foreground">{product.product_variants.length} variants · {product.product_images.length} images</p></div>
+                  <div className="flex shrink-0 items-center gap-2"><Badge variant={product.status === "published" ? "default" : "secondary"} className="capitalize">{product.status}</Badge><span className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span></div>
+                </summary>
+                <div className="space-y-5 bg-muted/20 px-4 pb-5 pt-1">
+                  <div className="flex justify-between gap-3"><p className="break-all font-mono text-[10px] text-muted-foreground">{product.slug}</p><ProductDialog categories={categoryList} product={product} /></div>
+                  {product.product_images.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Media</p>{product.product_images.sort((a, b) => a.position - b.position).map((image, index) => <div key={image.id} className="flex items-center justify-between gap-2 rounded-lg border bg-background p-2">
+                    <div className="flex min-w-0 items-center gap-2.5"><Image src={productImageUrl(image.storage_path)} alt="" width={44} height={44} unoptimized className="size-11 rounded-md border object-cover" /><div className="min-w-0"><p className="truncate text-xs font-medium">{image.alt_text}</p><p className="text-[10px] text-muted-foreground">{index === 0 ? "Primary · " : ""}Order {image.position}</p></div></div>
+                    <ProductMediaActions imageId={image.id} imageLabel={image.alt_text} index={index} count={product.product_images.length} />
+                  </div>)}</div>}
+                  <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variants & stock</p>{product.product_variants.map((variant) => {
+                    const inv = Array.isArray(variant.inventory) ? variant.inventory[0] : variant.inventory;
+                    const available = inv ? inv.on_hand - inv.reserved : 0;
+                    return <div key={variant.id} className="space-y-3 rounded-lg border bg-background p-3">
+                      <div className="flex items-start justify-between gap-2"><div><p className="text-sm font-semibold">{variant.name || variant.sku}</p><p className="font-mono text-[10px] text-muted-foreground">{variant.sku}</p></div><div className="text-right"><p className="text-sm font-semibold">{formatMinorUnitsToPHP(variant.price_minor)}</p><p className="text-xs text-muted-foreground">{available} available</p></div></div>
+                      <form action={adjustInventory} className="grid grid-cols-[5rem_1fr] gap-2"><input type="hidden" name="variant_id" value={variant.id} /><input type="hidden" name="type" value="adjustment" /><Input type="number" name="delta" required placeholder="± qty" className="h-11" /><Input name="reason" required placeholder="Reason for change" className="h-11" /><Button type="submit" variant="secondary" className="col-span-2 h-11">Adjust stock</Button></form>
+                    </div>;
+                  })}</div>
+                  <ProductOptionsPanel productId={product.id} options={product.product_options} variants={product.product_variants} />
+                </div>
+              </details>
+            ))}
+          </div>
+          <div className="hidden border-t xl:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -161,18 +213,16 @@ export default async function AdminCatalogOverviewPage(props: {
                       
                       <div className="mt-4 space-y-2">
                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        {product.product_images.sort((a: any, b: any) => a.position - b.position).map((image: any) => (
-                          <div key={image.id} className="flex items-center justify-between gap-2 p-1.5 bg-muted/30 rounded border border-border/50">
-                            <div className="flex items-center gap-2 overflow-hidden">
-                              <ImageIcon className="w-3 h-3 text-muted-foreground shrink-0" />
-                              <span className="text-[10px] truncate text-muted-foreground">Pos {image.position}: {image.alt_text}</span>
+                        {product.product_images.sort((a: any, b: any) => a.position - b.position).map((image: any, index: number) => (
+                          <div key={image.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <Image src={productImageUrl(image.storage_path)} alt="" width={40} height={40} unoptimized className="size-10 shrink-0 rounded-md border object-cover" />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5"><span className="truncate text-xs font-medium">{image.alt_text}</span>{index === 0 && <Badge variant="secondary" className="h-5 text-[9px]">Primary</Badge>}</div>
+                                <span className="text-[10px] text-muted-foreground">Display order {image.position}</span>
+                              </div>
                             </div>
-                            <form action={deleteProductImage}>
-                              <input type="hidden" name="image_id" value={image.id} />
-                              <Button type="submit" variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </form>
+                            <ProductMediaActions imageId={image.id} imageLabel={image.alt_text} index={index} count={product.product_images.length} />
                           </div>
                         ))}
                       </div>
@@ -235,12 +285,16 @@ export default async function AdminCatalogOverviewPage(props: {
                           })}
                         </div>
                       )}
+                      <div className="mt-4">
+                        <ProductOptionsPanel productId={product.id} options={product.product_options} variants={product.product_variants} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+          </>
         )}
       </Card>
     </div>
