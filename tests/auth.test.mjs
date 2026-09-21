@@ -8,6 +8,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("redirects accept only internal paths", () => {
   assert.strictEqual(safeRedirectPath("/account"), "/account");
+  assert.strictEqual(safeRedirectPath("/account/support"), "/account/support");
   assert.strictEqual(safeRedirectPath("/update-password?complete=1"), "/update-password?complete=1");
   assert.strictEqual(safeRedirectPath("/"), "/");
   assert.strictEqual(safeRedirectPath("https://evil.example"), "/account");
@@ -18,6 +19,16 @@ test("redirects accept only internal paths", () => {
   assert.strictEqual(safeRedirectPath("javascript:alert(1)"), "/account");
   assert.strictEqual(safeRedirectPath("data:text/html,test"), "/account");
   assert.strictEqual(safeRedirectPath(null, "/account"), "/account");
+});
+
+test("support authentication uses the canonical login route and sanitizes return targets", async () => {
+  const support = await read("src/app/account/support/page.tsx");
+  const login = await read("src/app/login/page.tsx");
+
+  assert.match(support, /redirect\("\/login\?return_to=\/account\/support"\)/);
+  assert.doesNotMatch(support, /\/auth\/login/);
+  assert.match(login, /safeRedirectPath\(params\.return_to \?\? params\.next, "\/account"\)/);
+  assert.match(login, /name="next" value=\{next\}/);
 });
 
 test("local email templates use the SSR token-hash routes", async () => {
