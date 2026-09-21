@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef, useTransition } from "react";
 import Link from "next/link";
 import {
   MessageSquare,
-  Search,
   Send,
   User,
   Shield,
@@ -29,7 +28,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/admin/search-field";
 import {
   Dialog,
   DialogContent,
@@ -212,17 +211,18 @@ export function SupportInbox({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start min-h-[700px]">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start lg:min-h-[700px]">
       {/* ── Left Pane: Queue List (~360px) ── */}
       <div className="lg:col-span-4 space-y-4">
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
+        <div>
+          <SearchField
             placeholder="Search ticket, order #, customer ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs"
+            onClear={() => setSearch("")}
+            className="h-11 text-sm"
+            aria-label="Search support tickets"
           />
         </div>
 
@@ -332,7 +332,7 @@ export function SupportInbox({
       {/* ── Right Pane: Conversation Details & Composer ── */}
       <div className="lg:col-span-8">
         {activeConversation ? (
-          <Card className="flex flex-col h-[700px]">
+          <Card className="flex flex-col min-h-[620px] lg:h-[700px]">
             {/* Conversation Header */}
             <CardHeader className="p-4 border-b flex-shrink-0">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -604,7 +604,7 @@ export function SupportInbox({
             </div>
           </Card>
         ) : (
-          <Card className="h-[700px] flex items-center justify-center text-center p-8">
+          <Card className="min-h-[360px] lg:h-[700px] flex items-center justify-center text-center p-8">
             <div className="space-y-2">
               <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto" />
               <CardTitle className="text-sm">No Conversation Selected</CardTitle>

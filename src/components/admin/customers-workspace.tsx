@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Users,
-  Search,
   ShoppingBag,
   TrendingUp,
   Calendar,
@@ -20,7 +19,7 @@ import { formatMinorUnitsToPHP } from "@/lib/money";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/admin/search-field";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -194,13 +193,14 @@ export function CustomersWorkspace({ customers, metrics }: CustomersWorkspacePro
 
       {/* 3. Search & Filters */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
+        <div className="flex-1 max-w-sm">
+          <SearchField
             placeholder="Search customer name, phone, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs"
+            onClear={() => setSearch("")}
+            className="h-11 text-sm"
+            aria-label="Search customers"
           />
         </div>
 

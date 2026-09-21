@@ -135,38 +135,38 @@ export async function getProducts(options?: {
   search?: string;
   sort?: "newest" | "price_asc" | "price_desc";
 }): Promise<ProductSummary[]> {
-  const supabase = await createClient();
-  let query = supabase
-    .from("products")
-    .select(`
-      id,
-      name,
-      slug,
-      description,
-      category_id,
-      created_at,
-      product_variants (
-        price_minor,
-        status
-      ),
-      product_images (
-        storage_path,
-        position
-      )
-    `)
-    .eq("status", "published");
-
-  if (options?.categoryId) {
-    query = query.eq("category_id", options.categoryId);
-  }
-
-  if (options?.search && options.search.trim()) {
-    query = query.ilike("name", `%${options.search.trim()}%`);
-  }
-
-  query = query.order("created_at", { ascending: false });
-
   try {
+    const supabase = await createClient();
+    let query = supabase
+      .from("products")
+      .select(`
+        id,
+        name,
+        slug,
+        description,
+        category_id,
+        created_at,
+        product_variants (
+          price_minor,
+          status
+        ),
+        product_images (
+          storage_path,
+          position
+        )
+      `)
+      .eq("status", "published");
+
+    if (options?.categoryId) {
+      query = query.eq("category_id", options.categoryId);
+    }
+
+    if (options?.search && options.search.trim()) {
+      query = query.ilike("name", `%${options.search.trim()}%`);
+    }
+
+    query = query.order("created_at", { ascending: false });
+
     const { data, error } = await query;
     if (error) {
       logServerError("catalog.products", "database_failure");
