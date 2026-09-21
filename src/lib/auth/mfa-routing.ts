@@ -1,4 +1,4 @@
-import { safeAdminRedirectPath, safeRedirectPath } from "@/lib/auth/redirect";
+import { safeAdminRedirectPath, safeCustomerRedirectPath } from "@/lib/auth/redirect";
 
 export type AuthenticatedRole = "customer" | "cashier" | "admin" | "super_admin";
 
@@ -14,7 +14,7 @@ export function postLoginRoute({
   next?: string | null;
 }) {
   if (role !== "admin" && role !== "super_admin") {
-    return safeRedirectPath(next, "/account");
+    return safeCustomerRedirectPath(next, "/account");
   }
 
   const adminNext = safeAdminRedirectPath(next, "/admin");
