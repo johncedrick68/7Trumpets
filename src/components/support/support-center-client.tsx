@@ -72,31 +72,67 @@ export function SupportCenterClient({
     }
   }, [initialMessages, activeConversation]);
 
-  // Realtime subscription to conversation messages
+  // Realtime subscription to conversation messages with reconnect reconciliation
   useEffect(() => {
     if (!activeConversation?.id) return;
+    const conversationId = activeConversation.id;
 
     const channel = supabase
-      .channel(`support_conv_${activeConversation.id}`)
+      .channel(`support:conversation:${conversationId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "support_messages",
-          filter: `conversation_id=eq.${activeConversation.id}`,
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           const newMsg = payload.new as SupportMessage;
           if (!newMsg.is_internal) {
             setMessages((prev) => {
               if (prev.some((m) => m.id === newMsg.id)) return prev;
+              // Deduplicate and replace any optimistic temp message
+              const hasOptimistic = prev.some(
+                (m) => m.id.startsWith("temp_") && m.content === newMsg.content && m.sender_type === newMsg.sender_type
+              );
+              if (hasOptimistic) {
+                return prev.map((m) =>
+                  m.id.startsWith("temp_") && m.content === newMsg.content && m.sender_type === newMsg.sender_type
+                    ? newMsg
+                    : m
+                );
+              }
               return [...prev, newMsg];
             });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // When connected or reconnected after temporary drop, reconcile with database truth
+        if (status === "SUBSCRIBED") {
+          supabase
+            .from("support_messages")
+            .select("id, conversation_id, sender_type, sender_user_id, content, is_internal, metadata, created_at")
+            .eq("conversation_id", conversationId)
+            .eq("is_internal", false)
+            .order("created_at", { ascending: true })
+            .then(({ data }) => {
+              if (data && data.length > 0) {
+                setMessages((prev) => {
+                  const tempMessages = prev.filter((m) => m.id.startsWith("temp_"));
+                  const merged = [...(data as unknown as SupportMessage[])];
+                  for (const temp of tempMessages) {
+                    if (!merged.some((m) => m.content === temp.content && m.sender_type === temp.sender_type)) {
+                      merged.push(temp);
+                    }
+                  }
+                  return merged;
+                });
+              }
+            });
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

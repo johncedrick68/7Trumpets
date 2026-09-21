@@ -63,3 +63,19 @@ When communicating with Gemini:
 Super Administrators can immediately terminate all AI auto-replies and processing from `/admin/settings/ai`:
 - Setting `kill_switch = true` stops all Gemini invocations instantly.
 - Customer support automatically routes 100% of tickets to the human queue (`WAITING_FOR_STAFF`).
+
+---
+
+## 5. Implementation & Verification Status
+
+- **AI Service Boundary & Telemetry (`src/lib/ai/`)**: `IMPLEMENTED` & `LIVE VERIFIED` (Verified with unit tests, schema assertions, and error boundaries).
+- **Read-Only Tool Registry (`src/lib/ai/tools.ts`)**: `IMPLEMENTED` & `LIVE VERIFIED` (Carrier tracking, policy lookup, stock calculations verified).
+- **Escalation Rules & Graceful Fallback**: `IMPLEMENTED` & `LIVE VERIFIED` (Dispute pattern tests and fallback verified).
+- **Emergency Kill Switch (`/admin/settings/ai`)**: `IMPLEMENTED` (Configurable by Super Admin).
+- **Live Gemini API Credentials**: `CONFIGURATION REQUIRED`
+
+```
+GEMINI SUPPORT IMPLEMENTED — LIVE API CREDENTIAL REQUIRED
+```
+Live automated unit tests and retail verification mock external Google AI endpoints to prevent non-deterministic CI failures. Supplying a valid `GEMINI_API_KEY` in `.env.local` enables live model inference immediately.
+

@@ -1733,6 +1733,14 @@ export type Database = {
         Args: { p_action: string; p_image_id: string }
         Returns: boolean
       }
+      admin_assign_staff: {
+        Args: { p_conversation_id: string; p_staff_id: string }
+        Returns: boolean
+      }
+      admin_reopen_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
       admin_reply_support: {
         Args: {
           p_content: string
@@ -2074,6 +2082,14 @@ export type Database = {
           p_order_id?: string
         }
         Returns: string
+      }
+      customer_close_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      customer_reopen_support: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
       }
       current_user_role: { Args: never; Returns: string }
       get_customer_growth_analytics: { Args: never; Returns: Json }

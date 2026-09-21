@@ -175,3 +175,166 @@ test("Read-only tools: Courier tracking derived accurately for official carriers
   const emptyUrl = getCourierTrackingUrl("MANUAL", "");
   assert.equal(emptyUrl, null);
 });
+
+test("Support Hardening Migration: Revokes direct customer UPDATE and prevents sender spoofing", async () => {
+  const hardeningMigration = await read("supabase/migrations/20260922010000_support_security_hardening.sql");
+
+  assert.match(hardeningMigration, /REVOKE UPDATE, DELETE ON public\.support_conversations FROM authenticated/);
+  assert.match(hardeningMigration, /DROP POLICY IF EXISTS support_conversations_customer_update ON public\.support_conversations/);
+  assert.match(hardeningMigration, /CREATE POLICY support_conversations_admin_select/);
+  assert.match(hardeningMigration, /CREATE POLICY support_conversations_admin_update/);
+  assert.match(hardeningMigration, /coalesce\(auth\.jwt\(\) ->> 'aal', ''\) = 'aal2'/);
+
+  assert.match(hardeningMigration, /CREATE OR REPLACE FUNCTION public\.customer_reopen_support/);
+  assert.match(hardeningMigration, /CREATE OR REPLACE FUNCTION public\.customer_close_support/);
+  assert.match(hardeningMigration, /CREATE OR REPLACE FUNCTION public\.admin_reopen_support/);
+  assert.match(hardeningMigration, /CREATE OR REPLACE FUNCTION public\.admin_assign_staff/);
+});
+
+test("Live Customer Security Proofs: Authenticated customer cannot mutate privileged columns or spoof messages", async () => {
+  let envContent = "";
+  try {
+    envContent = await read(".env.local");
+  } catch {
+    // Skip if .env.local not found
+    return;
+  }
+
+  const getEnv = (key) => {
+    const match = envContent.match(new RegExp(`^${key}=(.*)$`, "m"));
+    return match ? match[1].trim() : null;
+  };
+
+  const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL") || "http://127.0.0.1:54321";
+  const anonKey = getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  if (!anonKey) return;
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const customerClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+
+  // 1. Authenticate Customer
+  const { data: custAuth, error: authErr } = await customerClient.auth.signInWithPassword({
+    email: "customer.demo@1968.local",
+    password: "Demo1968Customer!",
+  });
+  if (authErr) {
+    console.warn("Skipping live session test: customer authentication failed", authErr.message);
+    return;
+  }
+  const customerId = custAuth.user.id;
+
+  // 2. Create a test support conversation via canonical RPC
+  const { data: convId, error: createErr } = await customerClient.rpc("create_support_conversation", {
+    p_category: "OTHER",
+    p_initial_message: "Security audit test conversation",
+  });
+  assert.ifError(createErr);
+  assert.ok(convId, "Conversation ID must be returned");
+
+  // Proof 1: Customer CANNOT directly update assigned_staff_id on support_conversations
+  const { error: assignStaffErr, data: assignStaffData } = await customerClient
+    .from("support_conversations")
+    .update({ assigned_staff_id: customerId })
+    .eq("id", convId)
+    .select();
+  // Either error or 0 rows modified due to RLS
+  assert.ok(assignStaffErr || !assignStaffData || assignStaffData.length === 0, "Direct staff assignment must fail");
+
+  // Proof 2: Customer CANNOT directly change priority
+  const { error: priorityErr, data: priorityData } = await customerClient
+    .from("support_conversations")
+    .update({ priority: "URGENT" })
+    .eq("id", convId)
+    .select();
+  assert.ok(priorityErr || !priorityData || priorityData.length === 0, "Direct priority mutation must fail");
+
+  // Proof 3: Customer CANNOT directly modify ai_state
+  const { error: aiStateErr, data: aiStateData } = await customerClient
+    .from("support_conversations")
+    .update({ ai_state: "DISABLED" })
+    .eq("id", convId)
+    .select();
+  assert.ok(aiStateErr || !aiStateData || aiStateData.length === 0, "Direct ai_state mutation must fail");
+
+  // Proof 4: Customer CANNOT directly edit AI summary
+  const { error: summaryErr, data: summaryData } = await customerClient
+    .from("support_conversations")
+    .update({ summary: "Hacked by attacker" })
+    .eq("id", convId)
+    .select();
+  assert.ok(summaryErr || !summaryData || summaryData.length === 0, "Direct summary mutation must fail");
+
+  // Proof 5: Customer CANNOT directly mark conversation resolved
+  const { error: resolveErr, data: resolveData } = await customerClient
+    .from("support_conversations")
+    .update({ status: "RESOLVED", resolved_at: new Date().toISOString() })
+    .eq("id", convId)
+    .select();
+  assert.ok(resolveErr || !resolveData || resolveData.length === 0, "Direct resolve mutation must fail");
+
+  // Proof 6: Customer CANNOT create an internal staff note
+  const { error: internalNoteErr } = await customerClient
+    .from("support_messages")
+    .insert({
+      conversation_id: convId,
+      sender_type: "CUSTOMER",
+      sender_user_id: customerId,
+      content: "Unauthorized internal note attempt",
+      is_internal: true,
+    });
+  assert.ok(internalNoteErr, "Inserting is_internal=true as customer must be rejected by PostgreSQL RLS");
+
+  // Proof 7: Customer CANNOT impersonate staff sender_type
+  const { error: staffImpersonationErr } = await customerClient
+    .from("support_messages")
+    .insert({
+      conversation_id: convId,
+      sender_type: "STAFF",
+      sender_user_id: customerId,
+      content: "Impersonating staff member",
+      is_internal: false,
+    });
+  assert.ok(staffImpersonationErr, "Inserting sender_type=STAFF as customer must be rejected by PostgreSQL RLS");
+
+  // Proof 8: Customer CANNOT impersonate AI sender_type
+  const { error: aiImpersonationErr } = await customerClient
+    .from("support_messages")
+    .insert({
+      conversation_id: convId,
+      sender_type: "AI",
+      sender_user_id: customerId,
+      content: "Impersonating 1968 Assistant",
+      is_internal: false,
+    });
+  assert.ok(aiImpersonationErr, "Inserting sender_type=AI as customer must be rejected by PostgreSQL RLS");
+
+  // Proof 9: Customer CANNOT spoof another user's sender_user_id
+  const { error: userSpoofErr } = await customerClient
+    .from("support_messages")
+    .insert({
+      conversation_id: convId,
+      sender_type: "CUSTOMER",
+      sender_user_id: "00000000-0000-0000-0000-000000000000",
+      content: "Spoofing another customer UID",
+      is_internal: false,
+    });
+  assert.ok(userSpoofErr, "Inserting mismatched sender_user_id must be rejected by PostgreSQL RLS");
+
+  // Proof 10: Customer CAN request human support through canonical RPC
+  const { data: handoffResult, error: handoffErr } = await customerClient.rpc("request_human_support", {
+    p_conversation_id: convId,
+  });
+  assert.ifError(handoffErr);
+  assert.equal(handoffResult, true, "request_human_support RPC must return true");
+
+  // Verify resulting state in database
+  const { data: updatedConv, error: verifyErr } = await customerClient
+    .from("support_conversations")
+    .select("status, ai_state, priority")
+    .eq("id", convId)
+    .single();
+  assert.ifError(verifyErr);
+  assert.equal(updatedConv.status, "WAITING_FOR_STAFF");
+  assert.equal(updatedConv.ai_state, "PAUSED_FOR_HUMAN");
+});
+

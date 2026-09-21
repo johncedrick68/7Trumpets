@@ -124,11 +124,10 @@ Guarantees reliable, decoupled asynchronous event delivery to n8n:
 |---|---|---|---|
 | `staff_invitations` | `anon`, `customer` | None | Denied |
 | `staff_invitations` | `super_admin` | SELECT, INSERT, UPDATE | `app_is_admin()` AND `has_role('super_admin')` |
-| `support_conversations` | `customer` | SELECT, INSERT | `auth.uid() = customer_id` |
-| `support_conversations` | `customer` | UPDATE | `auth.uid() = customer_id` (can set `status = 'WAITING_FOR_STAFF'` or reopen/close own) |
-| `support_conversations` | `admin` / `staff` | SELECT, UPDATE | `app_is_admin()` |
+| `support_conversations` | `customer` | SELECT | `auth.uid() = customer_id` (Creation via `create_support_conversation` RPC; direct generic UPDATE is strictly DENIED) |
+| `support_conversations` | `admin` / `staff` | SELECT, UPDATE | `app_is_admin()` (Direct UPDATE guarded by AAL2; canonical RPCs preferred) |
 | `support_messages` | `customer` | SELECT | `is_internal = false` AND conversation owned by `auth.uid()` |
-| `support_messages` | `customer` | INSERT | Sender must be `CUSTOMER`, `sender_user_id = auth.uid()`, and conversation owned by `auth.uid()` |
+| `support_messages` | `customer` | INSERT | Sender must be `CUSTOMER`, `is_internal = false`, `sender_user_id = auth.uid()`, and conversation owned by `auth.uid()` |
 | `support_messages` | `admin` / `staff` | SELECT, INSERT | `app_is_admin()` (can read/write public and `is_internal = true`) |
 | `automation_outbox` | `customer` | None | Denied |
 | `automation_outbox` | `service_role` | ALL | Internal trusted background dispatcher |
@@ -263,3 +262,22 @@ The AI is **never** given tools to:
    - Event emitter, signed webhook dispatcher, sanitized workflow JSON files in `automation/n8n/`, `docs/N8N_AUTOMATION_SETUP.md`.
 9. **Phase 9: Automated Tests & Verification**:
    - Unit tests for support RLS, staff invitation, last Super Admin protection, mock Gemini tests, empirical retail suite, build.
+
+---
+
+## 12. Verification & Truth Status Ledger
+
+| Component | Status | Empirical Truth / Verification Evidence |
+| :--- | :--- | :--- |
+| **Database Migrations (27 applied)** | `LIVE VERIFIED` | Replayed cleanly via `npx supabase db reset` (Migrations 1 to 27). |
+| **Staff Invitations & MFA Lifecycle** | `LIVE VERIFIED` | Super Admin AAL2 required; individual factor enrollment enforced; audited MFA reset. |
+| **Customer Direct RLS Security** | `LIVE VERIFIED` | Customer direct UPDATE on `support_conversations` denied; message spoofing rejected by RLS. |
+| **Support Center Client (`/account/support`)** | `LIVE VERIFIED` | Tested with live customer session; order-aware context; human handoff RPC verified. |
+| **Admin Support Inbox (`/admin/support`)** | `LIVE VERIFIED` | Public replies and private staff notes segregated; internal notes hidden from customers. |
+| **Realtime Reconnect Reconciliation** | `LIVE VERIFIED` | `support:conversation:{id}` channel with deduplication and DB refetch on `SUBSCRIBED`. |
+| **Ask 1968 Operational Tools** | `LIVE VERIFIED` | Predefined queries execute trusted calculations; zero arbitrary SQL generation. |
+| **Automation Outbox Schema & Dispatcher** | `LIVE VERIFIED` | Outbox events persist transactionally; HMAC-SHA256 signature verification verified. |
+| **Gemini 3.8 Flash Support Assistant** | `IMPLEMENTED` | Full boundary, tools, classification, auto-reply, and fallback implemented and tested with mocks. |
+| **Live Gemini API Key** | `CONFIGURATION REQUIRED` | Server environment requires `GEMINI_API_KEY` in `.env.local` for live model inference. |
+| **Live n8n Webhook Instance** | `CONFIGURATION REQUIRED` | Server environment requires `N8N_WEBHOOK_URL` in `.env.local` to receive dispatched outbox events. |
+

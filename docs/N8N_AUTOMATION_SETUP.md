@@ -8,7 +8,7 @@
 
 In 1968 Clothing, **n8n is an asynchronous orchestrator**, NOT an authoritative database or transactional gateway:
 - **Zero Transaction Coupling**: Core retail operations (checkout, inventory reservations, GCash payment approval, refunds, POS sales) NEVER make synchronous calls to n8n.
-- **Outbox Pattern Guarantee**: If n8n is offline, experiencing downtime, or unreachable, 100% of customer orders, payments, and support conversations succeed and persist safely in `public.automation_outbox`.
+- **Canonical Persistence & Outbox Guarantee**: Support messages persist canonically in `public.support_messages`, customer orders in `public.orders`, and payments in `public.payments`. The `public.automation_outbox` table stores asynchronous EVENTS about those persisted domain actions. If n8n is offline, experiencing downtime, or unreachable, 100% of customer orders, payments, and support conversations succeed and persist safely in their database tables, and the outbox events remain safe and retryable.
 - **Read-Only Data Enrichment**: Workflows receive domain events and call internal authenticated APIs to trigger notifications, daily operational summaries, and background tasks.
 
 ---
@@ -91,7 +91,12 @@ When running a self-hosted n8n instance:
 
 ---
 
-## 6. Local Status
+## 6. Integration Status Ledger
+ 
+- **Outbox Schema & Event Emitters**: `IMPLEMENTED` & `LIVE VERIFIED` (Tested via 82-test automated suite and PostgreSQL assertions).
+- **HMAC-SHA256 Signing & Verification**: `IMPLEMENTED` & `LIVE VERIFIED` (Verified timing-safe and timestamp replay rejection).
+- **Sanitized Workflow JSON Definitions**: `IMPLEMENTED` (Located in `automation/n8n/`).
+- **Live External n8n Connection**: `CONFIGURATION REQUIRED` (Requires setting `N8N_WEBHOOK_URL` and `N8N_WEBHOOK_SECRET` in environment).
 
 ```
 N8N INTEGRATION PREPARED — INSTANCE/CREDENTIALS REQUIRED

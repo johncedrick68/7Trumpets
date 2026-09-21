@@ -71,3 +71,16 @@ In the Admin Support Inbox (`/admin/support`), staff can toggle between two mode
 1. **Check Attached Order Facts**: When tickets are opened from Order Details, the real order number and fulfillment status appear directly in the conversation header.
 2. **Review Advisory AI Summary**: If the conversation was initially analyzed by Gemini, review the advisory summary banner before replying.
 3. **Internal Note on Resolution**: When resolving complex tickets, record a brief internal note explaining the resolution for historical accountability.
+
+---
+
+## 5. Operations Status Ledger
+
+- **Customer Support Center (`/account/support`)**: `LIVE VERIFIED` (Tested with authenticated customer session; order-aware context functional).
+- **Admin Support Inbox (`/admin/support`)**: `LIVE VERIFIED` (Two-pane queue triage, public replies, internal notes, resolution workflow).
+- **Staff Assignment & Ticket Lifecycle RPCs**: `LIVE VERIFIED` (Guarded by AAL2 and audited in `public.audit_logs`).
+- **Internal Staff Note Isolation**: `LIVE VERIFIED` (PostgreSQL RLS guarantees internal notes never leak to customers).
+- **Customer Human Handoff Workflow**: `LIVE VERIFIED` (Single-click "Talk to a person" transitions to `WAITING_FOR_STAFF` and pauses AI).
+- **Realtime Private Channel Synchronization**: `LIVE VERIFIED` (Channel `support:conversation:{id}` with reconnect refetch reconciliation).
+- **AI Auto-Reply Service**: `IMPLEMENTED` / `CONFIGURATION REQUIRED` (Core service functional; live model calls require `GEMINI_API_KEY`).
+

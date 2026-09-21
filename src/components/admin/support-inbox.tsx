@@ -78,19 +78,20 @@ export function SupportInbox({
     setMessages(initialMessages);
   }, [initialMessages, activeConversation?.id]);
 
-  // Realtime subscription for incoming messages
+  // Realtime subscription for incoming messages with reconnect reconciliation
   useEffect(() => {
     if (!activeConversation?.id) return;
+    const conversationId = activeConversation.id;
 
     const channel = supabase
-      .channel(`admin_support_${activeConversation.id}`)
+      .channel(`support:conversation:${conversationId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "support_messages",
-          filter: `conversation_id=eq.${activeConversation.id}`,
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           const newMsg = payload.new as SupportMessage;
@@ -100,7 +101,29 @@ export function SupportInbox({
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          supabase
+            .from("support_messages")
+            .select("id, conversation_id, sender_type, sender_user_id, content, is_internal, metadata, created_at")
+            .eq("conversation_id", conversationId)
+            .order("created_at", { ascending: true })
+            .then(({ data }) => {
+              if (data && data.length > 0) {
+                setMessages((prev) => {
+                  const merged = [...(data as unknown as SupportMessage[])];
+                  // Preserve any optimistic messages not yet settled
+                  for (const p of prev) {
+                    if (p.id.startsWith("temp_") && !merged.some((m) => m.content === p.content)) {
+                      merged.push(p);
+                    }
+                  }
+                  return merged;
+                });
+              }
+            });
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

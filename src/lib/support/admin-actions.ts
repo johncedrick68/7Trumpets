@@ -78,16 +78,12 @@ export async function adminReopenSupport(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("support_conversations")
-    .update({
-      status: "OPEN",
-      resolved_at: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", conversationId);
+  const { error } = await supabase.rpc("admin_reopen_support", {
+    p_conversation_id: conversationId,
+  });
 
   if (error) {
+    logServerError("admin.support.reopen", error.message);
     redirect(`/admin/support?error=reopen_failed&id=${conversationId}`);
   }
 
@@ -113,17 +109,13 @@ export async function adminAssignStaff(formDataOrConvId: FormData | string, opti
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("support_conversations")
-    .update({
-      assigned_staff_id: staffId,
-      status: "STAFF_HANDLING",
-      ai_state: "PAUSED_FOR_HUMAN",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", conversationId);
+  const { error } = await supabase.rpc("admin_assign_staff", {
+    p_conversation_id: conversationId,
+    p_staff_id: staffId,
+  });
 
   if (error) {
+    logServerError("admin.support.assign", error.message);
     redirect(`/admin/support?error=assign_failed&id=${conversationId}`);
   }
 

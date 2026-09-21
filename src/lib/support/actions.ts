@@ -93,3 +93,49 @@ export async function requestHumanHandoff(formData: FormData) {
   revalidatePath("/account/support");
   return { success: true };
 }
+
+/**
+ * Customer reopens a resolved or closed support conversation.
+ */
+export async function customerReopenSupport(formData: FormData) {
+  const conversationId = formData.get("conversation_id") as string;
+  if (!conversationId) {
+    return { error: "Missing conversation ID" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("customer_reopen_support", {
+    p_conversation_id: conversationId,
+  });
+
+  if (error) {
+    logServerError("support.customer_reopen", error.message);
+    return { error: "Could not reopen conversation at this time." };
+  }
+
+  revalidatePath("/account/support");
+  return { success: true };
+}
+
+/**
+ * Customer closes a support conversation.
+ */
+export async function customerCloseSupport(formData: FormData) {
+  const conversationId = formData.get("conversation_id") as string;
+  if (!conversationId) {
+    return { error: "Missing conversation ID" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("customer_close_support", {
+    p_conversation_id: conversationId,
+  });
+
+  if (error) {
+    logServerError("support.customer_close", error.message);
+    return { error: "Could not close conversation at this time." };
+  }
+
+  revalidatePath("/account/support");
+  return { success: true };
+}

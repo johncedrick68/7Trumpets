@@ -58,7 +58,7 @@ PHASE 10: CLOSED / VERIFIED (Launch Readiness, Money/Inventory Invariants, Secur
 
 PHASE 11: FINAL RETAIL HARDENING PASS — CLOSED / VERIFIED (12 Empirical Commerce Flows, Clean DB Reset, Zero Patch SQL, Register Activities, Cancellations, Exchanges, Partial Refunds, POS Thermal Receipts)
 
-LOCAL SUPABASE: INITIALIZED / VERIFIED (25 MIGRATIONS APPLIED; CLEAN REPLAY VERIFIED 2026-09-21)
+LOCAL SUPABASE: INITIALIZED / VERIFIED (27 MIGRATIONS APPLIED; CLEAN REPLAY VERIFIED 2026-09-21)
 
 HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 18 MIGRATIONS PRESENT; RPC GRANT PARITY VERIFIED
 
@@ -75,21 +75,42 @@ MIGRATIONS LEDGER:
 - Additive Courier URL, Canonical Provider & RPC AAL2 Hardening: 3
 - Additive Preventative Default Function Privilege Policy: 2 forward migrations
 - Additive Customer Support, Staff Invitations, AI Telemetry & Automation Outbox: 1 (20260922000000_support_staff_ai_automation.sql)
-- Total migrations: 26 (Immutable)
+- Additive Support Security Hardening & Canonical RPCs: 1 (20260922010000_support_security_hardening.sql)
+- Total migrations: 27 (Immutable)
 
 PHASE 12: ADMIN FUNCTIONAL TRUTH & GOOGLE OAUTH CONFIGURATION — CLOSED / VERIFIED (73 Automated Tests Passing, All P0/P1 Admin Operational Defects Repaired, Order Detail Shipments/Returns/Data-Integrity Rendered, Multi-Field Order Search, Full Payment Queue Parity, Local Google OAuth Configured with Secret Indirection)
 
-PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — CLOSED / VERIFIED
-- Secure Staff / Super Admin onboarding (`public.staff_invitations`) with individual MFA factor enrollment
-- Super Admin MFA Reset with explicit consequence warnings and audit logging
-- Last Super Admin protection invariant preventing demotion/removal
-- Customer Operations & Growth Workspace (`/admin/customers`) with verified PostgreSQL analytics
-- Customer Support Center (`/account/support`) with order-aware context, quick intents, and real-time messaging
-- Admin Support Inbox (`/admin/support`) with two-pane triage, public replies, private staff notes, and resolution workflows
-- Gemini 3.8 Flash Support Assistant (server-only, read-only tools, classification, auto-reply safety gates, human fallback)
-- Admin "Ask 1968" operational intelligence with predefined query tools (zero arbitrary SQL)
-- Automation Outbox (`public.automation_outbox`) with HMAC-SHA256 signature verification & sanitized n8n workflow contracts
-- 80 automated unit tests passing, all 12 retail master flows verified against PostgreSQL, TypeScript & ESLint 100% clean, Next.js production build passing.
+PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — SECURITY HARDENED & VERIFIED
+- Support Architecture & Security Hardening: [LIVE VERIFIED]
+  * Customer direct UPDATE/DELETE revoked on `public.support_conversations` and `public.support_messages`.
+  * Sender impersonation (`STAFF`, `AI`, `is_internal=true`, UID mismatch) blocked by PostgreSQL RLS.
+  * Customer state changes strictly routed through SECURITY DEFINER RPCs (`request_human_support`, `customer_reopen_support`, `customer_close_support`).
+  * Admin operations strictly gated to AAL2 sessions via `admin_reopen_support` and `admin_assign_staff`.
+- Realtime Architecture: [LIVE VERIFIED]
+  * Private channel `support:conversation:{conversation_id}` with PostgreSQL RLS authorization.
+  * Single message stream via `postgres_changes` on `support_messages` with optimistic ID deduplication.
+  * Automatic DB refetch reconciliation upon channel reconnect (`SUBSCRIBED`).
+- Secure Staff / Super Admin Onboarding: [LIVE VERIFIED]
+  * `public.staff_invitations` with individual MFA factor enrollment and last super admin invariant.
+- Customer Operations & Admin Support Inbox: [LIVE VERIFIED]
+  * `/account/support` order-aware context, quick intents, and customer RPCs.
+  * `/admin/support` two-pane triage, public replies, internal private notes, and resolution workflows.
+- Persistence vs Outbox Truth: [LIVE VERIFIED]
+  * Support messages persist authoritatively in `public.support_messages`.
+  * `public.automation_outbox` stores asynchronous events about persisted domain actions. If external automation fails, support messages remain safe and outbox events remain retryable.
+- Gemini 3.8 Flash AI Support Assistant: [IMPLEMENTED] | [CONFIGURATION REQUIRED]
+  * Architecture, safety guardrails, classification, server-side execution, read-only tools, and fallback implemented and tested via mock/replay contracts.
+  * Live external API call status: **CONFIGURATION REQUIRED** (`GEMINI_API_KEY` required in production environment; credentials not fabricated).
+- n8n Workflow Automation: [IMPLEMENTED] | [CONFIGURATION REQUIRED]
+  * HMAC-SHA256 event signing, replay protection, idempotent dispatch, and sanitized workflows authored.
+  * Live external instance status: **CONFIGURATION REQUIRED** (`N8N_WEBHOOK_URL` and `N8N_OUTBOX_SECRET` required in production environment; retail operations run independently with n8n offline).
+- Test & Verification Matrix: [LIVE VERIFIED]
+  * 82 automated unit & security tests passing (`npm test`).
+  * 10 empirical RLS & spoofing security proofs verified against local PostgreSQL.
+  * All 12 retail master flows verified (`node scripts/verify-master-retail-flows.mjs`).
+  * TypeScript (`npm run typecheck`) & ESLint (`npm run lint`) clean with zero errors or warnings.
+  * Next.js production build passing across 35 routes.
 
-STATUS: OPERATIONAL & AI INTELLIGENCE LAYER COMPLETE.
+STATUS: SUPPORT SECURITY HARDENING PASS COMPLETE — 27 LOCAL MIGRATIONS VERIFIED.
+
 
