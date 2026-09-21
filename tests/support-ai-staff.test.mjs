@@ -338,3 +338,161 @@ test("Live Customer Security Proofs: Authenticated customer cannot mutate privil
   assert.equal(updatedConv.ai_state, "PAUSED_FOR_HUMAN");
 });
 
+test("Direct Negative RPC Tests: Anon, Customer, AAL1 Admin, and AAL2 Admin boundaries", async () => {
+  let envContent = "";
+  try {
+    envContent = await read(".env.local");
+  } catch {
+    return;
+  }
+
+  const getEnv = (key) => {
+    const match = envContent.match(new RegExp(`^${key}=(.*)$`, "m"));
+    return match ? match[1].trim() : null;
+  };
+
+  const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL") || "http://127.0.0.1:54321";
+  const anonKey = getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  const totpSecret = getEnv("DEMO_ADMIN_TOTP_SECRET");
+  if (!anonKey) return;
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const { generateTOTP } = await import("../scripts/generate-totp.mjs");
+
+  const anonClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+  const customerClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+  const adminClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+
+  // 1. Authenticate Customer
+  const { data: custAuth, error: authErr } = await customerClient.auth.signInWithPassword({
+    email: "customer.demo@1968.local",
+    password: "Demo1968Customer!",
+  });
+  if (authErr) return;
+  const customerId = custAuth.user.id;
+
+  // Create a customer conversation
+  const { data: convId, error: createErr } = await customerClient.rpc("create_support_conversation", {
+    p_category: "OTHER",
+    p_initial_message: "RPC security boundary verification",
+  });
+  assert.ifError(createErr);
+  assert.ok(convId);
+
+  // Boundary 1: Anon CANNOT execute customer or admin support RPCs
+  const { error: anonHandoffErr } = await anonClient.rpc("request_human_support", { p_conversation_id: convId });
+  assert.ok(anonHandoffErr, "Anon must be denied request_human_support");
+  assert.match(anonHandoffErr.message, /permission denied|42501/i);
+
+  const { error: anonCloseErr } = await anonClient.rpc("customer_close_support", { p_conversation_id: convId });
+  assert.ok(anonCloseErr, "Anon must be denied customer_close_support");
+  assert.match(anonCloseErr.message, /permission denied|42501/i);
+
+  const { error: anonReopenErr } = await anonClient.rpc("customer_reopen_support", { p_conversation_id: convId });
+  assert.ok(anonReopenErr, "Anon must be denied customer_reopen_support");
+  assert.match(anonReopenErr.message, /permission denied|42501/i);
+
+  const { error: anonAdminReopenErr } = await anonClient.rpc("admin_reopen_support", { p_conversation_id: convId });
+  assert.ok(anonAdminReopenErr, "Anon must be denied admin_reopen_support");
+  assert.match(anonAdminReopenErr.message, /permission denied|42501/i);
+
+  const { error: anonAssignErr } = await anonClient.rpc("admin_assign_staff", {
+    p_conversation_id: convId,
+    p_staff_id: customerId,
+  });
+  assert.ok(anonAssignErr, "Anon must be denied admin_assign_staff");
+  assert.match(anonAssignErr.message, /permission denied|42501/i);
+
+  // Boundary 2: Customer CAN call customer RPCs on OWN conversation
+  const { data: closeRes, error: closeErr } = await customerClient.rpc("customer_close_support", {
+    p_conversation_id: convId,
+  });
+  assert.ifError(closeErr);
+  assert.equal(closeRes, true, "Customer can close own conversation");
+
+  const { data: reopenRes, error: reopenErr } = await customerClient.rpc("customer_reopen_support", {
+    p_conversation_id: convId,
+  });
+  assert.ifError(reopenErr);
+  assert.equal(reopenRes, true, "Customer can reopen own conversation");
+
+  // Boundary 3: Customer CANNOT call customer RPCs on ANOTHER customer's conversation
+  const fakeOtherConvId = "00000000-0000-0000-0000-000000000000";
+  const { error: otherCloseErr } = await customerClient.rpc("customer_close_support", {
+    p_conversation_id: fakeOtherConvId,
+  });
+  assert.ok(otherCloseErr, "Customer must be denied close on another user's conversation");
+  assert.match(otherCloseErr.message, /not found or access denied/i);
+
+  const { error: otherReopenErr } = await customerClient.rpc("customer_reopen_support", {
+    p_conversation_id: fakeOtherConvId,
+  });
+  assert.ok(otherReopenErr, "Customer must be denied reopen on another user's conversation");
+  assert.match(otherReopenErr.message, /not found or access denied/i);
+
+  // Boundary 4: Customer CANNOT execute admin RPCs
+  const { error: custAssignErr } = await customerClient.rpc("admin_assign_staff", {
+    p_conversation_id: convId,
+    p_staff_id: customerId,
+  });
+  assert.ok(custAssignErr, "Customer must be denied admin_assign_staff");
+  assert.match(custAssignErr.message, /administrat|admin role|aal2|42501/i);
+
+  const { error: custAdminReopenErr } = await customerClient.rpc("admin_reopen_support", {
+    p_conversation_id: convId,
+  });
+  assert.ok(custAdminReopenErr, "Customer must be denied admin_reopen_support");
+  assert.match(custAdminReopenErr.message, /administrat|admin role|aal2|42501/i);
+
+  // Boundary 5: AAL1 admin cannot execute admin support RPCs if AAL2 required
+  const { data: adminAuth, error: adminSignInErr } = await adminClient.auth.signInWithPassword({
+    email: "admin.demo@1968.local",
+    password: "Demo1968Admin!",
+  });
+  if (adminSignInErr) return;
+  const adminUserId = adminAuth.user.id;
+
+  const { error: aal1AssignErr } = await adminClient.rpc("admin_assign_staff", {
+    p_conversation_id: convId,
+    p_staff_id: adminUserId,
+  });
+  assert.ok(aal1AssignErr, "AAL1 Admin must be denied admin_assign_staff");
+  assert.match(aal1AssignErr.message, /administrat|admin role|aal2|42501/i);
+
+  const { error: aal1ReopenErr } = await adminClient.rpc("admin_reopen_support", {
+    p_conversation_id: convId,
+  });
+  assert.ok(aal1ReopenErr, "AAL1 Admin must be denied admin_reopen_support");
+  assert.match(aal1ReopenErr.message, /administrat|admin role|aal2|42501/i);
+
+  // Boundary 6: AAL2 admin succeeds
+  if (totpSecret) {
+    const { data: factors, error: factorsErr } = await adminClient.auth.mfa.listFactors();
+    assert.ifError(factorsErr);
+    const verifiedFactor = factors.totp.find((f) => f.status === "verified");
+    assert.ok(verifiedFactor, "Admin must have a verified factor");
+
+    const totpCode = generateTOTP(totpSecret);
+    const { data: challengeData, error: challengeErr } = await adminClient.auth.mfa.challengeAndVerify({
+      factorId: verifiedFactor.id,
+      code: totpCode,
+    });
+    assert.ifError(challengeErr);
+    assert.equal(challengeData.user.aal || "aal2", "aal2", "Admin must be elevated to AAL2");
+
+    const { data: aal2AssignRes, error: aal2AssignErr } = await adminClient.rpc("admin_assign_staff", {
+      p_conversation_id: convId,
+      p_staff_id: adminUserId,
+    });
+    assert.ifError(aal2AssignErr);
+    assert.equal(aal2AssignRes, true, "AAL2 Admin can assign staff");
+
+    const { data: aal2ReopenRes, error: aal2ReopenErr } = await adminClient.rpc("admin_reopen_support", {
+      p_conversation_id: convId,
+    });
+    assert.ifError(aal2ReopenErr);
+    assert.equal(aal2ReopenRes, true, "AAL2 Admin can reopen conversation");
+  }
+});
+
+

@@ -587,6 +587,8 @@ export async function getAdminTotpCode(): Promise<string | null> {
   if (!isLocal) {
     return null;
   }
-  return generateDevTotp("GVGW47ERPUH75EQN7F6OW3WZLEIIUK7V");
+  const secret = process.env.DEMO_ADMIN_TOTP_SECRET;
+  if (!secret) return null;
+  return generateDevTotp(secret);
 }
 

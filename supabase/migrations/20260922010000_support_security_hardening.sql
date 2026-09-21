@@ -217,7 +217,7 @@ BEGIN
   );
 
   INSERT INTO public.audit_logs (
-    actor_id, action, entity_type, entity_id, metadata
+    actor_id, action, entity, entity_id, metadata
   ) VALUES (
     v_admin_id,
     'SUPPORT_REOPENED',
@@ -260,9 +260,10 @@ BEGIN
   -- Validate that the target staff member actually holds an operational role
   SELECT role INTO v_target_role
   FROM private.user_roles
-  WHERE user_id = p_staff_id;
+  WHERE user_id = p_staff_id AND role IN ('cashier', 'admin', 'super_admin')
+  LIMIT 1;
 
-  IF v_target_role IS NULL OR v_target_role NOT IN ('cashier', 'admin', 'super_admin') THEN
+  IF v_target_role IS NULL THEN
     RAISE EXCEPTION 'Target user is not an active staff member' USING ERRCODE = '42501';
   END IF;
 
@@ -278,7 +279,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.audit_logs (
-    actor_id, action, entity_type, entity_id, metadata
+    actor_id, action, entity, entity_id, metadata
   ) VALUES (
     v_admin_id,
     'SUPPORT_STAFF_ASSIGNED',

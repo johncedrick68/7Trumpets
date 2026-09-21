@@ -54,7 +54,8 @@ async function runVerification() {
   const adminUserId = adminAuth.user.id;
 
   // Elevate Admin to AAL2 using TOTP
-  const totpSecret = "GVGW47ERPUH75EQN7F6OW3WZLEIIUK7V";
+  const totpSecret = process.env.DEMO_ADMIN_TOTP_SECRET;
+  assert.ok(totpSecret, "DEMO_ADMIN_TOTP_SECRET must be defined in .env.local for automated local verification");
   const { data: factors, error: factorsErr } = await adminClient.auth.mfa.listFactors();
   assert.ifError(factorsErr);
   const verifiedFactor = factors.totp.find((f) => f.status === "verified");

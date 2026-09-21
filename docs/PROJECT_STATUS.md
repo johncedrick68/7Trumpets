@@ -103,7 +103,7 @@ PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — SECU
   * Live external API call status: **CONFIGURATION REQUIRED** (`GEMINI_API_KEY` required in production environment; credentials not fabricated).
 - n8n Workflow Automation: [IMPLEMENTED] | [CONFIGURATION REQUIRED]
   * HMAC-SHA256 event signing, replay protection, idempotent dispatch, and sanitized workflows authored.
-  * Live external instance status: **CONFIGURATION REQUIRED** (`N8N_WEBHOOK_URL` and `N8N_OUTBOX_SECRET` required in production environment; retail operations run independently with n8n offline).
+  * Live external instance status: **CONFIGURATION REQUIRED** (`N8N_WEBHOOK_URL` and `N8N_WEBHOOK_SECRET` required in production environment; retail operations run independently with n8n offline).
 - Test & Verification Matrix: [LIVE VERIFIED]
   * 82 automated unit & security tests passing (`npm test`).
   * 10 empirical RLS & spoofing security proofs verified against local PostgreSQL.

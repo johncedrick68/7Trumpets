@@ -155,13 +155,20 @@ Guarantees reliable, decoupled asynchronous event delivery to n8n:
 
 ## 6. Realtime Architecture
 
-- **Private Conversation Channels**:
-  - Channel name: `support:conversation:{conversation_id}`
-  - Supabase Realtime Broadcast is used for sending instant message notifications to active clients.
-  - Additionally, `support_messages` is added to the `supabase_realtime` publication with RLS enforced so that client reconnection automatically retrieves fresh state without message drops.
-- **Cross-Customer Isolation**:
-  - Client subscription checks verify customer ownership of `conversation_id` before joining the channel.
-  - Server actions broadcast only to authorized channel topics.
+- **Authoritative Persistence**:
+  - Authoritative support messages are stored in `public.support_messages`.
+- **Notification Mechanism**:
+  - Realtime notifications currently use **Postgres Changes** on table `public.support_messages`.
+  - Channel subscription topic: `support:conversation:{conversation_id}`.
+  - A `filter: conversation_id=eq.{conversation_id}` narrows events to the relevant conversation.
+- **Authorization & Isolation**:
+  - PostgreSQL Row Level Security (RLS) determines which rows each subscriber may receive. Non-staff customers can only receive messages for conversations they own (`customer_id = auth.uid()`), and internal notes (`is_internal = true`) are strictly filtered by RLS.
+- **State Integrity & Reconnection**:
+  - Reconnection triggers automatic database refetch reconciliation when channel status transitions to `SUBSCRIBED`.
+  - Message IDs deduplicate UI state, preventing duplicates across optimistic local updates and database change events.
+- **Future Architecture Note**:
+  - Supabase Realtime Broadcast is the preferred future scaling path for high-volume deployments to decouple database replication workers from client push streams, but migration is not required for the current low-to-medium volume capstone scope.
+
 
 ---
 
