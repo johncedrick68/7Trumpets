@@ -74,8 +74,22 @@ MIGRATIONS LEDGER:
 - Additive Product Media Ordering & Transactional Fulfillment: 2
 - Additive Courier URL, Canonical Provider & RPC AAL2 Hardening: 3
 - Additive Preventative Default Function Privilege Policy: 2 forward migrations
-- Total migrations: 25 (Immutable)
+- Additive Customer Support, Staff Invitations, AI Telemetry & Automation Outbox: 1 (20260922000000_support_staff_ai_automation.sql)
+- Total migrations: 26 (Immutable)
 
 PHASE 12: ADMIN FUNCTIONAL TRUTH & GOOGLE OAUTH CONFIGURATION — CLOSED / VERIFIED (73 Automated Tests Passing, All P0/P1 Admin Operational Defects Repaired, Order Detail Shipments/Returns/Data-Integrity Rendered, Multi-Field Order Search, Full Payment Queue Parity, Local Google OAuth Configured with Secret Indirection)
 
-STATUS: MASTER RETAIL & ADMIN SYSTEM VERIFIED FOR RELEASE.
+PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — CLOSED / VERIFIED
+- Secure Staff / Super Admin onboarding (`public.staff_invitations`) with individual MFA factor enrollment
+- Super Admin MFA Reset with explicit consequence warnings and audit logging
+- Last Super Admin protection invariant preventing demotion/removal
+- Customer Operations & Growth Workspace (`/admin/customers`) with verified PostgreSQL analytics
+- Customer Support Center (`/account/support`) with order-aware context, quick intents, and real-time messaging
+- Admin Support Inbox (`/admin/support`) with two-pane triage, public replies, private staff notes, and resolution workflows
+- Gemini 3.8 Flash Support Assistant (server-only, read-only tools, classification, auto-reply safety gates, human fallback)
+- Admin "Ask 1968" operational intelligence with predefined query tools (zero arbitrary SQL)
+- Automation Outbox (`public.automation_outbox`) with HMAC-SHA256 signature verification & sanitized n8n workflow contracts
+- 80 automated unit tests passing, all 12 retail master flows verified against PostgreSQL, TypeScript & ESLint 100% clean, Next.js production build passing.
+
+STATUS: OPERATIONAL & AI INTELLIGENCE LAYER COMPLETE.
+
