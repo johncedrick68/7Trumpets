@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Send,
   User,
-  Bot,
   Shield,
   CheckCircle2,
   Package,
@@ -258,7 +257,7 @@ export function SupportCenterClient({
 
                   <div className="text-[10px] text-muted-foreground flex items-center justify-between">
                     <span>{new Date(conv.last_message_at).toLocaleDateString()}</span>
-                    <span className="capitalize">{conv.ai_state === "ACTIVE" ? "AI Assistant" : "Staff Handling"}</span>
+                    <span>Support team</span>
                   </div>
                 </Link>
               );
@@ -301,7 +300,7 @@ export function SupportCenterClient({
                     <MessageSquare className="w-4 h-4" /> Start a Support Conversation
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Our automated assistant answers common questions immediately. You can request human assistance anytime.
+                    Send your question to the 1968 Clothing support team. Order details are attached securely when selected.
                   </CardDescription>
                 </div>
                 {activeConversation && (
@@ -442,7 +441,7 @@ export function SupportCenterClient({
             <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-muted/20">
               {messages.map((msg) => {
                 const isCustomer = msg.sender_type === "CUSTOMER";
-                const isAI = msg.sender_type === "AI";
+                const isLegacyAutomated = msg.sender_type === "AI";
                 const isSystem = msg.sender_type === "SYSTEM";
 
                 if (isSystem) {
@@ -465,10 +464,8 @@ export function SupportCenterClient({
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1 px-1">
                       {isCustomer ? (
                         <span>You</span>
-                      ) : isAI ? (
-                        <span className="flex items-center gap-1 font-semibold text-primary">
-                          <Bot className="w-3 h-3" /> 1968 Assistant (AI Support)
-                        </span>
+                      ) : isLegacyAutomated ? (
+                        <span className="font-semibold text-foreground">Previous support reply</span>
                       ) : (
                         <span className="flex items-center gap-1 font-semibold text-foreground">
                           <Shield className="w-3 h-3" /> 1968 Staff
@@ -483,7 +480,7 @@ export function SupportCenterClient({
                       className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 leading-relaxed whitespace-pre-wrap ${
                         isCustomer
                           ? "bg-foreground text-background rounded-tr-xs"
-                          : isAI
+                          : isLegacyAutomated
                           ? "bg-card border shadow-xs rounded-tl-xs"
                           : "bg-primary/10 border border-primary/20 text-foreground rounded-tl-xs"
                       }`}

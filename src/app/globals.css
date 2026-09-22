@@ -23,7 +23,7 @@
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: #f0f0f2;
-  --muted-foreground: oklch(0.553 0.013 285.938);
+  --muted-foreground: #56565c;
   --accent: #e8f1fb;
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
@@ -189,7 +189,7 @@
   /* Ink (text) */
   --ink:           #1d1d1f;
   --ink-secondary: #424245;
-  --ink-muted:     #6e6e73;
+  --ink-muted:     #56565c;
   --ink-faint:     #a3a3a3;
   --ink-inverted:  #ffffff;
 
@@ -540,6 +540,23 @@ img {
   text-decoration: none;
 }
 .bag-btn:hover { background: var(--bg-raised); border-color: var(--ink); opacity: 1; }
+
+.category-filter {
+  display: inline-flex;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 0 1rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.category-filter:hover,
+.category-filter[aria-current="page"] { background: var(--ink); color: var(--ink-inverted); opacity: 1; }
 
 .bag-count {
   display: inline-flex;
@@ -2005,7 +2022,7 @@ body:has(.admin-app-shell) > .site-footer {
   }
 }
 
-.footer-col h4 {
+.footer-col h2 {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;

@@ -147,7 +147,7 @@ export default async function ProductsPage(props: {
                 <Link
                   href={`/products/${product.slug}`}
                   className="relative block aspect-[4/5] w-full overflow-hidden rounded-md border border-border/70 bg-neutral-100 transition-[border-color,transform] hover:border-foreground/50 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 dark:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  aria-label={`View ${product.name}`}
+                  aria-label={product.name}
                 >
                   <Image
                     src={imagePath}
@@ -176,6 +176,9 @@ export default async function ProductsPage(props: {
                   </h2>
                   <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
                     {formatMinorUnitsToPHP(product.min_price_minor)}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">
+                    {product.is_available ? "Available" : "Out of stock"}
                   </p>
                 </div>
               </article>

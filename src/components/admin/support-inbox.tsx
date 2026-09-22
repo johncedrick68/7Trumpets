@@ -7,11 +7,9 @@ import {
   Send,
   User,
   Shield,
-  Bot,
   Package,
   CheckCircle2,
   Lock,
-  Sparkles,
   RefreshCw,
   ExternalLink,
 } from "lucide-react";
@@ -457,12 +455,11 @@ export function SupportInbox({
                 </div>
               </div>
 
-              {/* Advisory AI Summary Banner */}
+              {/* Preserve useful historical context without exposing retired implementation details. */}
               {activeConversation.summary && (
-                <div className="mt-3 p-2.5 rounded bg-primary/5 border border-primary/20 text-xs flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                <div className="mt-3 p-2.5 rounded bg-muted/50 border text-xs flex items-start gap-2">
                   <div>
-                    <span className="font-semibold text-primary">AI Advisory Summary: </span>
+                    <span className="font-semibold text-foreground">Conversation summary: </span>
                     <span className="text-muted-foreground">{activeConversation.summary}</span>
                   </div>
                 </div>
@@ -473,7 +470,7 @@ export function SupportInbox({
             <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-muted/20">
               {messages.map((msg) => {
                 const isCustomer = msg.sender_type === "CUSTOMER";
-                const isAI = msg.sender_type === "AI";
+                const isLegacyAutomated = msg.sender_type === "AI";
                 const isInternal = msg.is_internal;
                 const isSystem = msg.sender_type === "SYSTEM";
 
@@ -510,10 +507,8 @@ export function SupportInbox({
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1 px-1">
                       {isCustomer ? (
                         <span className="font-semibold text-foreground">Customer</span>
-                      ) : isAI ? (
-                        <span className="flex items-center gap-1 text-primary font-semibold">
-                          <Bot className="w-3 h-3" /> 1968 Assistant (AI)
-                        </span>
+                      ) : isLegacyAutomated ? (
+                        <span className="font-semibold text-foreground">Previous support reply</span>
                       ) : (
                         <span className="flex items-center gap-1 text-foreground font-semibold">
                           <Shield className="w-3 h-3" /> Staff Reply
@@ -528,8 +523,8 @@ export function SupportInbox({
                       className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 leading-relaxed whitespace-pre-wrap ${
                         isCustomer
                           ? "bg-card border shadow-xs rounded-tl-xs"
-                          : isAI
-                          ? "bg-primary/10 border border-primary/20 text-foreground"
+                          : isLegacyAutomated
+                          ? "bg-card border text-foreground"
                           : "bg-foreground text-background rounded-tr-xs"
                       }`}
                     >
@@ -609,7 +604,7 @@ export function SupportInbox({
               <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto" />
               <CardTitle className="text-sm">No Conversation Selected</CardTitle>
               <CardDescription className="text-xs max-w-sm">
-                Select an inquiry from the queue on the left to review customer messages, view AI summaries, and reply.
+                Select an inquiry from the queue on the left to review customer messages and reply.
               </CardDescription>
             </div>
           </Card>

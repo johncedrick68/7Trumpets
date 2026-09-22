@@ -60,7 +60,7 @@ PHASE 11: FINAL RETAIL HARDENING PASS — CLOSED / VERIFIED (12 Empirical Commer
 
 LOCAL SUPABASE: INITIALIZED / VERIFIED (27 MIGRATIONS APPLIED; CLEAN REPLAY VERIFIED 2026-09-21)
 
-HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 18 MIGRATIONS PRESENT; RPC GRANT PARITY VERIFIED
+HOSTED SUPABASE: LINKED (7trumpets-dev / eckhwcoigctkczzmkwqi / ap-southeast-1) — 27 MIGRATIONS APPLIED; REMOTE PARITY VERIFIED
 
 DATABASE SCHEMA: 22-TABLE CONTRACT AUTHORED / LOCALLY & REMOTELY VERIFIED
 
@@ -80,7 +80,7 @@ MIGRATIONS LEDGER:
 
 PHASE 12: ADMIN FUNCTIONAL TRUTH & GOOGLE OAUTH CONFIGURATION — CLOSED / VERIFIED (73 Automated Tests Passing, All P0/P1 Admin Operational Defects Repaired, Order Detail Shipments/Returns/Data-Integrity Rendered, Multi-Field Order Search, Full Payment Queue Parity, Local Google OAuth Configured with Secret Indirection)
 
-PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — SECURITY HARDENED & VERIFIED
+PHASE 13: CUSTOMER SUPPORT & STAFF ONBOARDING — SECURITY HARDENED & VERIFIED
 - Support Architecture & Security Hardening: [LIVE VERIFIED]
   * Customer direct UPDATE/DELETE revoked on `public.support_conversations` and `public.support_messages`.
   * Sender impersonation (`STAFF`, `AI`, `is_internal=true`, UID mismatch) blocked by PostgreSQL RLS.
@@ -95,15 +95,9 @@ PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — SECU
 - Customer Operations & Admin Support Inbox: [LIVE VERIFIED]
   * `/account/support` order-aware context, quick intents, and customer RPCs.
   * `/admin/support` two-pane triage, public replies, internal private notes, and resolution workflows.
-- Persistence vs Outbox Truth: [LIVE VERIFIED]
-  * Support messages persist authoritatively in `public.support_messages`.
-  * `public.automation_outbox` stores asynchronous events about persisted domain actions. If external automation fails, support messages remain safe and outbox events remain retryable.
-- Gemini 3.8 Flash AI Support Assistant: [IMPLEMENTED] | [CONFIGURATION REQUIRED]
-  * Architecture, safety guardrails, classification, server-side execution, read-only tools, and fallback implemented and tested via mock/replay contracts.
-  * Live external API call status: **CONFIGURATION REQUIRED** (`GEMINI_API_KEY` required in production environment; credentials not fabricated).
-- n8n Workflow Automation: [IMPLEMENTED] | [CONFIGURATION REQUIRED]
-  * HMAC-SHA256 event signing, replay protection, idempotent dispatch, and sanitized workflows authored.
-  * Live external instance status: **CONFIGURATION REQUIRED** (`N8N_WEBHOOK_URL` and `N8N_WEBHOOK_SECRET` required in production environment; retail operations run independently with n8n offline).
+- Support Runtime: [LIVE VERIFIED]
+  * Support messages persist authoritatively in `public.support_messages` and route to staff without an external AI or automation dependency.
+  * Gemini and n8n live configuration, runtime entry points, admin controls, and workflow templates were removed. Historical database fields remain intact to preserve immutable migration history and existing records.
 - Test & Verification Matrix: [LIVE VERIFIED]
   * 82 automated unit & security tests passing (`npm test`).
   * 10 empirical RLS & spoofing security proofs verified against local PostgreSQL.
@@ -112,5 +106,3 @@ PHASE 13: CUSTOMER SUPPORT, STAFF ONBOARDING, AI ASSISTANT & AUTOMATION — SECU
   * Next.js production build passing across 35 routes.
 
 STATUS: SUPPORT SECURITY HARDENING PASS COMPLETE — 27 LOCAL MIGRATIONS VERIFIED.
-
-

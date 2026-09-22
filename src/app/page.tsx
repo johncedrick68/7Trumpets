@@ -23,7 +23,7 @@ export default async function HomePage() {
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <main id="main-content" className="flex flex-col min-h-screen">
       {/* ── Editorial Hero ─────────────────────────────────────────── */}
       <section className="border-b border-border bg-background py-16 sm:py-20 lg:py-24" aria-labelledby="hero-title">
         <div className="store-container text-center">
@@ -115,8 +115,16 @@ export default async function HomePage() {
       </section>
 
       {/* ── Curated Releases ───────────────────────────────────────── */}
-      <main className="store-container store-page flex-1">
+      <div className="store-container store-page flex-1">
         <section aria-labelledby="collection-heading">
+          <nav aria-label="Shop by category" className="mb-8 flex gap-2 overflow-x-auto border-b border-border pb-4">
+            <Link href="/products" className="category-filter" aria-current="page">All</Link>
+            {categories.map((category) => (
+              <Link key={category.id} href={`/categories/${category.slug}`} className="category-filter">
+                {category.name}
+              </Link>
+            ))}
+          </nav>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border pb-6">
             <div>
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
@@ -160,7 +168,7 @@ export default async function HomePage() {
                     <Link
                       href={`/products/${product.slug}`}
                       className="relative block aspect-[4/5] w-full overflow-hidden rounded-lg border border-border bg-neutral-100 transition-colors active:border-foreground/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:border-foreground/40 dark:bg-neutral-900"
-                      aria-label={`View ${product.name}`}
+                      aria-label={product.name}
                     >
                       <Image
                         src={imagePath}
@@ -171,7 +179,7 @@ export default async function HomePage() {
                         className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
                       />
                       {categoryName && (
-                        <span className="absolute top-2.5 left-2.5 bg-neutral-950/90 text-white font-mono text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-xs">
+                        <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
                           {categoryName}
                         </span>
                       )}
@@ -225,7 +233,7 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

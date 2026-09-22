@@ -8,7 +8,6 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { BrandLogo } from "@/components/brand-logo";
-import { Ask1968Modal } from "@/components/admin/ask-1968-modal";
 
 type Props = { children: React.ReactNode; email: string; role: "admin" | "super_admin"; aal: string };
 
@@ -21,7 +20,6 @@ const routeNames: Record<string, string> = {
   "/admin/customers": "Customers",
   "/admin/support": "Support inbox",
   "/admin/catalog": "Catalog",
-  "/admin/settings/ai": "AI & Automation",
   "/admin/settings": "Settings",
   "/admin/audit": "Audit log",
   "/admin/users": "Staff & Roles",
@@ -81,21 +79,14 @@ export function AdminShell({ children, email, role, aal }: Props) {
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Operations</p>
           <p className="truncate text-sm font-semibold">{currentRouteName(pathname)}</p>
         </div>
-        <div className="ml-auto">
-          <Ask1968Modal />
-        </div>
       </header>
 
       {/* Main Content Area */}
       <div className="min-w-0 md:pl-64">
-        {/* Desktop Top Header Bar with Ask 1968 */}
-        <header className="hidden md:flex h-16 items-center justify-between border-b bg-background/95 px-8 backdrop-blur sticky top-0 z-20">
+        <header className="hidden md:flex h-16 items-center border-b bg-background/95 px-8 backdrop-blur sticky top-0 z-20">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Operations Workspace</p>
             <p className="text-sm font-bold tracking-tight text-foreground">{currentRouteName(pathname)}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Ask1968Modal />
           </div>
         </header>
 

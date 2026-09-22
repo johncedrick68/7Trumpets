@@ -231,7 +231,7 @@ export function CheckoutFormClient({
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm text-foreground">1968 Flagship Store — Makati</h4>
+                          <h2 className="font-bold text-sm text-foreground">1968 Flagship Store — Makati</h2>
                           <Badge variant="outline" className="text-[10px] font-mono uppercase bg-background">Flagship</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
@@ -423,9 +423,9 @@ export function CheckoutFormClient({
               {paymentMethod === "MANUAL_GCASH" ? (
                 <div className="bg-neutral-50 dark:bg-neutral-900/70 border border-border rounded-xl p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-foreground text-xs uppercase font-mono tracking-wider flex items-center gap-2">
+                    <h2 className="font-bold text-foreground text-xs uppercase font-mono tracking-wider flex items-center gap-2">
                       <span>📱</span> Official 1968 GCash payment details
-                    </h4>
+                    </h2>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Transfer directly to our registered merchant account using the exact grand total:
@@ -545,7 +545,11 @@ export function CheckoutFormClient({
               </Button>
 
               <p className="text-[11px] text-muted-foreground text-center mt-3 leading-relaxed px-2">
-                By placing your order you agree to submit payment proof within 2 hours.
+                {paymentMethod === "MANUAL_GCASH"
+                  ? "After placing the order, submit your GCash payment proof within the two-hour reservation window."
+                  : fulfillmentMethod === "STORE_PICKUP"
+                    ? "Payment is collected when you pick up your order at the flagship store."
+                    : "Payment is collected by the courier when your order is delivered."}
               </p>
             </CardContent>
           </Card>

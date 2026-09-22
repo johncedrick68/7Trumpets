@@ -14,7 +14,6 @@ import {
   Store,
   Users,
   MessageSquare,
-  Sparkles,
   UserCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +53,6 @@ export function AdminSidebar({ email, role, aal, onNavigate }: Props) {
       label: "System",
       items: [
         { href: "/admin/settings", label: "Settings", icon: Settings },
-        { href: "/admin/settings/ai", label: "AI & Automation", icon: Sparkles },
         { href: "/admin/audit", label: "Audit log", icon: ShieldCheck },
       ],
     },

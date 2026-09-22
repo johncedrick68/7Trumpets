@@ -1616,6 +1616,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_public_variant_availability: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          variant_id: string
+          is_available: boolean
+        }[]
+      }
       admin_adjust_inventory: {
         Args: {
           p_delta: number

@@ -32,9 +32,9 @@ export function StorefrontChrome({ children, announcement, cartBadge, footer = {
     <footer className="site-footer" id="footer">
       <div className="footer-container">
         <div className="footer-col"><div className="footer-logo"><BrandLogo variant="footer" /></div><p>{footer.brand_copy || "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey."}</p></div>
-        <div className="footer-col"><h4>Shop</h4><ul><li><Link href="/products">All products</Link></li>{shopLinks.map((category) => <li key={category.slug}><Link href={`/categories/${category.slug}`}>{category.name}</Link></li>)}</ul></div>
-        <div className="footer-col"><h4>Account & Service</h4><ul><li><Link href="/orders">Track Order</Link></li><li><Link href="/account">Account Settings</Link></li><li><Link href="/account/addresses">Saved Addresses</Link></li></ul></div>
-        <div className="footer-col"><h4>Contact</h4><ul><li><a href={`mailto:${footer.support_email || "1968clothing.official@gmail.com"}`}>{footer.support_email || "1968clothing.official@gmail.com"}</a></li><li><span className="text-[13px] text-[var(--ink-muted)]">{footer.location || "Manila, Philippines"}</span></li></ul></div>
+        <div className="footer-col"><h2>Shop</h2><ul><li><Link href="/products">All products</Link></li>{shopLinks.map((category) => <li key={category.slug}><Link href={`/categories/${category.slug}`}>{category.name}</Link></li>)}</ul></div>
+        <div className="footer-col"><h2>Account & Service</h2><ul><li><Link href="/orders">Track Order</Link></li><li><Link href="/account">Account Settings</Link></li><li><Link href="/account/addresses">Saved Addresses</Link></li></ul></div>
+        <div className="footer-col"><h2>Contact</h2><ul><li><a href={`mailto:${footer.support_email || "1968clothing.official@gmail.com"}`}>{footer.support_email || "1968clothing.official@gmail.com"}</a></li><li><span className="text-[13px] text-[var(--ink-secondary)]">{footer.location || "Manila, Philippines"}</span></li></ul></div>
       </div>
       <div className="footer-bottom">
         <p>© {new Date().getFullYear()} 1968 Clothing. All rights reserved.</p>
