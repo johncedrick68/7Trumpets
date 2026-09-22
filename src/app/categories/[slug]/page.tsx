@@ -96,7 +96,7 @@ export default async function CategoryPage({
                 <Link
                   href={`/products/${product.slug}`}
                   className="relative block aspect-[4/5] w-full overflow-hidden bg-muted rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  aria-label={`View ${product.name}`}
+                  aria-label={product.name}
                 >
                   <Image
                     src={imagePath}
@@ -106,7 +106,7 @@ export default async function CategoryPage({
                     sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
                     className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]"
                   />
-                  <span className="absolute top-2.5 left-2.5 bg-neutral-950/90 text-white font-mono text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-xs">
+                  <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
                     {category.name}
                   </span>
                 </Link>
@@ -120,6 +120,9 @@ export default async function CategoryPage({
                   <p className="mt-1 font-mono text-sm font-bold text-foreground">
                     {formatMinorUnitsToPHP(product.min_price_minor)}
                   </p>
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">
+                    {product.is_available ? "Available" : "Out of stock"}
+                  </p>
                 </div>
               </article>
             );
@@ -129,4 +132,3 @@ export default async function CategoryPage({
     </main>
   );
 }
-

@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/server-log";
-import { evaluateAndReplySupportMessage } from "@/lib/ai/support";
 
 /**
  * Customer creates a new support conversation.
@@ -29,11 +28,6 @@ export async function createSupportConversation(formData: FormData) {
     logServerError("support.create", error?.message || "rpc_failed");
     redirect("/account/support?error=failed_to_create_conversation");
   }
-
-  // Trigger server-side AI evaluation asynchronously (does not block redirect)
-  evaluateAndReplySupportMessage(convId, initialMessage).catch((err: unknown) => {
-    logServerError("ai.support.evaluation", err instanceof Error ? err.message : "async_eval_failed");
-  });
 
   revalidatePath("/account/support");
   redirect(`/account/support?id=${convId}`);
@@ -61,18 +55,13 @@ export async function sendCustomerMessage(formData: FormData) {
     return { error: "Failed to send message. Please try again." };
   }
 
-  // Trigger server-side AI evaluation asynchronously
-  evaluateAndReplySupportMessage(conversationId, content).catch((err: unknown) => {
-    logServerError("ai.support.evaluation", err instanceof Error ? err.message : "async_eval_failed");
-  });
-
   revalidatePath(`/account/support`);
   return { success: true, messageId: msgId };
 }
 
 /**
  * Customer requests human staff assistance ("Talk to a Person").
- * Sets conversation status to WAITING_FOR_STAFF and pauses AI auto-replies.
+ * Sets conversation status to WAITING_FOR_STAFF for direct staff handling.
  */
 export async function requestHumanHandoff(formData: FormData) {
   const conversationId = formData.get("conversation_id") as string;

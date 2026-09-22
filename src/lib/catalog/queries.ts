@@ -18,6 +18,7 @@ export interface ProductSummary {
   category_id: string | null;
   min_price_minor: number;
   primary_image_path: string | null;
+  is_available: boolean;
 }
 
 export interface ProductVariant {
@@ -27,6 +28,7 @@ export interface ProductVariant {
   price_minor: number;
   compare_at_price_minor: number | null;
   option_value_ids: string[];
+  is_available: boolean;
 }
 
 export interface ProductOptionValue {
@@ -147,6 +149,7 @@ export async function getProducts(options?: {
         category_id,
         created_at,
         product_variants (
+          id,
           price_minor,
           status
         ),
@@ -173,6 +176,22 @@ export async function getProducts(options?: {
       return [];
     }
 
+    const variantIds = (data ?? []).flatMap((item) =>
+      (item.product_variants || []).map((variant) => variant.id),
+    );
+    const availabilityByVariant = new Map<string, boolean>();
+    if (variantIds.length > 0) {
+      const { data: availabilityRows, error: availabilityError } = await supabase
+        .rpc("get_public_variant_availability");
+      if (availabilityError) {
+        logServerError("catalog.availability", "database_failure");
+        return [];
+      }
+      for (const row of availabilityRows ?? []) {
+        availabilityByVariant.set(row.variant_id, row.is_available);
+      }
+    }
+
     const items = (data ?? []).map((item) => {
     const activeVariants = (item.product_variants || []).filter(
       (v) => v.status === "active",
@@ -192,6 +211,7 @@ export async function getProducts(options?: {
       category_id: item.category_id,
       min_price_minor: minPrice,
       primary_image_path: sortedImages[0] ? productImageUrl(sortedImages[0].storage_path) : null,
+      is_available: activeVariants.some((variant) => availabilityByVariant.get(variant.id) === true),
     };
   });
 
@@ -257,6 +277,20 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       return null;
     }
 
+    const variantIds = (variantsRes.data || []).map((variant) => variant.id);
+    const availabilityByVariant = new Map<string, boolean>();
+    if (variantIds.length > 0) {
+      const { data: availabilityRows, error: availabilityError } = await supabase
+        .rpc("get_public_variant_availability");
+      if (availabilityError) {
+        logServerError("catalog.product_availability", "database_failure");
+        return null;
+      }
+      for (const row of availabilityRows ?? []) {
+        availabilityByVariant.set(row.variant_id, row.is_available);
+      }
+    }
+
     const optionsMap: ProductOption[] = (optionsRes.data || []).map((opt) => ({
       ...opt,
       values: (optionValuesRes.data || []).filter((v) => v.option_id === opt.id),
@@ -279,6 +313,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
         option_value_ids: (variantValuesRes.data || [])
           .filter((vv) => vv.variant_id === variant.id)
           .map((vv) => vv.option_value_id),
+        is_available: availabilityByVariant.get(variant.id) ?? false,
       })),
       options: optionsMap,
       images,

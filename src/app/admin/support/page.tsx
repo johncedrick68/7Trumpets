@@ -71,7 +71,7 @@ export default async function AdminSupportPage({
       <header>
         <h1 className="text-3xl font-extrabold tracking-tight mb-1">Support Operations Inbox</h1>
         <p className="text-xs text-muted-foreground max-w-2xl">
-          Triage customer inquiries, review AI summaries, post internal staff notes, and resolve tickets.
+          Triage customer inquiries, post internal staff notes, and resolve tickets.
         </p>
       </header>
 

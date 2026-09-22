@@ -21,6 +21,7 @@ interface Variant {
   name: string | null;
   formatted_price: string;
   option_value_ids: string[];
+  is_available: boolean;
 }
 
 export function ProductPurchaseForm({
@@ -139,6 +140,7 @@ export function ProductPurchaseForm({
             {variants.map((v) => {
               const isSelected = activeVariant?.id === v.id;
               const displayLabel = (v.name || v.sku).replace(/^size\s+/i, "");
+              const isAvailable = v.is_available;
 
               return (
                 <button
@@ -146,10 +148,14 @@ export function ProductPurchaseForm({
                   type="button"
                   role="radio"
                   aria-checked={isSelected}
+                  aria-disabled={!isAvailable}
+                  disabled={!isAvailable}
                   onClick={() => setDirectVariantId(v.id)}
                   className={cn(
                     "min-w-[48px] h-11 px-4 rounded-md border text-sm font-semibold transition-all flex items-center justify-center cursor-pointer select-none",
-                    isSelected
+                    !isAvailable
+                      ? "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-60"
+                      : isSelected
                       ? "bg-neutral-950 text-white border-neutral-950 shadow-xs"
                       : "bg-background text-foreground border-border hover:border-foreground"
                   )}
@@ -170,14 +176,14 @@ export function ProductPurchaseForm({
         aria-live="polite"
         className="mt-5 flex items-center gap-1.5 text-sm text-muted-foreground min-h-5"
       >
-        {activeVariant ? (
+        {activeVariant?.is_available ? (
           <>
             <Check className="w-3.5 h-3.5 text-foreground" />
-            <span className="text-foreground font-semibold">In Stock</span>
+            <span className="text-foreground font-semibold">In stock</span>
             <span className="font-mono text-xs">· SKU: {activeVariant.sku}</span>
           </>
         ) : (
-          <span>Select your size to view availability</span>
+          <span>{activeVariant ? "Out of stock" : "Select your size to view availability"}</span>
         )}
       </div>
 
@@ -185,12 +191,12 @@ export function ProductPurchaseForm({
       <div className="mt-6">
         <Button
           type="submit"
-          disabled={!activeVariant}
+          disabled={!activeVariant || !activeVariant.is_available}
           size="lg"
           className="w-full font-bold h-13 rounded-md text-sm bg-neutral-950 text-white hover:bg-neutral-800 disabled:opacity-40 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
         >
           <ShoppingBag className="w-4 h-4" />
-          <span>Add to Bag {activeVariant && `· ${activeVariant.formatted_price}`}</span>
+          <span>{activeVariant?.is_available ? `Add to Bag · ${activeVariant.formatted_price}` : "Out of stock"}</span>
         </Button>
       </div>
     </form>

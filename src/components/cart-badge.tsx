@@ -46,7 +46,7 @@ export async function CartBadge() {
     <Link
       href="/cart"
       className="bag-btn"
-      aria-label={`Shopping Bag, ${count} ${count === 1 ? "item" : "items"}`}
+      aria-label={`Bag, ${count} ${count === 1 ? "item" : "items"}`}
     >
       <BagIcon size={15} />
       <span>Bag</span>

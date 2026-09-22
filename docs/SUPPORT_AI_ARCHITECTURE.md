@@ -1,6 +1,6 @@
 # 1968 Clothing — Customer Support, Staff Onboarding, AI Assistant & Automation Architecture
 
-> Canonical specification for Staff Onboarding, MFA Lifecycle, Customer Operations, Support Center & Inbox, Gemini 3.8 Flash Assistance, and Asynchronous n8n Automation Orchestration.
+> Historical specification for Staff Onboarding, MFA Lifecycle, Customer Operations, and the retired Gemini/n8n integration. Live support is staff-operated; no external AI or automation configuration is required.
 
 ---
 
@@ -172,11 +172,11 @@ Guarantees reliable, decoupled asynchronous event delivery to n8n:
 
 ---
 
-## 7. Gemini AI Assistant Architecture
+## 7. Retired Gemini AI Assistant Architecture
 
 ### 7.1. Boundaries & Placement
 - **Server Only**:
-  - `GEMINI_API_KEY` is loaded strictly on the server (`process.env.GEMINI_API_KEY`). It is never prefixed with `NEXT_PUBLIC_` or exposed in browser bundles.
+  - Retired: the live model key and runtime entry points have been removed.
   - Model calls occur via `src/lib/ai/gemini.ts` and `src/lib/ai/support.ts`.
 - **Model**:
   - Default: `gemini-3.8-flash` with low-to-medium temperature and reasoning.
@@ -226,14 +226,14 @@ The AI is **never** given tools to:
 
 ---
 
-## 9. n8n Automation & Outbox Architecture
+## 9. Retired n8n Automation & Outbox Architecture
 
 - **Role**:
   - n8n acts as an **orchestrator** for background notifications, asynchronous support classification, and daily briefs.
   - It is **never in the critical path** of checkout, payment, or order placement. If n8n is offline, 100% of commerce and manual support functions continue without disruption.
 - **Outbox Pattern**:
   - Domain events (`SUPPORT_MESSAGE_CREATED`, `ORDER_PLACED`, `PAYMENT_APPROVED`, etc.) are written transactionally to `public.automation_outbox`.
-  - An internal webhook dispatcher or cron worker pushes events to n8n with an HMAC signature (`N8N_WEBHOOK_SECRET`).
+  - Retired: the webhook dispatcher, secrets, setup guide, and workflow exports have been removed.
 - **Sanitized Workflow Templates**:
   - Exported to `automation/n8n/` without embedded secrets.
 
@@ -264,7 +264,7 @@ The AI is **never** given tools to:
 6. **Phase 6: Gemini Support Assistant & Tools**:
    - Server-only AI module, read-only tools, classification, auto-reply rules, fallback handling, staff handoff summary.
 7. **Phase 7: Admin "Ask 1968" & Settings**:
-   - Executive dashboard query tool, AI & Automation settings in `/admin/settings/ai`, kill switches.
+   - Historical executive dashboard query tool and safety controls (retired from the live application).
 8. **Phase 8: Automation Outbox & n8n Workflows**:
    - Event emitter, signed webhook dispatcher, sanitized workflow JSON files in `automation/n8n/`, `docs/N8N_AUTOMATION_SETUP.md`.
 9. **Phase 9: Automated Tests & Verification**:
@@ -284,7 +284,5 @@ The AI is **never** given tools to:
 | **Realtime Reconnect Reconciliation** | `LIVE VERIFIED` | `support:conversation:{id}` channel with deduplication and DB refetch on `SUBSCRIBED`. |
 | **Ask 1968 Operational Tools** | `LIVE VERIFIED` | Predefined queries execute trusted calculations; zero arbitrary SQL generation. |
 | **Automation Outbox Schema & Dispatcher** | `LIVE VERIFIED` | Outbox events persist transactionally; HMAC-SHA256 signature verification verified. |
-| **Gemini 3.8 Flash Support Assistant** | `IMPLEMENTED` | Full boundary, tools, classification, auto-reply, and fallback implemented and tested with mocks. |
-| **Live Gemini API Key** | `CONFIGURATION REQUIRED` | Server environment requires `GEMINI_API_KEY` in `.env.local` for live model inference. |
-| **Live n8n Webhook Instance** | `CONFIGURATION REQUIRED` | Server environment requires `N8N_WEBHOOK_URL` in `.env.local` to receive dispatched outbox events. |
-
+| **Gemini Support Assistant** | `RETIRED` | Live runtime, admin controls, and support invocation removed. |
+| **n8n Workflow Automation** | `RETIRED` | Dispatcher, workflow exports, and live configuration removed. |
