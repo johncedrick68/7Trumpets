@@ -74,6 +74,23 @@ test("Admin Functional Audit: POS visibly and functionally blocks sales while th
   assert.match(actionsSource, /\.rpc\("create_pos_sale"/);
 });
 
+test("Admin Functional Audit: POS database boundary requires an owned AAL2 open register under row lock", async () => {
+  const migration = await read("supabase/migrations/20260923010000_pos_register_session_enforcement.sql");
+  const actionsSource = await read("src/lib/pos/actions.ts");
+  const pageSource = await read("src/app/admin/pos/page.tsx");
+
+  assert.match(migration, /coalesce\(auth\.jwt\(\) ->> 'aal', ''\) <> 'aal2'/);
+  assert.match(migration, /v_session\.cashier_id <> v_actor/);
+  assert.match(migration, /v_session\.status <> 'OPEN'/);
+  assert.match(migration, /FROM public\.register_sessions AS rs[\s\S]*FOR UPDATE/);
+  assert.match(migration, /RETURN private\.create_pos_sale/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION private\.create_pos_sale[\s\S]*PUBLIC, anon, authenticated, service_role/);
+  assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.create_pos_sale[\s\S]*TO authenticated/);
+  assert.match(actionsSource, /POS_REGISTER_SESSION_CLOSED/);
+  assert.match(pageSource, /register_session_required/);
+  assert.match(pageSource, /register_session_closed/);
+});
+
 test("Admin Functional Audit: Payment review workspace computes accurate count badges for all queues", async () => {
   const workspaceSource = await read("src/components/admin/payment-review-workspace.tsx");
 

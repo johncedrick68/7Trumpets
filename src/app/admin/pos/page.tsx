@@ -136,6 +136,8 @@ export default async function AdminPosPage({
     failed_to_open_register: "The register could not be opened. Refresh and try again.",
     invalid_closing_cash: "Enter a valid counted cash amount.",
     failed_to_close_register: "The register could not be closed. Refresh and try again.",
+    register_session_required: "Register session required. Open your register before completing a sale.",
+    register_session_closed: "This register session is no longer open. Open a register and try again.",
   };
 
   return (

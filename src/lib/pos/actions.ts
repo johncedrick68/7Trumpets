@@ -91,6 +91,18 @@ export async function processPosCounterSaleAction(formData: FormData) {
   });
 
   if (rpcError) {
+    const registerError = [
+      "POS_REGISTER_SESSION_REQUIRED",
+      "POS_REGISTER_SESSION_NOT_FOUND",
+      "POS_REGISTER_SESSION_NOT_OWNED",
+    ].find((code) => rpcError.message.includes(code));
+
+    if (registerError) {
+      redirect("/admin/pos?error=register_session_required");
+    }
+    if (rpcError.message.includes("POS_REGISTER_SESSION_CLOSED")) {
+      redirect("/admin/pos?error=register_session_closed");
+    }
     redirect("/admin/pos?error=sale_processing_failed");
   }
 
