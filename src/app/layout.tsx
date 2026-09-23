@@ -28,7 +28,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   // Global chrome must not make every route depend on catalog availability.
   // Catalog pages fetch live categories themselves; the footer has resilient
   // canonical links so auth and system pages remain usable during DB outages.
-  const footer = await getStoreSetting("footer", { brand_copy: "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey.", support_email: "1968clothing.official@gmail.com", location: "Manila, Philippines" });
+  const footer = await getStoreSetting("footer", { brand_copy: "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey.", support_email: "1968clothing.official@gmail.com" });
   return <html lang="en" data-scroll-behavior="smooth"><body className={sfProDisplay.variable}>
     <StorefrontChrome announcement={<AnnouncementBar />} cartBadge={<CartBadge />} footer={footer}>{children}</StorefrontChrome>
   </body></html>;

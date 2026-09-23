@@ -223,11 +223,13 @@ export function StorefrontChrome({
                   {footer.support_email || "1968clothing.official@gmail.com"}
                 </a>
               </li>
-              <li>
-                <span className="text-[13px] text-[var(--ink-secondary)]">
-                  {footer.location || "Manila, Philippines"}
-                </span>
-              </li>
+              {footer.location ? (
+                <li>
+                  <span className="text-[13px] text-[var(--ink-secondary)]">
+                    {footer.location}
+                  </span>
+                </li>
+              ) : null}
             </ul>
           </div>
         </div>

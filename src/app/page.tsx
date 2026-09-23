@@ -23,7 +23,7 @@ export default async function HomePage() {
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
   return (
-    <main id="main-content" className="flex flex-col min-h-screen">
+    <main id="main-content" tabIndex={-1} className="flex flex-col min-h-screen">
       {/* ── Editorial Hero ─────────────────────────────────────────── */}
       <section className="border-b border-border bg-background py-16 sm:py-20 lg:py-24" aria-labelledby="hero-title">
         <div className="store-container text-center">
@@ -167,35 +167,33 @@ export default async function HomePage() {
                   <article key={product.id} className="group flex flex-col">
                     <Link
                       href={`/products/${product.slug}`}
-                      className="relative block aspect-[4/5] w-full overflow-hidden rounded-lg border border-border bg-neutral-100 transition-colors group-hover:border-foreground/40 dark:bg-neutral-900 focus:outline-none"
-                      tabIndex={-1}
-                      aria-hidden="true"
+                      className="group flex flex-col rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      <Image
-                        src={imagePath}
-                        alt=""
-                        fill
-                        sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
-                        priority={index < 4}
-                        className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
-                      />
-                      {categoryName && (
-                        <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
-                          {categoryName}
-                        </span>
-                      )}
-                    </Link>
+                      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-border bg-neutral-100 transition-[border-color] group-hover:border-foreground/40 active:scale-[0.99] motion-reduce:active:scale-100 dark:bg-neutral-900">
+                        <Image
+                          src={imagePath}
+                          alt=""
+                          fill
+                          sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
+                          priority={index < 4}
+                          className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
+                        />
+                        {categoryName && (
+                          <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
+                            {categoryName}
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="mt-3 flex flex-col">
-                      <h3 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1">
-                        <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">
+                      <div className="mt-3 flex flex-col">
+                        <h3 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1 group-hover:underline underline-offset-4">
                           {product.name}
-                        </Link>
-                      </h3>
-                      <p className="mt-1 font-mono text-sm font-bold text-foreground">
-                        {formatMinorUnitsToPHP(product.min_price_minor)}
-                      </p>
-                    </div>
+                        </h3>
+                        <p className="mt-1 font-mono text-sm font-bold text-foreground">
+                          {formatMinorUnitsToPHP(product.min_price_minor)}
+                        </p>
+                      </div>
+                    </Link>
                   </article>
                 );
               })}

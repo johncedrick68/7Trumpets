@@ -418,6 +418,11 @@ section {
   scroll-margin-top: calc(var(--nav-h) + 1.5rem);
 }
 
+main:focus,
+main[tabindex="-1"]:focus {
+  outline: none;
+}
+
 /* ==========================================================================
    Micro Typography & Technical Labels
    ========================================================================== */

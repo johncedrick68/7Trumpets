@@ -13,7 +13,7 @@ const SHIRT_WIDTH = [20, 21, 22, 23, 24] as const;
 
 export default function SizeGuidePage() {
   return (
-    <main id="main-content" className="store-container page-section min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container page-section min-h-screen">
       {/* ── Breadcrumb ────────────────────────────────────────── */}
       <nav aria-label="Breadcrumb" className="mb-6">
         <ol className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
@@ -84,6 +84,7 @@ export default function SizeGuidePage() {
         </section>
 
         {/* ── Sizing Tables ───────────────────────────────────── */}
+        {/* Source: public/images/size-chart-1968-clothing.png (Authoritative 1968 brand asset) */}
         <section aria-labelledby="sizing-specifications-heading" className="lg:col-span-7 space-y-8">
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -91,7 +92,7 @@ export default function SizeGuidePage() {
                 T-Shirts & Tops (Inches)
               </h2>
               <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-border text-muted-foreground">
-                Verified
+                Standard Fit
               </span>
             </div>
 

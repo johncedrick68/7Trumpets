@@ -50,7 +50,7 @@ export default async function CustomerSupportPage({
   }
 
   return (
-    <main id="main-content" className="account-container page-section min-h-screen">
+    <main id="main-content" tabIndex={-1} className="account-container page-section min-h-screen">
       <header className="mb-6">
         <h1 className="text-3xl font-extrabold tracking-tight">Customer Account</h1>
         <p className="text-xs text-muted-foreground mt-1">

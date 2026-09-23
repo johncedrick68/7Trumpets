@@ -105,95 +105,97 @@ export function MobileNav() {
       </button>
 
       {/* Full-screen overlay */}
-      <div
-        ref={overlayRef}
-        id="mobile-nav-overlay"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation Menu"
-        className={`mobile-nav-overlay${open ? " open" : ""}`}
-      >
-        {/* Overlay header: logo + close */}
-        <div className="mobile-nav-overlay-header">
-          <Link
-            href="/"
-            className="brand-logo"
-            aria-label="1968 Clothing — Home"
-            onClick={handleClose}
-          >
-            <BrandLogo variant="header-sm" className="invert-0" />
-          </Link>
+      {open && (
+        <div
+          ref={overlayRef}
+          id="mobile-nav-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation Menu"
+          className="mobile-nav-overlay open"
+        >
+          {/* Overlay header: logo + close */}
+          <div className="mobile-nav-overlay-header">
+            <Link
+              href="/"
+              className="brand-logo"
+              aria-label="1968 Clothing — Home"
+              onClick={handleClose}
+            >
+              <BrandLogo variant="header-sm" className="invert-0" />
+            </Link>
 
-          <button
-            ref={firstFocusableRef}
-            type="button"
-            onClick={handleClose}
-            className="mobile-nav-close"
-            aria-label="Close navigation menu"
-          >
-            <span aria-hidden="true">✕</span>
-          </button>
+            <button
+              ref={firstFocusableRef}
+              type="button"
+              onClick={handleClose}
+              className="mobile-nav-close"
+              aria-label="Close navigation menu"
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+          </div>
+
+          {/* Mobile search form */}
+          <div className="mobile-nav-search-container">
+            <form
+              method="GET"
+              action="/products"
+              className="mobile-nav-search-form"
+              onSubmit={handleClose}
+              role="search"
+            >
+              <label htmlFor="mobile-search-input" className="sr-only">
+                Search products
+              </label>
+              <div className="mobile-nav-search-wrap">
+                <SearchIcon size={16} className="mobile-nav-search-icon" aria-hidden="true" />
+                <input
+                  id="mobile-search-input"
+                  type="search"
+                  name="q"
+                  placeholder="Search products, collections…"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  className="mobile-nav-search-input"
+                />
+                <button type="submit" className="mobile-nav-search-btn">
+                  Search
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Nav links */}
+          <nav className="mobile-nav-inner" aria-label="Mobile primary navigation">
+            {NAV_LINKS.map((link) => {
+              const isActive =
+                pathname === link.href ||
+                (link.href !== "/" &&
+                  link.href !== "/#story" &&
+                  !!pathname?.startsWith(link.href));
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`mobile-nav-link${isActive ? " active" : ""}`}
+                  onClick={handleClose}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <span>{link.label}</span>
+                  <span aria-hidden="true" className="mobile-nav-arrow">→</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Footer */}
+          <div className="mobile-nav-footer">
+            1968 Clothing
+          </div>
         </div>
-
-        {/* Mobile search form */}
-        <div className="mobile-nav-search-container">
-          <form
-            method="GET"
-            action="/products"
-            className="mobile-nav-search-form"
-            onSubmit={handleClose}
-            role="search"
-          >
-            <label htmlFor="mobile-search-input" className="sr-only">
-              Search products
-            </label>
-            <div className="mobile-nav-search-wrap">
-              <SearchIcon size={16} className="mobile-nav-search-icon" aria-hidden="true" />
-              <input
-                id="mobile-search-input"
-                type="search"
-                name="q"
-                placeholder="Search products, collections…"
-                autoComplete="off"
-                enterKeyHint="search"
-                className="mobile-nav-search-input"
-              />
-              <button type="submit" className="mobile-nav-search-btn">
-                Search
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Nav links */}
-        <nav className="mobile-nav-inner" aria-label="Mobile primary navigation">
-          {NAV_LINKS.map((link) => {
-            const isActive =
-              pathname === link.href ||
-              (link.href !== "/" &&
-                link.href !== "/#story" &&
-                !!pathname?.startsWith(link.href));
-
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`mobile-nav-link${isActive ? " active" : ""}`}
-                onClick={handleClose}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <span>{link.label}</span>
-                <span aria-hidden="true" className="mobile-nav-arrow">→</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Footer */}
-        <div className="mobile-nav-footer">
-          1968 Clothing · Manila, Philippines
-        </div>
-      </div>
+      )}
     </>
   );
 }

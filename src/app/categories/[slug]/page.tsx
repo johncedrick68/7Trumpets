@@ -24,7 +24,7 @@ export default async function CategoryPage({
   const products = await getProducts({ categoryId: category.id });
 
   return (
-    <main id="main-content" className="store-container store-page min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container store-page min-h-screen">
       {/* ── Page Header ─────────────────────────────────────────── */}
       <header className="mb-8">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
@@ -95,36 +95,34 @@ export default async function CategoryPage({
               <article key={product.id} className="group flex flex-col">
                 <Link
                   href={`/products/${product.slug}`}
-                  className="relative block aspect-[4/5] w-full overflow-hidden bg-muted rounded-md focus:outline-none"
-                  tabIndex={-1}
-                  aria-hidden="true"
+                  className="group flex flex-col rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <Image
-                    src={imagePath}
-                    alt=""
-                    fill
-                    priority={index < 4}
-                    sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
-                    className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]"
-                  />
-                  <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
-                    {category.name}
-                  </span>
-                </Link>
+                  <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted rounded-md transition-[border-color] group-hover:border-foreground/50 active:scale-[0.99] motion-reduce:active:scale-100">
+                    <Image
+                      src={imagePath}
+                      alt=""
+                      fill
+                      priority={index < 4}
+                      sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
+                      className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                    />
+                    <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
+                      {category.name}
+                    </span>
+                  </div>
 
-                <div className="mt-3 flex flex-col">
-                  <h2 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1">
-                    <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">
+                  <div className="mt-3 flex flex-col">
+                    <h2 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1 group-hover:underline underline-offset-4">
                       {product.name}
-                    </Link>
-                  </h2>
-                  <p className="mt-1 font-mono text-sm font-bold text-foreground">
-                    {formatMinorUnitsToPHP(product.min_price_minor)}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-muted-foreground">
-                    {product.is_available ? "Available" : "Out of stock"}
-                  </p>
-                </div>
+                    </h2>
+                    <p className="mt-1 font-mono text-sm font-bold text-foreground">
+                      {formatMinorUnitsToPHP(product.min_price_minor)}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">
+                      {product.is_available ? "Available" : "Out of stock"}
+                    </p>
+                  </div>
+                </Link>
               </article>
             );
           })}

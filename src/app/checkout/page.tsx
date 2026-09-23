@@ -39,7 +39,7 @@ export default async function CheckoutPage({
   const checkoutIdempotencyKey = `checkout_${cart.id}_${randomUUID().replace(/-/g, "")}`;
 
   return (
-    <main id="main-content" className="transaction-container page-section min-h-screen">
+    <main id="main-content" tabIndex={-1} className="transaction-container page-section min-h-screen">
       <header className="mb-8 md:mb-12">
         <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-2">
           Secure Checkout

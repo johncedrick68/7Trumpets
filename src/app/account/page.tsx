@@ -43,7 +43,7 @@ export default async function AccountPage({
   const params = await searchParams;
 
   return (
-    <main id="main-content" className="account-container page-section min-h-screen">
+    <main id="main-content" tabIndex={-1} className="account-container page-section min-h-screen">
       <div className="w-full">
         {/* Header with User Info & Sign Out */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
