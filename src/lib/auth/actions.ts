@@ -22,6 +22,11 @@ function password(formData: FormData) {
   return typeof value === "string" ? value : "";
 }
 
+function passwordConfirmation(formData: FormData) {
+  const value = formData.get("confirm_password");
+  return typeof value === "string" ? value : "";
+}
+
 function validEmail(email: string) {
   return email.length > 0 && email.length <= 254 && emailPattern.test(email);
 }
@@ -29,23 +34,17 @@ function validEmail(email: string) {
 export async function signUp(formData: FormData) {
   const email = text(formData, "email");
   const userPassword = password(formData);
-  const displayName = text(formData, "display_name");
-  const phone = text(formData, "phone");
+  const confirmation = passwordConfirmation(formData);
 
   if (!validEmail(email)) redirect("/signup?error=email");
   if (userPassword.length < 8) redirect("/signup?error=password");
-  if (displayName.length > 100 || phone.length > 32) redirect("/signup?error=profile");
+  if (userPassword !== confirmation) redirect("/signup?error=confirmation");
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     email,
     password: userPassword,
-    options: {
-      data: {
-        display_name: displayName || null,
-        phone: phone || null,
-      },
-    },
+    options: { data: {} },
   });
 
   if (error) redirect("/signup?error=signup");
@@ -116,7 +115,9 @@ export async function requestPasswordReset(formData: FormData) {
 
 export async function updatePassword(formData: FormData) {
   const userPassword = password(formData);
+  const confirmation = passwordConfirmation(formData);
   if (userPassword.length < 8) redirect("/update-password?error=password");
+  if (userPassword !== confirmation) redirect("/update-password?error=confirmation");
 
   const supabase = await createClient();
   const { data, error: identityError } = await supabase.auth.getUser();

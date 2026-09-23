@@ -162,9 +162,96 @@
   .store-narrow-container { width: 100%; max-width: 32rem; margin-inline: auto; }
   .auth-shell-container { width: 100%; max-width: 72rem; margin-inline: auto; }
   .transaction-container { width: 100%; max-width: var(--transaction-max); margin-inline: auto; padding-inline: var(--store-gutter); }
-  .account-container { width: 100%; max-width: var(--account-max); margin-inline: auto; padding-inline: var(--store-gutter); }
+.account-container { width: 100%; max-width: var(--account-max); margin-inline: auto; padding-inline: var(--store-gutter); }
   .admin-shell-container { width: 100%; max-width: var(--admin-max); margin-inline: auto; }
-  .page-section { padding-block: clamp(2rem, 4vw, 4rem); }
+.page-section { padding-block: clamp(2rem, 4vw, 4rem); }
+
+.auth-storefront-shell {
+  display: flex;
+  min-height: clamp(34rem, 72vh, 48rem);
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(1.5rem, 5vw, 4.5rem) var(--store-gutter);
+}
+
+.auth-storefront-panel {
+  width: min(100%, 29rem);
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--border-strong);
+  padding: clamp(1.5rem, 4vw, 2.5rem) 0;
+}
+
+.auth-storefront-wordmark {
+  margin-bottom: 2rem;
+  color: var(--ink);
+  font-family: var(--font-display-family);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.account-eyebrow {
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.account-intro {
+  max-width: 42rem;
+  margin-top: 0.45rem;
+  color: var(--ink-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.account-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-strong);
+  scrollbar-width: thin;
+}
+
+.account-tab {
+  display: inline-flex;
+  min-width: max-content;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 1rem;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.account-tab:hover,
+.account-tab:focus-visible { color: var(--ink); opacity: 1; }
+.account-tab-active { border-bottom-color: var(--ink); color: var(--ink); }
+
+.account-container [data-slot="card"] {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.account-container input,
+.account-container textarea,
+.account-container select { border-radius: 0; }
+
+@media (max-width: 430px) {
+  .auth-storefront-shell { padding-inline: 1rem; }
+  .auth-storefront-panel { width: 100%; }
+  .account-tab { padding-inline: 0.8rem; }
+  .account-container [data-slot="card-content"],
+  .account-container [data-slot="card-header"],
+  .account-container [data-slot="card-footer"] { padding-inline: 1rem; }
+}
 }
 
 /* 1968 Clothing — bryl-minimal Design Language

@@ -52,10 +52,9 @@ export default async function CustomerSupportPage({
   return (
     <main id="main-content" tabIndex={-1} className="account-container page-section min-h-screen">
       <header className="mb-6">
-        <h1 className="text-3xl font-extrabold tracking-tight">Customer Account</h1>
-        <p className="text-xs text-muted-foreground mt-1">
-          Manage your orders, saved delivery addresses, security settings, and support requests.
-        </p>
+        <p className="account-eyebrow">Customer account</p>
+        <h1 className="text-h1 mt-1">Support</h1>
+        <p className="account-intro">Start a conversation with the 1968 Clothing support team or return to an existing thread.</p>
       </header>
 
       <AccountNavigation current="support" />

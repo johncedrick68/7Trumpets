@@ -36,8 +36,8 @@ export default async function SignUpPage({
   const emailError = error === "email" ? "Enter a valid email address." : null;
   const passwordError =
     error === "password" ? "Your password must contain at least 8 characters." : null;
-  const profileError =
-    error === "profile" ? "Check your name and phone number, then try again." : null;
+  const confirmationError =
+    error === "confirmation" ? "Passwords do not match." : null;
   const signupError =
     error === "signup"
       ? "An account with this email may already exist, or we could not create your account."
@@ -55,11 +55,9 @@ export default async function SignUpPage({
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Customer Account
           </p>
-          <h1 className="mt-2 text-h2 text-foreground">
-            Create account
-          </h1>
+          <h1 className="mt-2 text-h2 text-foreground">Create Account</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Save your delivery details and keep every 1968 Clothing order within reach.
+            Keep orders, delivery details, and support conversations in one place.
           </p>
         </div>
 
@@ -139,38 +137,22 @@ export default async function SignUpPage({
               {passwordError && <FieldError id="password-error" message={passwordError} />}
             </div>
 
-            {/* Name + Phone */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="display_name" className="text-xs font-semibold text-foreground">
-                  Full name <span className="font-normal text-muted-foreground">(opt)</span>
-                </Label>
-                <Input
-                  id="display_name"
-                  name="display_name"
-                  autoComplete="name"
-                  maxLength={100}
-                  placeholder="Juan Dela Cruz"
-                  className="h-12 text-sm"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-xs font-semibold text-foreground">
-                  Phone <span className="font-normal text-muted-foreground">(opt)</span>
-                </Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  maxLength={32}
-                  placeholder="0917 123 4567"
-                  className="h-12 text-sm"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm_password" className="text-xs font-semibold text-foreground">
+                Confirm password
+              </Label>
+              <PasswordInput
+                id="confirm_password"
+                name="confirm_password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                placeholder="••••••••"
+                aria-describedby={confirmationError ? "confirmation-error" : undefined}
+                aria-invalid={confirmationError ? true : undefined}
+              />
+              {confirmationError && <FieldError id="confirmation-error" message={confirmationError} />}
             </div>
-            {profileError && <FieldError id="profile-error" message={profileError} />}
 
             {/* General server error — above Create Account */}
             {signupError && (

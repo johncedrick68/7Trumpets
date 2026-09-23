@@ -65,7 +65,8 @@ test("customer auth keeps identity and profile mutations server-authoritative", 
   const confirm = await read("src/app/auth/confirm/route.ts");
 
   assert.match(actions, /signUp/);
-  assert.match(actions, /data:\s*\{\s*display_name:\s*displayName/);
+  assert.match(actions, /confirm_password/);
+  assert.match(actions, /userPassword !== confirmation/);
   assert.doesNotMatch(actions, /data:.*(?:role|admin|permissions)/);
   assert.match(actions, /auth\.getUser\(\)/);
   assert.match(actions, /\.eq\("id", data\.user\.id\)/);

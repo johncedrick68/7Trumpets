@@ -142,10 +142,8 @@ export default async function OrderConfirmationPage({
         {/* Page header */}
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
-              Order Details
-            </p>
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mt-1 mb-2">
+            <p className="account-eyebrow">Order details</p>
+            <h1 className="text-h1 mt-1 mb-2">
               Order #{order.order_number}
             </h1>
             <p className="text-sm font-mono text-muted-foreground">
@@ -451,7 +449,7 @@ export default async function OrderConfirmationPage({
                 </div>
                 <div className="flex justify-between items-center text-sm border-b border-border pb-3">
                   <span className="text-muted-foreground font-medium">Payment</span>
-                  <span className="font-medium text-foreground">{payment?.method || "MANUAL_GCASH"}</span>
+                  <span className="font-medium text-foreground">{payment?.method === "MANUAL_GCASH" ? "GCash" : payment?.method === "COD" ? "Cash on delivery" : payment?.method === "CASH" ? "Cash" : "Payment pending"}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b border-border pb-3">
                   <span className="text-muted-foreground font-medium">Payment Status</span>
@@ -462,7 +460,7 @@ export default async function OrderConfirmationPage({
                 <div className="flex justify-between items-center text-sm border-b border-border pb-3">
                   <span className="text-muted-foreground font-medium">Order Status</span>
                   <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-widest px-2">
-                    {order.status}
+                    {stageInfo.label}
                   </Badge>
                 </div>
               </div>

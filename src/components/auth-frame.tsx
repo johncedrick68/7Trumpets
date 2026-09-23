@@ -1,9 +1,10 @@
 export function AuthFrame({ children }: { children: React.ReactNode }) {
   return (
-    <main className="store-container flex flex-1 items-start justify-center py-5 sm:py-9 lg:py-12">
-      <div className="w-full max-w-[29rem] rounded-md border border-border/80 bg-background px-5 py-6 sm:px-8 sm:py-8">
+    <main id="main-content" tabIndex={-1} className="auth-storefront-shell">
+      <section className="auth-storefront-panel" aria-label="Customer account">
+        <p className="auth-storefront-wordmark" aria-hidden="true">1968</p>
         {children}
-      </div>
+      </section>
     </main>
   );
 }

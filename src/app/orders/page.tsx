@@ -37,12 +37,8 @@ export default async function OrderHistoryPage() {
     <main id="main-content" tabIndex={-1} className="account-container page-section min-h-screen">
       <div className="w-full">
         <header className="mb-8">
-          <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
-            Customer Account
-          </p>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-1 mb-1">
-            Order History
-          </h1>
+          <p className="account-eyebrow">Customer account</p>
+          <h1 className="text-h1 mt-1 mb-1">Orders</h1>
           <p className="text-sm text-muted-foreground">
             View and track your 1968 Clothing archival orders.
           </p>
@@ -73,7 +69,7 @@ export default async function OrderHistoryPage() {
             {orderList.map((order) => {
               const stageInfo = deriveCustomerFulfillmentStage(order.status);
               return (
-                <Card key={order.id} className="border-border shadow-sm overflow-hidden">
+                <Card key={order.id} className="border-border overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-3">
                       <div>

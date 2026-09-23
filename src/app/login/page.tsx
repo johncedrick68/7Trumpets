@@ -27,10 +27,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             Customer Account
           </p>
           <h1 className="mt-2 text-h2 text-foreground">
-            Welcome back
+            Sign In
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Sign in to manage orders, delivery details, and account settings.
+            Access your orders, saved addresses, and customer support.
           </p>
         </div>
 

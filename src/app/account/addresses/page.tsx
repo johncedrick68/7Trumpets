@@ -23,12 +23,8 @@ export default async function AddressesPage({
     <main id="main-content" tabIndex={-1} className="account-container page-section min-h-screen">
       <div className="w-full">
         <header className="mb-8">
-          <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
-            Customer Account
-          </p>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-1 mb-1">
-            Shipping Addresses
-          </h1>
+          <p className="account-eyebrow">Customer account</p>
+          <h1 className="text-h1 mt-1 mb-1">Shipping Addresses</h1>
           <p className="text-sm text-muted-foreground">
             Manage delivery locations for rapid checkout.
           </p>
@@ -130,22 +126,22 @@ export default async function AddressesPage({
 
                 <div className="space-y-2">
                   <Label htmlFor="recipient_name">Recipient Name *</Label>
-                  <Input id="recipient_name" name="recipient_name" required maxLength={100} placeholder="Juan Dela Cruz" />
+                  <Input id="recipient_name" name="recipient_name" autoComplete="name" required maxLength={100} placeholder="Juan Dela Cruz" />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number *</Label>
-                  <Input id="phone" name="phone" type="tel" required maxLength={32} placeholder="0917 123 4567" />
+                  <Input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={32} placeholder="0917 123 4567" />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="address_line1">Street Address / House No. *</Label>
-                  <Input id="address_line1" name="address_line1" required maxLength={255} placeholder="123 Katipunan St." />
+                  <Input id="address_line1" name="address_line1" autoComplete="address-line1" required maxLength={255} placeholder="123 Katipunan St." />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="address_line2">Apartment / Unit (Optional)</Label>
-                  <Input id="address_line2" name="address_line2" maxLength={255} placeholder="Unit 4B" />
+                  <Input id="address_line2" name="address_line2" autoComplete="address-line2" maxLength={255} placeholder="Unit 4B" />
                 </div>
 
                 <div className="space-y-2">
@@ -156,17 +152,17 @@ export default async function AddressesPage({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city_municipality">City / Municipality *</Label>
-                    <Input id="city_municipality" name="city_municipality" required maxLength={100} placeholder="Quezon City" />
+                    <Input id="city_municipality" name="city_municipality" autoComplete="address-level2" required maxLength={100} placeholder="Quezon City" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="province">Province *</Label>
-                    <Input id="province" name="province" required maxLength={100} placeholder="Metro Manila" />
+                    <Input id="province" name="province" autoComplete="address-level1" required maxLength={100} placeholder="Metro Manila" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="postal_code">Postal / Zip Code *</Label>
-                  <Input id="postal_code" name="postal_code" required maxLength={16} placeholder="1100" />
+                  <Input id="postal_code" name="postal_code" autoComplete="postal-code" inputMode="numeric" required maxLength={16} placeholder="1100" />
                 </div>
 
                 <div className="flex items-center gap-2 mt-4 pt-2">

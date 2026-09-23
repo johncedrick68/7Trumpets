@@ -23,11 +23,16 @@ export default async function UpdatePasswordPage({ searchParams }: { searchParam
         </CardHeader>
         <CardContent className="space-y-4">
           {params.error === "password" && <Alert variant="destructive"><AlertDescription>Password must be at least 8 characters long.</AlertDescription></Alert>}
+          {params.error === "confirmation" && <Alert variant="destructive"><AlertDescription>Passwords do not match.</AlertDescription></Alert>}
           {params.error === "update" && <Alert variant="destructive"><AlertDescription>Unable to update password. Check your session or request a new reset link.</AlertDescription></Alert>}
           <form action={updatePassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">New password</Label>
               <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} required placeholder="••••••••" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm_password">Confirm new password</Label>
+              <PasswordInput id="confirm_password" name="confirm_password" autoComplete="new-password" minLength={8} required placeholder="••••••••" />
             </div>
             <AuthSubmitButton pendingText="Updating password…" className="sm:w-auto">Update password</AuthSubmitButton>
           </form>

@@ -48,19 +48,15 @@ export default async function AccountPage({
         {/* Header with User Info & Sign Out */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">
-              Customer Account
-            </p>
-            <h1 className="text-h1 mt-1 mb-1">
-              Account Settings
-            </h1>
+            <p className="account-eyebrow">Customer account</p>
+            <h1 className="text-h1 mt-1 mb-1">Account</h1>
             <p className="text-sm text-muted-foreground">
               Signed in as <strong className="text-foreground">{userData.user.email}</strong>
             </p>
           </div>
 
           <form action={signOut}>
-            <Button variant="outline" type="submit">
+            <Button variant="outline" type="submit" className="rounded-none">
               Sign Out
             </Button>
           </form>
@@ -68,9 +64,9 @@ export default async function AccountPage({
 
         <AccountNavigation current="profile" />
 
-        <section className="mb-8 grid gap-4 md:grid-cols-2" aria-label="Account overview">
+        <section className="mb-10 grid gap-px border border-border bg-border md:grid-cols-2" aria-label="Account overview">
           {activeOrder && (() => { const stage = deriveCustomerFulfillmentStage(activeOrder.status); return (
-            <Card className="border-border bg-neutral-950 text-white">
+            <Card className="border-0 bg-neutral-950 text-white">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-wider text-white/60">Active order</p><Badge variant="secondary">{stage.label}</Badge></div>
                 <h2 className="mt-3 text-lg font-semibold">Order #{activeOrder.order_number}</h2>
@@ -79,14 +75,14 @@ export default async function AccountPage({
               </CardContent>
             </Card>
           ); })()}
-          <Card className="border-border">
+          <Card className="border-0 bg-background">
             <CardContent className="p-5">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Default delivery address</p>
               {defaultAddress ? <><h2 className="mt-3 font-semibold">{defaultAddress.label || defaultAddress.recipient_name}</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{defaultAddress.address_line1}<br />{defaultAddress.city_municipality}, {defaultAddress.province}</p><Button asChild variant="outline" className="mt-5"><Link href="/account/addresses">Manage addresses</Link></Button></> : <><p className="mt-3 text-sm text-muted-foreground">No default address yet. Add one to make checkout faster.</p><Button asChild className="mt-5"><Link href="/account/addresses">Add address</Link></Button></>}
             </CardContent>
           </Card>
           {recentOrders && recentOrders.length > 0 && (
-            <Card className="border-border md:col-span-2">
+            <Card className="border-0 bg-background md:col-span-2">
               <CardHeader><CardTitle className="text-base">Recent orders</CardTitle><CardDescription>Your latest purchases and current progress.</CardDescription></CardHeader>
               <CardContent className="divide-y p-0">
                 {recentOrders.map((order) => { const stage = deriveCustomerFulfillmentStage(order.status); return <Link key={order.id} href={`/orders/${order.id}`} className="flex min-h-14 items-center justify-between gap-4 px-6 py-3 hover:bg-muted/40"><span className="font-medium">#{order.order_number}</span><span className="text-sm text-muted-foreground">{stage.label} →</span></Link>; })}

@@ -55,3 +55,17 @@ test("auth visual authority uses local display type and one shared logo", async 
   assert.doesNotMatch(frame, /BrandLogo|next\/image|1968-logo/);
   assert.match(brandLogo, /1968-logo-cropped\.webp/);
 });
+
+test("customer auth and account UI uses the restrained shared storefront shell", async () => {
+  const frame = await read("src/components/auth-frame.tsx");
+  const navigation = await read("src/components/account-navigation.tsx");
+  const signup = await read("src/app/signup/page.tsx");
+  const updatePassword = await read("src/app/update-password/page.tsx");
+
+  assert.match(frame, /auth-storefront-shell/);
+  assert.match(navigation, /account-tabs/);
+  assert.match(navigation, /aria-current/);
+  assert.doesNotMatch(signup, /name="phone"|name="display_name"/);
+  assert.match(signup, /name="confirm_password"/);
+  assert.match(updatePassword, /name="confirm_password"/);
+});
