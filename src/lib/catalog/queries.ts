@@ -135,7 +135,8 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
 export async function getProducts(options?: {
   categoryId?: string;
   search?: string;
-  sort?: "newest" | "price_asc" | "price_desc";
+  sort?: "newest" | "price_asc" | "price_desc" | "name_asc";
+  availability?: "all" | "in_stock";
 }): Promise<ProductSummary[]> {
   try {
     const supabase = await createClient();
@@ -193,35 +194,42 @@ export async function getProducts(options?: {
     }
 
     const items = (data ?? []).map((item) => {
-    const activeVariants = (item.product_variants || []).filter(
-      (v) => v.status === "active",
-    );
-    const prices = activeVariants.map((v) => v.price_minor);
-    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+      const activeVariants = (item.product_variants || []).filter(
+        (v) => v.status === "active",
+      );
+      const prices = activeVariants.map((v) => v.price_minor);
+      const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
-    const sortedImages = (item.product_images || []).sort(
-      (a, b) => a.position - b.position,
-    );
+      const sortedImages = (item.product_images || []).sort(
+        (a, b) => a.position - b.position,
+      );
 
-    return {
-      id: item.id,
-      name: item.name,
-      slug: item.slug,
-      description: item.description,
-      category_id: item.category_id,
-      min_price_minor: minPrice,
-      primary_image_path: sortedImages[0] ? productImageUrl(sortedImages[0].storage_path) : null,
-      is_available: activeVariants.some((variant) => availabilityByVariant.get(variant.id) === true),
-    };
-  });
+      return {
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        description: item.description,
+        category_id: item.category_id,
+        min_price_minor: minPrice,
+        primary_image_path: sortedImages[0] ? productImageUrl(sortedImages[0].storage_path) : null,
+        is_available: activeVariants.some((variant) => availabilityByVariant.get(variant.id) === true),
+      };
+    });
 
-    if (options?.sort === "price_asc") {
-      return sortByMinPrice(items, "price_asc");
-    } else if (options?.sort === "price_desc") {
-      return sortByMinPrice(items, "price_desc");
+    let result = items;
+    if (options?.availability === "in_stock") {
+      result = result.filter((item) => item.is_available);
     }
 
-    return items;
+    if (options?.sort === "price_asc") {
+      return sortByMinPrice(result, "price_asc");
+    } else if (options?.sort === "price_desc") {
+      return sortByMinPrice(result, "price_desc");
+    } else if (options?.sort === "name_asc") {
+      return [...result].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return result;
   } catch {
     return [];
   }

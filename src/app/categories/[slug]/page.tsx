@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { formatMinorUnitsToPHP, getCategories, getCategoryBySlug, getProducts } from "@/lib/catalog/queries";
+import { getCategories, getCategoryBySlug, getProducts } from "@/lib/catalog/queries";
 import { Button } from "@/components/ui/button";
+import { ProductCard } from "@/components/product-card";
 
 export const dynamic = "force-dynamic";
 
@@ -42,41 +42,48 @@ export default async function CategoryPage({
 
       {/* ── Category Pills ───────────────────────────────────────── */}
       {categories.length > 0 && (
-        <div
-          className="mb-8 flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          role="group"
-          aria-label="Category filters"
-        >
-          <Link
-            href="/products"
-            className="shrink-0 rounded-full border border-border bg-transparent px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+        <nav aria-label="Collections" className="mb-8">
+          <div
+            className="flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="group"
+            aria-label="Category filters"
           >
-            All
-          </Link>
-          {categories.map((cat) => (
             <Link
-              key={cat.id}
-              href={`/categories/${cat.slug}`}
-              className={`shrink-0 rounded-full border px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors ${
-                cat.id === category.id
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
-              }`}
-              aria-current={cat.id === category.id ? "true" : undefined}
+              href="/products"
+              className="shrink-0 rounded-full border border-border bg-transparent px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:border-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {cat.name}
+              All Pieces
             </Link>
-          ))}
-        </div>
+            {categories.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/categories/${cat.slug}`}
+                className={`shrink-0 rounded-full border px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  cat.id === category.id
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
+                }`}
+                aria-current={cat.id === category.id ? "page" : undefined}
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+        </nav>
       )}
+
+      {/* ── Result Count ─────────────────────────────────────────── */}
+      <div className="mb-6 font-mono text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-4">
+        {products.length} {products.length === 1 ? "piece" : "pieces"} in {category.name}
+      </div>
 
       {/* ── Empty State ──────────────────────────────────────────── */}
       {products.length === 0 ? (
-        <div className="py-20 text-center rounded-xl border border-dashed border-border bg-muted/20 p-8">
+        <div className="py-20 text-center rounded-xl border border-dashed border-border bg-muted/20 p-8 max-w-lg mx-auto">
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4">
             No products found in this collection
           </p>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="h-11 px-5 font-mono text-xs uppercase tracking-wider">
             <Link href="/products">
               Explore All Drops &rarr;
             </Link>
@@ -84,49 +91,20 @@ export default async function CategoryPage({
         </div>
       ) : (
         /* ── Product Grid ────────────────────────────────────────── */
-        <section
-          className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-4"
+        <ul
+          className="product-grid grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-4"
           aria-label={`Products in ${category.name}`}
         >
-          {products.map((product, index) => {
-            const imagePath = product.primary_image_path || "/images/1968%20CLOTHING%20V1.webp";
-
-            return (
-              <article key={product.id} className="group flex flex-col">
-                <Link
-                  href={`/products/${product.slug}`}
-                  className="group flex flex-col rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted rounded-md transition-[border-color] group-hover:border-foreground/50 active:scale-[0.99] motion-reduce:active:scale-100">
-                    <Image
-                      src={imagePath}
-                      alt=""
-                      fill
-                      priority={index < 4}
-                      sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
-                      className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-                    />
-                    <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
-                      {category.name}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 flex flex-col">
-                    <h2 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1 group-hover:underline underline-offset-4">
-                      {product.name}
-                    </h2>
-                    <p className="mt-1 font-mono text-sm font-bold text-foreground">
-                      {formatMinorUnitsToPHP(product.min_price_minor)}
-                    </p>
-                    <p className="mt-1 text-xs font-medium text-muted-foreground">
-                      {product.is_available ? "Available" : "Out of stock"}
-                    </p>
-                  </div>
-                </Link>
-              </article>
-            );
-          })}
-        </section>
+          {products.map((product, index) => (
+            <li key={product.id} className="h-full">
+              <ProductCard
+                product={product}
+                categoryName={category.name}
+                priority={index < 4}
+              />
+            </li>
+          ))}
+        </ul>
       )}
     </main>
   );

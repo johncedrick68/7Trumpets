@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import { BrandLogo } from "@/components/brand-logo";
 import { SearchIcon } from "@/components/icons";
 
@@ -18,122 +19,54 @@ const NAV_LINKS = [
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const firstFocusableRef = useRef<HTMLButtonElement>(null);
-
-  const handleClose = useCallback(() => {
-    setOpen(false);
-    triggerRef.current?.focus();
-  }, []);
 
   // Close on route change
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Body scroll lock + focus management on open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-      // Focus the close button or first interactive element
-      const timer = setTimeout(() => {
-        firstFocusableRef.current?.focus();
-      }, 50);
-      return () => {
-        clearTimeout(timer);
-        document.body.style.overflow = "";
-      };
-    } else {
-      document.body.style.overflow = "";
-    }
-  }, [open]);
-
-  // Trap focus & Escape key inside the open modal
-  useEffect(() => {
-    if (!open) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleClose();
-        return;
-      }
-
-      if (e.key === "Tab" && overlayRef.current) {
-        const focusableElements = overlayRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, handleClose]);
-
   return (
-    <>
-      {/* Hamburger — shown in header, hidden on desktop */}
-      <button
-        ref={triggerRef}
-        className="menu-toggle"
-        aria-label={open ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={open}
-        aria-controls="mobile-nav-overlay"
-        onClick={() => setOpen((v) => !v)}
-        type="button"
-      >
-        <span aria-hidden="true" />
-        <span aria-hidden="true" />
-        <span aria-hidden="true" />
-      </button>
-
-      {/* Full-screen overlay */}
-      {open && (
-        <div
-          ref={overlayRef}
-          id="mobile-nav-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation Menu"
-          className="mobile-nav-overlay open"
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Trigger asChild>
+        <button
+          className="menu-toggle"
+          aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+          type="button"
         >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </button>
+      </DialogPrimitive.Trigger>
+
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[200] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          className="fixed inset-0 z-[201] flex flex-col bg-[#0a0a0a] text-white overflow-y-auto outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          aria-describedby={undefined}
+        >
+          <DialogPrimitive.Title className="sr-only">
+            Navigation Menu
+          </DialogPrimitive.Title>
+
           {/* Overlay header: logo + close */}
           <div className="mobile-nav-overlay-header">
             <Link
               href="/"
               className="brand-logo"
               aria-label="1968 Clothing — Home"
-              onClick={handleClose}
+              onClick={() => setOpen(false)}
             >
               <BrandLogo variant="header-sm" className="invert-0" />
             </Link>
 
-            <button
-              ref={firstFocusableRef}
+            <DialogPrimitive.Close
               type="button"
-              onClick={handleClose}
               className="mobile-nav-close"
               aria-label="Close navigation menu"
             >
               <span aria-hidden="true">✕</span>
-            </button>
+            </DialogPrimitive.Close>
           </div>
 
           {/* Mobile search form */}
@@ -142,7 +75,7 @@ export function MobileNav() {
               method="GET"
               action="/products"
               className="mobile-nav-search-form"
-              onSubmit={handleClose}
+              onSubmit={() => setOpen(false)}
               role="search"
             >
               <label htmlFor="mobile-search-input" className="sr-only">
@@ -180,7 +113,7 @@ export function MobileNav() {
                   key={link.href}
                   href={link.href}
                   className={`mobile-nav-link${isActive ? " active" : ""}`}
-                  onClick={handleClose}
+                  onClick={() => setOpen(false)}
                   aria-current={isActive ? "page" : undefined}
                 >
                   <span>{link.label}</span>
@@ -194,8 +127,8 @@ export function MobileNav() {
           <div className="mobile-nav-footer">
             1968 Clothing
           </div>
-        </div>
-      )}
-    </>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

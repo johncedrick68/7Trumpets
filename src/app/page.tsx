@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, ShieldCheck, Truck, Sparkles, MapPin } from "lucide-react";
 import { formatMinorUnitsToPHP, getCategories, getProducts } from "@/lib/catalog/queries";
 import { Button } from "@/components/ui/button";
+import { ProductCard } from "@/components/product-card";
 
 import { getStoreSetting } from "@/lib/settings/queries";
 
@@ -158,46 +159,24 @@ export default async function HomePage() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4">
+            <ul
+              className="product-grid grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4"
+              aria-label="Featured Drops"
+            >
               {products.slice(0, 4).map((product, index) => {
-                const imagePath = product.primary_image_path || "/images/1968%20CLOTHING%20V1.webp";
                 const categoryName = product.category_id ? categoryMap[product.category_id] : null;
 
                 return (
-                  <article key={product.id} className="group flex flex-col">
-                    <Link
-                      href={`/products/${product.slug}`}
-                      className="group flex flex-col rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    >
-                      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-border bg-neutral-100 transition-[border-color] group-hover:border-foreground/40 active:scale-[0.99] motion-reduce:active:scale-100 dark:bg-neutral-900">
-                        <Image
-                          src={imagePath}
-                          alt=""
-                          fill
-                          sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
-                          priority={index < 4}
-                          className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
-                        />
-                        {categoryName && (
-                          <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xs">
-                            {categoryName}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-3 flex flex-col">
-                        <h3 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1 group-hover:underline underline-offset-4">
-                          {product.name}
-                        </h3>
-                        <p className="mt-1 font-mono text-sm font-bold text-foreground">
-                          {formatMinorUnitsToPHP(product.min_price_minor)}
-                        </p>
-                      </div>
-                    </Link>
-                  </article>
+                  <li key={product.id} className="h-full">
+                    <ProductCard
+                      product={product}
+                      categoryName={categoryName}
+                      priority={index < 4}
+                    />
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </section>
 
