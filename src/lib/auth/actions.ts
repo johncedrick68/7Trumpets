@@ -8,6 +8,7 @@ import { safeRedirectPath } from "@/lib/auth/redirect";
 import { resolvePostLoginDestination } from "@/lib/auth/destination";
 import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
+import { clearGuestCart, reconcileGuestCart } from "@/lib/cart/actions";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -71,6 +72,8 @@ export async function signIn(formData: FormData) {
     if (signOutError) logServerError("auth.failed_login_cleanup", "auth_provider_failure");
     redirect("/login?error=credentials");
   }
+
+  await reconcileGuestCart(data.user.id);
 
   redirect(await resolvePostLoginDestination(supabase, next));
 }
@@ -151,6 +154,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function signOut() {
+  await clearGuestCart();
   const supabase = await createClient();
   const { error } = await supabase.auth.signOut();
   if (error) logServerError("auth.sign_out", "auth_provider_failure");

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { resolvePostLoginDestination } from "@/lib/auth/destination";
 import { createClient } from "@/lib/supabase/server";
+import { reconcileGuestCart } from "@/lib/cart/actions";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -19,6 +20,12 @@ export async function GET(request: Request) {
     if (exchangeError) {
       redirect("/auth/error");
     }
+
+    const { data: claimsData } = await supabase.auth.getClaims();
+    if (claimsData?.claims?.sub) {
+      await reconcileGuestCart(claimsData.claims.sub);
+    }
+
     redirect(await resolvePostLoginDestination(supabase, next));
   }
 
@@ -33,6 +40,11 @@ export async function GET(request: Request) {
   });
 
   if (error) redirect("/auth/error");
+
+  const { data: claimsData } = await supabase.auth.getClaims();
+  if (claimsData?.claims?.sub) {
+    await reconcileGuestCart(claimsData.claims.sub);
+  }
 
   const fallback = type === "recovery" ? "/update-password" : "/account";
   redirect(safeRedirectPath(next, fallback));

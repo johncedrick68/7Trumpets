@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { getCustomerAddresses } from "@/lib/addresses/actions";
 import { getOrCreateCart } from "@/lib/cart/actions";
 import { processCheckout } from "@/lib/checkout/actions";
@@ -13,6 +14,13 @@ export default async function CheckoutPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
+  if (!userId) {
+    redirect("/login?next=/checkout");
+  }
+
   const [cart, addresses, params, fulfillmentSettings, paymentSettings] = await Promise.all([
     getOrCreateCart(),
     getCustomerAddresses(),
