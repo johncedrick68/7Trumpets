@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowRight, ShoppingBag } from "lucide-react";
+import {
+  T_SHIRT_MEASUREMENTS,
+  AUTHORITATIVE_SIZING_NOTE,
+} from "@/lib/catalog/sizing";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Size Guide",
   description: "Official sizing charts and measurement guidelines for 1968 Clothing garments.",
 };
-
-const SHIRT_SIZES = ["S", "M", "L", "XL", "XXL"] as const;
-const SHIRT_LENGTH = [28, 29, 30, 31, 32] as const;
-const SHIRT_WIDTH = [20, 21, 22, 23, 24] as const;
 
 export default function SizeGuidePage() {
   return (
@@ -32,13 +34,13 @@ export default function SizeGuidePage() {
       {/* ── Page Header ───────────────────────────────────────── */}
       <header className="mb-10 border-b border-border pb-6">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-          Fit & Sizing
+          Fit &amp; Sizing
         </p>
         <h1 className="mt-2 text-h1 text-foreground">
-          Garment Size Guide
+          Size Guide
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          All dimensions are listed in inches. For the ideal silhouette, lay a favored garment flat and compare measurements against the specifications below.
+          All dimensions are listed in inches. Compare these specifications against a favored garment laid flat to determine your ideal size.
         </p>
       </header>
 
@@ -75,11 +77,23 @@ export default function SizeGuidePage() {
             </dl>
           </div>
 
+          {/* Authoritative Quality & Pre-wash Note */}
           <div className="rounded-lg border border-border bg-background p-5 text-xs text-muted-foreground space-y-2">
-            <p className="font-semibold text-foreground">Fit Note</p>
-            <p>
-              1968 Clothing tees feature a classic boxy, slightly relaxed streetwear cut. If you prefer an oversized aesthetic, consider sizing up one step.
+            <p className="font-semibold text-foreground">Fabric &amp; Care Standard</p>
+            <p className="leading-relaxed">
+              {AUTHORITATIVE_SIZING_NOTE}
             </p>
+          </div>
+
+          {/* Navigation CTA */}
+          <div className="pt-2">
+            <Button asChild className="w-full h-11 font-mono text-xs uppercase tracking-wider gap-2">
+              <Link href="/products">
+                <ShoppingBag className="size-4" />
+                <span>Shop T-Shirts</span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
           </div>
         </section>
 
@@ -89,76 +103,60 @@ export default function SizeGuidePage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 id="sizing-specifications-heading" className="text-lg font-bold text-foreground">
-                T-Shirts & Tops (Inches)
+                T-Shirt Measurements
               </h2>
               <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-border text-muted-foreground">
-                Standard Fit
+                Inches
               </span>
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-sm">
-                <caption className="sr-only">1968 Clothing T-Shirt Measurements in Inches</caption>
+                <caption className="sr-only">1968 Clothing T-Shirt Measurements</caption>
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
                     <th scope="col" className="px-4 py-3 text-left font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                       Size
                     </th>
-                    {SHIRT_SIZES.map((size) => (
-                      <th
-                        key={size}
-                        scope="col"
-                        className="px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-foreground"
-                      >
-                        {size}
-                      </th>
-                    ))}
+                    <th scope="col" className="px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-foreground">
+                      Width
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-foreground">
+                      Length
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  <tr>
-                    <th scope="row" className="px-4 py-3 text-left font-medium text-foreground">
-                      Length (in)
-                    </th>
-                    {SHIRT_LENGTH.map((val, idx) => (
-                      <td key={idx} className="px-4 py-3 text-center font-mono text-xs text-foreground">
-                        {val}&quot;
+                  {T_SHIRT_MEASUREMENTS.map((row) => (
+                    <tr key={row.size}>
+                      <th scope="row" className="px-4 py-3.5 text-left font-medium text-foreground">
+                        {row.label} ({row.size})
+                      </th>
+                      <td className="px-4 py-3.5 text-center font-mono text-xs text-foreground">
+                        {row.widthInches}&quot;
                       </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <th scope="row" className="px-4 py-3 text-left font-medium text-foreground">
-                      Width (in)
-                    </th>
-                    {SHIRT_WIDTH.map((val, idx) => (
-                      <td key={idx} className="px-4 py-3 text-center font-mono text-xs text-foreground">
-                        {val}&quot;
+                      <td className="px-4 py-3.5 text-center font-mono text-xs text-foreground">
+                        {row.lengthInches}&quot;
                       </td>
-                    ))}
-                  </tr>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* ── Secondary Family: Hoodies / Outerwear ────────────── */}
-          <div className="rounded-lg border border-dashed border-border p-6 bg-muted/20">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-foreground">
-                Hoodies & Heavyweight Fleece
-              </h3>
-              <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground px-2 py-0.5 rounded border border-border">
-                Pending Verification
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Official measurements for upcoming outerwear and fleece releases are currently being finalized.
-              {/* Development note: REQUIRES OWNER INPUT for specific fleece/hoodie specs */}
-            </p>
+          {/* Reference Asset Note */}
+          <div className="rounded-lg border border-border bg-muted/20 p-4 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Verified against authoritative 1968 production specifications.</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground">S–XXL Verified</span>
           </div>
 
+          {/* ── Secondary Family: Hoodies / Outerwear ────────────── */}
+          {/* REQUIRES OWNER INPUT: Outerwear and heavyweight fleece specifications pending official brand asset.
+              No unverified or speculative measurements are published to customers. */}
+
           <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-            <span>Questions regarding sizing?</span>
+            <span>Questions regarding sizing or fit?</span>
             <Link href="/account/support" className="font-semibold text-foreground underline underline-offset-4 hover:opacity-80">
               Contact Support
             </Link>
