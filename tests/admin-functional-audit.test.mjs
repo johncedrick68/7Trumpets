@@ -22,6 +22,8 @@ test("Admin Functional Audit: Order detail renders return requests, refunds, and
   assert.match(orderDetailSource, /refunds \(/);
   assert.match(orderDetailSource, /Returns &amp; Refunds/);
   assert.match(orderDetailSource, /Data Integrity Issue: Payment Missing/);
+  assert.match(orderDetailSource, /Array\.isArray\(order\.payments\) \? order\.payments\[0\] : order\.payments/);
+  assert.doesNotMatch(orderDetailSource, /order\.payments as any/);
 });
 
 test("Admin Functional Audit: Orders workspace queries and searches tracking, phone, and GCash references", async () => {

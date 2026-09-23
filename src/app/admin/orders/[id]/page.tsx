@@ -110,8 +110,7 @@ export default async function AdminOrderDetailPage({
     notFound();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payment = (order.payments as any)?.[0];
+  const payment = Array.isArray(order.payments) ? order.payments[0] : order.payments;
   const history = order.order_status_history || [];
   // Sort history newest first
   history.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
