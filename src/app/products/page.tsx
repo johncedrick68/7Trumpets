@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
 import { getCategories, getProducts, type Category } from "@/lib/catalog/queries";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/product-card";
+import { CatalogSearch } from "@/components/catalog-search";
 
 export const dynamic = "force-dynamic";
 
@@ -75,43 +74,7 @@ export default async function ProductsPage(props: {
       </header>
 
       {/* ── Search Bar ───────────────────────────────────────────── */}
-      <form
-        method="GET"
-        action="/products"
-        className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-2"
-        role="search"
-      >
-        {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
-        {sort !== "newest" && <input type="hidden" name="sort" value={sort} />}
-        {availability !== "all" && <input type="hidden" name="availability" value={availability} />}
-
-        <label htmlFor="catalog-search" className="sr-only">
-          Search products
-        </label>
-        <div className="relative min-w-0">
-          <Search
-            className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            id="catalog-search"
-            type="search"
-            name="q"
-            defaultValue={search}
-            placeholder="Search products, collections…"
-            enterKeyHint="search"
-            autoComplete="off"
-            className="h-11 rounded-none !pl-11 !pr-4 font-mono text-xs"
-          />
-        </div>
-        <Button
-          type="submit"
-          variant="outline"
-          className="h-11 rounded-none px-5 font-mono text-[11px] uppercase tracking-widest min-w-[44px]"
-        >
-          Search
-        </Button>
-      </form>
+      <CatalogSearch query={search} category={categorySlug} sort={sort} availability={availability} />
 
       {/* ── Category Navigation Pills ────────────────────────────── */}
       <nav aria-label="Catalog collections" className="catalog-rail mb-6">

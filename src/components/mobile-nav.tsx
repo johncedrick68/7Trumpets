@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { BrandLogo } from "@/components/brand-logo";
-import { SearchIcon } from "@/components/icons";
 
 const NAV_LINKS = [
   { href: "/products", label: "Shop" },
@@ -67,36 +66,6 @@ export function MobileNav() {
             >
               <span aria-hidden="true">✕</span>
             </DialogPrimitive.Close>
-          </div>
-
-          {/* Mobile search form */}
-          <div className="mobile-nav-search-container">
-            <form
-              method="GET"
-              action="/products"
-              className="mobile-nav-search-form"
-              onSubmit={() => setOpen(false)}
-              role="search"
-            >
-              <label htmlFor="mobile-search-input" className="sr-only">
-                Search products
-              </label>
-              <div className="mobile-nav-search-wrap">
-                <SearchIcon size={16} className="mobile-nav-search-icon" aria-hidden="true" />
-                <input
-                  id="mobile-search-input"
-                  type="search"
-                  name="q"
-                  placeholder="Search products, collections…"
-                  autoComplete="off"
-                  enterKeyHint="search"
-                  className="mobile-nav-search-input"
-                />
-                <button type="submit" className="mobile-nav-search-btn">
-                  Search
-                </button>
-              </div>
-            </form>
           </div>
 
           {/* Nav links */}

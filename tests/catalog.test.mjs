@@ -59,3 +59,35 @@ test("catalog does not contain hardcoded products or prices in markup", async ()
   assert.doesNotMatch(productsPage, /₱[0-9]+(?:\.[0-9]{2})?/);
   assert.doesNotMatch(homePage, /₱[0-9]+(?:\.[0-9]{2})?/);
 });
+
+test("predictive search normalizes input and ranks name matches before SKU and category", async () => {
+  const { normalizeSearchTerm, scoreCatalogSearch } = await import(
+    new URL("../src/lib/catalog/search.ts", import.meta.url).href
+  );
+  assert.equal(normalizeSearchTerm("  RISE   TO  "), "rise to");
+
+  const product = { name: "Rise to Defend", category: "Current Drops", skus: ["RTD-BLK-S"] };
+  assert.equal(scoreCatalogSearch(product, "RISE TO DEFEND"), 0);
+  assert.equal(scoreCatalogSearch(product, "ris"), 1);
+  assert.equal(scoreCatalogSearch(product, "defend"), 2);
+  assert.equal(scoreCatalogSearch(product, "rtd-blk-s"), 3);
+  assert.equal(scoreCatalogSearch(product, "current"), 5);
+  assert.equal(scoreCatalogSearch(product, "unrelated"), Number.POSITIVE_INFINITY);
+});
+
+test("storefront search is global, predictive, and absent from the mobile menu", async () => {
+  const chrome = await read("src/components/storefront-chrome.tsx");
+  const predictive = await read("src/components/predictive-search.tsx");
+  const catalogSearch = await read("src/components/catalog-search.tsx");
+  const mobileNav = await read("src/components/mobile-nav.tsx");
+  const searchRoute = await read("src/app/api/search/route.ts");
+
+  assert.match(chrome, /PredictiveSearch/);
+  assert.match(predictive, /\/api\/search\?q=/);
+  assert.match(predictive, /ArrowDown/);
+  assert.match(predictive, /ArrowUp/);
+  assert.match(catalogSearch, /router\.replace/);
+  assert.match(catalogSearch, /225/);
+  assert.doesNotMatch(mobileNav, /mobile-nav-search|SearchIcon|type="search"/);
+  assert.doesNotMatch(searchRoute, /SUPABASE_SECRET_KEY|service_role/i);
+});

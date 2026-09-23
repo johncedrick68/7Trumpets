@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { UserIcon, SearchIcon } from "@/components/icons";
 import { MobileNav } from "@/components/mobile-nav";
 import { BrandLogo } from "@/components/brand-logo";
+import { PredictiveSearch } from "@/components/predictive-search";
 
 type FooterSettings = { brand_copy?: string; support_email?: string; location?: string };
 type FooterCategory = { name: string; slug: string };
@@ -133,45 +134,14 @@ export function StorefrontChrome({
 
         {/* ── Expandable Search Bar Shell ─────────────────────────── */}
         {!isAuthRoute && searchOpen && (
-          <div id="header-search-drawer" className="header-search-drawer" role="search">
-            <div className="header-search-inner">
-              <form
-                method="GET"
-                action="/products"
-                className="header-search-form"
-                onSubmit={() => setSearchOpen(false)}
-              >
-                <SearchIcon size={18} className="header-search-icon" aria-hidden="true" />
-                <label htmlFor="header-search-input" className="sr-only">
-                  Search products
-                </label>
-                <input
-                  ref={searchInputRef}
-                  id="header-search-input"
-                  type="search"
-                  name="q"
-                  placeholder="Search products, collections…"
-                  defaultValue=""
-                  autoComplete="off"
-                  enterKeyHint="search"
-                  className="header-search-input"
-                />
-                <button type="submit" className="header-search-submit">
-                  Search
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    searchTriggerRef.current?.focus();
-                  }}
-                  className="header-search-close"
-                  aria-label="Close search"
-                >
-                  <span aria-hidden="true">✕</span>
-                </button>
-              </form>
-            </div>
+          <div id="header-search-drawer" className="header-search-drawer" role="region" aria-label="Product search">
+            <PredictiveSearch
+              inputRef={searchInputRef}
+              onClose={() => {
+                setSearchOpen(false);
+                searchTriggerRef.current?.focus();
+              }}
+            />
           </div>
         )}
       </header>
