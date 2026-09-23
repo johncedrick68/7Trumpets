@@ -1616,6 +1616,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_authenticated_cart_item: {
+        Args: { p_quantity: number; p_variant_id: string }
+        Returns: Json
+      }
       get_public_variant_availability: {
         Args: Record<PropertyKey, never>
         Returns: {

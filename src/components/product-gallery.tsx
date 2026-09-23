@@ -96,13 +96,12 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
         </button>
 
         {images.length > 1 && (
-          <div className="grid grid-cols-5 gap-3" role="tablist" aria-label="Choose product image">
+          <div className="grid grid-cols-5 gap-3" role="group" aria-label="Choose product image">
             {images.map((image, index) => (
               <button
                 key={image.id}
                 type="button"
-                role="tab"
-                aria-selected={selected === index}
+                aria-pressed={selected === index}
                 aria-label={`View image ${index + 1} of ${images.length}`}
                 onClick={() => select(index)}
                 className={cn(

@@ -1,11 +1,20 @@
 const internalOrigin = "http://internal.local";
 
 export function safeRedirectPath(value: string | null | undefined, fallback = "/account") {
+  let decodedValue = "";
+  try {
+    decodedValue = value ? decodeURIComponent(value) : "";
+  } catch {
+    return fallback;
+  }
+
   if (
     !value ||
     !value.startsWith("/") ||
     value.startsWith("//") ||
     value.includes("\\") ||
+    decodedValue.startsWith("//") ||
+    decodedValue.includes("\\") ||
     /[\u0000-\u001f\u007f]/.test(value)
   ) {
     return fallback;

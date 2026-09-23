@@ -97,10 +97,10 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            {/* Verified Assurances */}
+            {/* Purchase information backed by the current commerce flow */}
             <div className="rounded-lg border border-border/80 bg-muted/20 p-4 space-y-2.5">
               <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Verified Purchase Assurances
+                Purchase Information
               </p>
               <ul className="space-y-1.5 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2">
@@ -109,11 +109,11 @@ export default async function ProductDetailPage({
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="text-foreground" aria-hidden="true">✓</span>
-                  <span>Manual GCash payment with verified submission</span>
+                  <span>Manual GCash payment with staff-verified proof</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="text-foreground" aria-hidden="true">✓</span>
-                  <span>Authentic 1968 archival streetwear release</span>
+                  <span>Inventory and order totals are validated securely</span>
                 </li>
               </ul>
             </div>
@@ -134,7 +134,7 @@ export default async function ProductDetailPage({
                 Delivery &amp; Customer Care
               </h2>
               <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                Orders are dispatched via standard courier upon order confirmation. Need assistance with sizing or tracking?{" "}
+                Delivery progress is available in Order Tracking after checkout. Need assistance with sizing or tracking?{" "}
                 <Link href="/account/support" className="font-semibold text-foreground underline underline-offset-4 hover:opacity-80">
                   Contact Support
                 </Link>

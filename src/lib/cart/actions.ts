@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/server-log";
+import { safeCustomerRedirectPath } from "@/lib/auth/redirect";
+import { cartAddErrorMessage, parseCartQuantity } from "@/lib/cart/validation";
+
+export type AddToCartResult =
+  | { success: true; itemCount: number; lineQuantity: number }
+  | { success: false; error: string };
 
 export interface CartItemDetail {
   id: string;
@@ -138,18 +144,23 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
   };
 }
 
-export async function addToCart(formData: FormData) {
+export async function addToCart(formData: FormData): Promise<AddToCartResult | never> {
   const variantId = formData.get("variant_id") as string;
-  const quantityRaw = Number(formData.get("quantity") ?? 1);
-  const quantity = Math.max(1, Math.min(99, Number.isInteger(quantityRaw) ? quantityRaw : 1));
+  const quantity = parseCartQuantity(formData.get("quantity"));
   const returnToRaw = formData.get("return_to") as string | null;
   const stay = formData.get("stay") === "true";
-  const safeReturnTo = returnToRaw && returnToRaw.startsWith("/") && !returnToRaw.startsWith("//")
-    ? returnToRaw
-    : "/cart";
+  const safeReturnTo = safeCustomerRedirectPath(returnToRaw, "/cart");
+
+  const fail = (message: string, code: string): AddToCartResult | never => {
+    if (stay) return { success: false, error: message };
+    redirect(`/cart?error=${encodeURIComponent(code)}`);
+  };
 
   if (!variantId) {
-    redirect("/products");
+    return fail("Select an available product option.", "variant_unavailable");
+  }
+  if (quantity === null) {
+    return fail("Enter a valid quantity.", "invalid_quantity");
   }
 
   const supabase = await createClient();
@@ -159,87 +170,38 @@ export async function addToCart(formData: FormData) {
     redirect(`/login?next=${encodeURIComponent(safeReturnTo)}`);
   }
 
-  // Verify variant exists and is active
-  const { data: variant, error: varError } = await supabase
-    .from("product_variants")
-    .select("id")
-    .eq("id", variantId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (varError) {
-    logServerError("cart.variant.read", "database_failure");
-    redirect("/products?error=catalog_unavailable");
-  }
-  if (!variant) {
-    redirect("/products?error=variant_unavailable");
-  }
-
-  // Get or create cart
-  const { data: existingCart, error: cartLookupError } = await supabase
-    .from("carts")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (cartLookupError) {
-    logServerError("cart.read", "database_failure");
-    redirect("/cart?error=cart_unavailable");
-  }
-  let cart = existingCart;
-  if (!cart) {
-    const { data: newCart, error: cartError } = await supabase
-      .from("carts")
-      .insert({ user_id: userId })
-      .select("id")
-      .single();
-
-    if (cartError || !newCart) {
-      redirect("/cart?error=cart_creation_failed");
-    }
-    cart = newCart;
-  }
-
-  // Check if item already in cart
-  const { data: existingItem, error: itemLookupError } = await supabase
-    .from("cart_items")
-    .select("id, quantity")
-    .eq("cart_id", cart.id)
-    .eq("variant_id", variantId)
-    .maybeSingle();
-
-  if (itemLookupError) {
-    logServerError("cart.item.read", "database_failure");
-    redirect("/cart?error=cart_unavailable");
-  }
-  let mutationError;
-  if (existingItem) {
-    const newQty = Math.min(99, existingItem.quantity + quantity);
-    const { error } = await supabase
-      .from("cart_items")
-      .update({ quantity: newQty })
-      .eq("id", existingItem.id);
-    mutationError = error;
-  } else {
-    const { error } = await supabase
-      .from("cart_items")
-      .insert({
-        cart_id: cart.id,
-        variant_id: variantId,
-        quantity,
-      });
-    mutationError = error;
-  }
-  if (mutationError) {
+  const { data, error } = await supabase.rpc("add_authenticated_cart_item", {
+    p_variant_id: variantId,
+    p_quantity: quantity,
+  });
+  if (error) {
     logServerError("cart.item.write", "database_failure");
-    redirect("/cart?error=cart_update_failed");
+    return fail(cartAddErrorMessage(error.message), "cart_update_failed");
   }
+
+  const result = data as { item_count?: number; line_quantity?: number } | null;
+  if (
+    !result ||
+    !Number.isSafeInteger(result.item_count) ||
+    !Number.isSafeInteger(result.line_quantity) ||
+    (result.item_count ?? 0) <= 0 ||
+    (result.line_quantity ?? 0) <= 0
+  ) {
+    logServerError("cart.item.write", "invalid_database_response");
+    return fail("We could not confirm your bag update. Please try again.", "cart_update_failed");
+  }
+  const itemCount = result.item_count as number;
+  const lineQuantity = result.line_quantity as number;
 
   revalidatePath("/cart");
   revalidatePath("/", "layout");  // update header CartBadge across all pages
 
   if (stay) {
-    return { success: true };
+    return {
+      success: true,
+      itemCount,
+      lineQuantity,
+    };
   }
 
   redirect("/cart");

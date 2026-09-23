@@ -15,6 +15,9 @@ test("redirects accept only internal paths", () => {
   assert.strictEqual(safeRedirectPath("http://evil.example/path"), "/account");
   assert.strictEqual(safeRedirectPath("//evil.example"), "/account");
   assert.strictEqual(safeRedirectPath("//evil.example/path"), "/account");
+  assert.strictEqual(safeRedirectPath("/%2F%2Fevil.example"), "/account");
+  assert.strictEqual(safeRedirectPath("/%5C%5Cevil.example"), "/account");
+  assert.strictEqual(safeRedirectPath("/%ZZ"), "/account");
   assert.strictEqual(safeRedirectPath("/\\evil.example"), "/account");
   assert.strictEqual(safeRedirectPath("javascript:alert(1)"), "/account");
   assert.strictEqual(safeRedirectPath("data:text/html,test"), "/account");

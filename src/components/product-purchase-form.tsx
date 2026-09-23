@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { addToCart } from "@/lib/cart/actions";
 import { findVariant } from "@/lib/catalog/variants";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ export function ProductPurchaseForm({
   options: Option[];
   variants: Variant[];
 }) {
+  const router = useRouter();
   // Option-based selection state — require explicit choice if multiple options exist
   const [selected, setSelected] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -51,7 +53,7 @@ export function ProductPurchaseForm({
     return variants.length === 1 ? (variants[0]?.id ?? "") : "";
   });
 
-  // Quantity Stepper state (1 to 10)
+  // The server validates quantity against current authoritative inventory.
   const [quantity, setQuantity] = useState<number>(1);
 
   // Status & Feedback states
@@ -65,6 +67,8 @@ export function ProductPurchaseForm({
   } | null>(null);
 
   const firstAvailableRef = useRef<HTMLInputElement>(null);
+  let assignedFirstRef = false;
+  let assignedDirectRef = false;
 
   // Determine active variant
   const activeVariant =
@@ -108,11 +112,14 @@ export function ProductPurchaseForm({
       formData.set("stay", "true");
 
       const result = await addToCart(formData);
-      if (result && result.success) {
+      if (!result.success) {
+        setValidationError(result.error);
+      } else {
+        router.refresh();
         setFeedback({
           productName,
           sizeLabel: selectedSizeLabel,
-          quantity,
+          quantity: result.itemCount,
         });
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 3000);
@@ -133,8 +140,6 @@ export function ProductPurchaseForm({
           const isSizeOption = option.name.toLowerCase().includes("size");
           const selectedValue = selected[option.id];
           const selectedValueObj = option.values.find((v) => v.id === selectedValue);
-          let assignedFirstRef = false;
-
           return (
             <fieldset
               key={option.id}
@@ -153,11 +158,7 @@ export function ProductPurchaseForm({
                 {isSizeOption && <SizeChartDialog />}
               </legend>
 
-              <div
-                className="flex flex-wrap gap-2.5"
-                role="radiogroup"
-                aria-label={option.name}
-              >
+              <div className="flex flex-wrap gap-2.5">
                 {option.values.map((val) => {
                   const isSelected = selectedValue === val.id;
 
@@ -225,15 +226,13 @@ export function ProductPurchaseForm({
             <SizeChartDialog />
           </legend>
 
-          <div
-            className="flex flex-wrap gap-2.5"
-            role="radiogroup"
-            aria-label="Select Size"
-          >
+          <div className="flex flex-wrap gap-2.5">
             {variants.map((v) => {
               const isSelected = activeVariant?.id === v.id;
               const displayLabel = (v.name || v.sku).replace(/^size\s+/i, "");
               const isAvailable = v.is_available;
+              const shouldAttachRef = !assignedDirectRef && isAvailable;
+              if (shouldAttachRef) assignedDirectRef = true;
 
               return (
                 <label
@@ -249,6 +248,7 @@ export function ProductPurchaseForm({
                   )}
                 >
                   <input
+                    ref={shouldAttachRef ? firstAvailableRef : undefined}
                     type="radio"
                     id={`variant-${v.id}`}
                     name="direct_variant_id"
@@ -309,8 +309,8 @@ export function ProductPurchaseForm({
 
             <button
               type="button"
-              onClick={() => setQuantity((q) => Math.min(10, q + 1))}
-              disabled={quantity >= 10 || (activeVariant !== null && !activeVariant.is_available)}
+              onClick={() => setQuantity((q) => q + 1)}
+              disabled={activeVariant !== null && !activeVariant.is_available}
               className="size-11 flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
               aria-label="Increase quantity"
             >
