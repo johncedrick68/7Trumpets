@@ -231,7 +231,7 @@ export default async function CartPage({
                               type="submit"
                               variant="ghost"
                               size="icon"
-                              disabled={item.quantity >= 10 || !isItemAvailable}
+                              disabled={!isItemAvailable}
                               className="size-11 min-h-[44px] min-w-[44px] rounded-none rounded-r-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-20"
                               aria-label={`Increase quantity for ${item.product_name} ${item.variant_name ? `Size ${item.variant_name}` : ""}`}
                             >

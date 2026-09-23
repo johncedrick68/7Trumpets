@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -11,6 +12,8 @@ import {
   clearGuestCart,
   getGuestCart,
   saveGuestCart,
+  GuestCartItem,
+  MAX_TECHNICAL_QUANTITY,
 } from "@/lib/cart/guest-cookie";
 
 export { clearGuestCart, getGuestCart };
@@ -18,6 +21,14 @@ export { clearGuestCart, getGuestCart };
 export type AddToCartResult =
   | { success: true; itemCount: number; lineQuantity: number }
   | { success: false; error: string };
+
+export interface ReconciliationOutcome {
+  reconciled: boolean;
+  itemCount: number;
+  mergedCount: number;
+  unmergedItems: GuestCartItem[];
+  warnings: string[];
+}
 
 export interface CartItemDetail {
   id: string;
@@ -42,43 +53,118 @@ export interface CartDetail {
   item_count: number;
 }
 
+// In-process lock to prevent duplicate concurrent reconciliations
+const activeReconciliations = new Set<string>();
+
 /**
  * Reconciles items from the untrusted guest cookie into the authenticated
  * user's database cart via the canonical add_authenticated_cart_item RPC.
- * Unmerged items (e.g. stock exhausted) are preserved rather than destroyed.
+ *
+ * Replay-safe & Idempotent:
+ * 1. Checks in-flight mutex per user/token.
+ * 2. Checks persistent user_metadata.reconciled_guest_tokens to reject replays.
+ * 3. Preserves unmerged items if stock boundary is exceeded.
+ * 4. Records reconciled token in user_metadata upon successful merge.
  */
-export async function reconcileGuestCart(userId: string): Promise<void> {
-  if (!userId) return;
+export async function reconcileGuestCart(userId: string): Promise<ReconciliationOutcome> {
+  const emptyOutcome: ReconciliationOutcome = {
+    reconciled: false,
+    itemCount: 0,
+    mergedCount: 0,
+    unmergedItems: [],
+    warnings: [],
+  };
+
+  if (!userId) return emptyOutcome;
 
   try {
     const guestCart = await getGuestCart();
-    if (guestCart.items.length === 0) return;
+    if (guestCart.items.length === 0) return emptyOutcome;
 
-    const supabase = await createClient();
-    const unmergedItems = [];
+    const lockKey = `${userId}:${guestCart.token || "default"}`;
+    if (activeReconciliations.has(lockKey)) {
+      return {
+        ...emptyOutcome,
+        warnings: ["Reconciliation currently in progress."],
+      };
+    }
+    activeReconciliations.add(lockKey);
 
-    for (const item of guestCart.items) {
-      const { error } = await supabase.rpc("add_authenticated_cart_item", {
-        p_variant_id: item.variant_id,
-        p_quantity: item.quantity,
-      });
+    try {
+      const supabase = await createClient();
 
-      if (error) {
-        logServerError("cart.merge_item", "merge_failure");
-        unmergedItems.push(item);
+      // Check persistent replay protection on user_metadata
+      const { data: userData } = await supabase.auth.getUser();
+      const rawTokens = userData?.user?.user_metadata?.reconciled_guest_tokens;
+      const reconciledTokens: string[] = Array.isArray(rawTokens) ? rawTokens : [];
+
+      if (guestCart.token && reconciledTokens.includes(guestCart.token)) {
+        // Replayed request detected: already reconciled this exact guest cart token
+        await clearGuestCart();
+        return {
+          ...emptyOutcome,
+          warnings: ["Guest cart token was already reconciled."],
+        };
       }
-    }
 
-    if (unmergedItems.length === 0) {
-      await clearGuestCart();
-    } else if (unmergedItems.length < guestCart.items.length) {
-      await saveGuestCart({ version: 1, items: unmergedItems });
-    }
+      const unmergedItems: GuestCartItem[] = [];
+      const warnings: string[] = [];
+      let mergedCount = 0;
 
-    revalidatePath("/cart");
-    revalidatePath("/", "layout");
+      for (const item of guestCart.items) {
+        const { error } = await supabase.rpc("add_authenticated_cart_item", {
+          p_variant_id: item.variant_id,
+          p_quantity: item.quantity,
+        });
+
+        if (error) {
+          logServerError("cart.merge_item", "merge_failure");
+          unmergedItems.push(item);
+          warnings.push(cartAddErrorMessage(error.message));
+        } else {
+          mergedCount += item.quantity;
+        }
+      }
+
+      if (unmergedItems.length === 0) {
+        await clearGuestCart();
+      } else if (unmergedItems.length < guestCart.items.length) {
+        // Partial merge: rotate token and persist remaining unmerged items
+        await saveGuestCart({
+          version: 1,
+          token: randomUUID(),
+          items: unmergedItems,
+        });
+      }
+
+      // Record reconciled token persistently to block subsequent replays
+      if (mergedCount > 0 && guestCart.token) {
+        const updatedTokens = [...reconciledTokens.slice(-9), guestCart.token];
+        try {
+          await supabase.auth.updateUser({
+            data: { reconciled_guest_tokens: updatedTokens },
+          });
+        } catch {
+          logServerError("cart.reconcile_token_record", "auth_metadata_failure");
+        }
+      }
+
+      revalidatePath("/cart");
+      revalidatePath("/", "layout");
+
+      return {
+        reconciled: mergedCount > 0,
+        itemCount: guestCart.items.reduce((s, i) => s + i.quantity, 0),
+        mergedCount,
+        unmergedItems,
+        warnings,
+      };
+    } finally {
+      activeReconciliations.delete(lockKey);
+    }
   } catch {
     logServerError("cart.reconcile", "reconciliation_failure");
+    return emptyOutcome;
   }
 }
 
@@ -410,8 +496,8 @@ export async function addToCart(formData: FormData): Promise<AddToCartResult | n
   const existingQty = existingItem ? existingItem.quantity : 0;
   const newQty = existingQty + quantity;
 
-  if (newQty > 10) {
-    return fail("Maximum quantity per item is 10. Choose a lower quantity.", "quantity_exceeds_limit");
+  if (newQty > MAX_TECHNICAL_QUANTITY) {
+    return fail("Choose a lower quantity.", "quantity_exceeds_limit");
   }
 
   if (existingItem) {
@@ -457,7 +543,10 @@ export async function updateCartItemQuantity(formData: FormData) {
         redirect("/cart?error=cart_update_failed");
       }
     } else {
-      const targetQty = Math.min(10, quantity);
+      if (quantity > MAX_TECHNICAL_QUANTITY) {
+        redirect("/cart?error=quantity_exceeds_stock");
+      }
+      const targetQty = quantity;
 
       // Verify stock if increasing
       const { data: cartItem } = await supabase
@@ -494,7 +583,10 @@ export async function updateCartItemQuantity(formData: FormData) {
     } else {
       const item = guestCart.items.find((i) => i.variant_id === itemId);
       if (item) {
-        const targetQty = Math.min(10, quantity);
+        if (quantity > MAX_TECHNICAL_QUANTITY) {
+          redirect("/cart?error=quantity_exceeds_stock");
+        }
+        const targetQty = quantity;
         if (targetQty > item.quantity) {
           const { data: availRows } = await supabase.rpc("get_public_variant_availability");
           const isAvailable = (availRows ?? []).some(

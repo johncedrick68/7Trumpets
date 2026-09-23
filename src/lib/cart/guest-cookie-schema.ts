@@ -1,9 +1,19 @@
 export const GUEST_CART_COOKIE_NAME = "guest_cart";
 export const MAX_COOKIE_BYTES = 2048;
 export const MAX_CART_ITEMS = 20;
-export const MAX_LINE_QUANTITY = 10;
 
-const UUID_REGEX =
+/**
+ * Technical safety ceiling purely to prevent resource exhaustion and payload abuse.
+ * This is NOT a business purchase limit; authoritative stock and order rules govern purchasing.
+ * Quantities exceeding this ceiling are rejected as malformed rather than silently clamped.
+ */
+export const MAX_TECHNICAL_QUANTITY = 999;
+
+/**
+ * Standard RFC 4122 generic UUID pattern (8-4-4-4-12 hex).
+ * Validates any canonical PostgreSQL UUID, including deterministic seeded IDs.
+ */
+export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface GuestCartItem {
@@ -13,6 +23,7 @@ export interface GuestCartItem {
 
 export interface GuestCart {
   version: 1;
+  token?: string; // Idempotency token for replay-safe authentication reconciliation
   items: GuestCartItem[];
 }
 
@@ -50,11 +61,14 @@ export function parseGuestCartCookie(raw: string | undefined | null): GuestCart 
       if (!UUID_REGEX.test(variantId)) continue;
 
       const qtyRaw = Number(item.quantity);
-      if (!Number.isSafeInteger(qtyRaw) || qtyRaw <= 0) continue;
+      // Strictly reject non-integers, zero, negative, and extreme values above technical ceiling
+      if (!Number.isSafeInteger(qtyRaw) || qtyRaw <= 0 || qtyRaw > MAX_TECHNICAL_QUANTITY) continue;
 
-      const validQty = Math.min(MAX_LINE_QUANTITY, qtyRaw);
       const existing = mergedItems.get(variantId) ?? 0;
-      mergedItems.set(variantId, Math.min(MAX_LINE_QUANTITY, existing + validQty));
+      const combined = existing + qtyRaw;
+      if (combined > MAX_TECHNICAL_QUANTITY) continue;
+
+      mergedItems.set(variantId, combined);
 
       if (mergedItems.size >= MAX_CART_ITEMS) break;
     }
@@ -64,7 +78,12 @@ export function parseGuestCartCookie(raw: string | undefined | null): GuestCart 
       items.push({ variant_id, quantity });
     }
 
-    return { version: 1, items };
+    const token =
+      typeof parsed.token === "string" && /^[0-9a-f-]{16,64}$/i.test(parsed.token)
+        ? parsed.token
+        : undefined;
+
+    return { version: 1, token, items };
   } catch {
     return empty;
   }
@@ -76,9 +95,10 @@ export function parseGuestCartCookie(raw: string | undefined | null): GuestCart 
 export function serializeGuestCartCookie(cart: GuestCart): string {
   const sanitized: GuestCart = {
     version: 1,
+    token: cart.token,
     items: cart.items.slice(0, MAX_CART_ITEMS).map((i) => ({
       variant_id: i.variant_id.toLowerCase(),
-      quantity: Math.max(1, Math.min(MAX_LINE_QUANTITY, Math.floor(i.quantity))),
+      quantity: Math.floor(i.quantity),
     })),
   };
   return JSON.stringify(sanitized);

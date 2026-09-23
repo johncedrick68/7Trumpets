@@ -154,9 +154,17 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function signOut() {
-  await clearGuestCart();
   const supabase = await createClient();
   const { error } = await supabase.auth.signOut();
-  if (error) logServerError("auth.sign_out", "auth_provider_failure");
+  if (error) {
+    logServerError("auth.sign_out", "auth_provider_failure");
+    redirect("/account?error=signout_failed");
+  }
+
+  // Clear guest cart only after sign-out succeeds to protect unmerged intent on error
+  // while ensuring no user session data leaks into the signed-out guest session.
+  await clearGuestCart();
+  revalidatePath("/cart");
+  revalidatePath("/", "layout");
   redirect("/login?signedOut=1");
 }
