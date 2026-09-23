@@ -117,8 +117,8 @@ export default async function AdminSettingsPage({
       )}
 
       {error && (
-        <div className="p-4 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 text-sm">
-          Error saving settings: {error}
+        <div role="alert" className="p-4 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 text-sm">
+          Store settings could not be saved. Review the fields and try again.
         </div>
       )}
 

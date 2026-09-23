@@ -81,6 +81,7 @@ export default async function AdminReturnsPage({
   const { data: rawRequests, error: fetchError } = await query;
   if (fetchError) {
     logServerError("admin.returns.fetch", "database_failure");
+    throw new Error("ADMIN_RETURNS_UNAVAILABLE");
   }
   const requests = (rawRequests || []) as unknown as ReturnRequestRow[];
 
@@ -125,9 +126,9 @@ export default async function AdminReturnsPage({
       )}
 
       {error && (
-        <div className="p-4 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 flex items-center gap-2 text-sm">
+        <div role="alert" className="p-4 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 flex items-center gap-2 text-sm">
           <XCircle className="size-4" />
-          Error: {error}
+          The return operation could not be completed. Refresh the request and try again.
         </div>
       )}
 

@@ -105,6 +105,18 @@ test("Admin Functional Audit: Payment review workspace computes accurate count b
   assert.match(workspaceSource, /\{pendingCount\}/);
 });
 
+test("Admin Functional Audit: operational query failures are not presented as empty queues", async () => {
+  const paymentsSource = await read("src/app/admin/payments/page.tsx");
+  const returnsSource = await read("src/app/admin/returns/page.tsx");
+  const settingsSource = await read("src/app/admin/settings/page.tsx");
+
+  assert.match(paymentsSource, /const expiredUnavailable = Boolean\(expiredRes\.error\)/);
+  assert.match(paymentsSource, /Unable to load expired payments/);
+  assert.match(returnsSource, /throw new Error\("ADMIN_RETURNS_UNAVAILABLE"\)/);
+  assert.doesNotMatch(returnsSource, /Error: \{error\}/);
+  assert.doesNotMatch(settingsSource, /Error saving settings: \{error\}/);
+});
+
 test("Admin Functional Audit: Google OAuth configured in config.toml with env substitution and localhost redirects", async () => {
   const config = await read("supabase/config.toml");
   const envExample = await read(".env.example");

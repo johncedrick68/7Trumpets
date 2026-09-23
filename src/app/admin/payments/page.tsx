@@ -87,6 +87,11 @@ export default async function AdminPaymentsPage({
     throw new Error("ADMIN_PAYMENTS_UNAVAILABLE");
   }
 
+  const expiredUnavailable = Boolean(expiredRes.error);
+  if (expiredRes.error) {
+    logServerError("admin.payments.expired", "database_failure");
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawSubmissions = (submissionsRes.data || []) as any[];
   const submissionList: PaymentSubmissionItem[] = rawSubmissions.map((s) => ({
@@ -114,7 +119,7 @@ export default async function AdminPaymentsPage({
         title="Payment Verification"
         description="Compare claimed amounts, inspect receipts, and verify GCash transfers before approving."
         actions={<>
-          {expiredList.length > 0 && (
+          {!expiredUnavailable && expiredList.length > 0 && (
             <Badge variant="destructive" className="w-fit font-mono text-xs">
               {expiredList.length} expired unresolved
             </Badge>
@@ -163,7 +168,12 @@ export default async function AdminPaymentsPage({
           </CardDescription>
         </CardHeader>
 
-        {expiredList.length === 0 ? (
+        {expiredUnavailable ? (
+          <CardContent role="alert" className="border-t border-dashed py-8 text-center">
+            <p className="text-sm font-medium text-foreground">Unable to load expired payments</p>
+            <p className="mt-1 text-xs text-muted-foreground">Other payment-review data remains available. Refresh to retry this queue.</p>
+          </CardContent>
+        ) : expiredList.length === 0 ? (
           <CardContent className="border-t border-dashed py-8 text-center text-sm text-muted-foreground">
             No expired unresolved GCash orders awaiting resolution.
           </CardContent>
