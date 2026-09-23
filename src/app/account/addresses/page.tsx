@@ -20,7 +20,7 @@ export default async function AddressesPage({
   ]);
 
   return (
-    <main className="account-container page-section min-h-screen">
+    <main id="main-content" className="account-container page-section min-h-screen">
       <div className="w-full">
         <header className="mb-8">
           <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase">

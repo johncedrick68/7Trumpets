@@ -22,7 +22,7 @@ export default async function CartPage() {
 
   if (!cart) {
     return (
-      <main className="transaction-container page-section min-h-[60vh]">
+      <main id="main-content" className="transaction-container page-section min-h-[60vh]">
         <header className="mx-auto mb-8 max-w-xl text-center">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
             Shopping bag
@@ -57,7 +57,7 @@ export default async function CartPage() {
   const totalMinor = cart.subtotal_minor + shippingMinor;
 
   return (
-    <main className="transaction-container page-section min-h-screen">
+    <main id="main-content" className="transaction-container page-section min-h-screen">
       {/* Page Header */}
       <header className="mb-8 md:mb-10">
         <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">

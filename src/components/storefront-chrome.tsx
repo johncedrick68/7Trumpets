@@ -1,45 +1,242 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserIcon } from "@/components/icons";
+import { UserIcon, SearchIcon } from "@/components/icons";
 import { MobileNav } from "@/components/mobile-nav";
 import { BrandLogo } from "@/components/brand-logo";
 
 type FooterSettings = { brand_copy?: string; support_email?: string; location?: string };
 type FooterCategory = { name: string; slug: string };
 
-export function StorefrontChrome({ children, announcement, cartBadge, footer = {}, footerCategories = [] }: { children: React.ReactNode; announcement: React.ReactNode; cartBadge: React.ReactNode; footer?: FooterSettings; footerCategories?: FooterCategory[] }) {
+export function StorefrontChrome({
+  children,
+  announcement,
+  cartBadge,
+  footer = {},
+  footerCategories = [],
+}: {
+  children: React.ReactNode;
+  announcement: React.ReactNode;
+  cartBadge: React.ReactNode;
+  footer?: FooterSettings;
+  footerCategories?: FooterCategory[];
+}) {
   const pathname = usePathname();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // Close search drawer on route changes
+  useEffect(() => {
+    setSearchOpen(false);
+  }, [pathname]);
+
+  // Focus input when search opens
+  useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  // Escape key closes search drawer and restores focus
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSearchOpen(false);
+        searchTriggerRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [searchOpen]);
+
   if (pathname.startsWith("/admin")) return <>{children}</>;
   const isAuthRoute = ["/login", "/signup", "/forgot-password", "/update-password"].includes(pathname);
-  const shopLinks = footerCategories.length > 0
-    ? footerCategories.slice(0, 4)
-    : [
-        { name: "Current Drops", slug: "drops" },
-        { name: "San Roque Collection", slug: "san-roque" },
-        { name: "1968 Classics", slug: "classics" },
-      ];
+  const shopLinks =
+    footerCategories.length > 0
+      ? footerCategories.slice(0, 4)
+      : [
+          { name: "Current Drops", slug: "drops" },
+          { name: "San Roque Collection", slug: "san-roque" },
+          { name: "1968 Classics", slug: "classics" },
+        ];
 
-  return <>
-    {!isAuthRoute && announcement}
-    <header className="site-header"><div className="header-inner">
-      <Link href="/" className="brand-logo min-h-11" aria-label="1968 Clothing — Home"><BrandLogo variant="header" priority /></Link>
-      <nav className={isAuthRoute ? "primary-nav invisible" : "primary-nav"} aria-label="Main navigation"><Link href="/products" className="nav-link">Collection</Link><Link href="/#story" className="nav-link">Story</Link><Link href="/orders" className="nav-link">Orders</Link></nav>
-      <div className="header-actions">{!isAuthRoute && <Link href="/account" className="icon-btn" aria-label="My Account" title="Account"><UserIcon size={18} /></Link>}{cartBadge}{!isAuthRoute && <MobileNav />}</div>
-    </div></header>
-    {children}
-    <footer className="site-footer" id="footer">
-      <div className="footer-container">
-        <div className="footer-col"><div className="footer-logo"><BrandLogo variant="footer" /></div><p>{footer.brand_copy || "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey."}</p></div>
-        <div className="footer-col"><h2>Shop</h2><ul><li><Link href="/products">All products</Link></li>{shopLinks.map((category) => <li key={category.slug}><Link href={`/categories/${category.slug}`}>{category.name}</Link></li>)}</ul></div>
-        <div className="footer-col"><h2>Account & Service</h2><ul><li><Link href="/orders">Track Order</Link></li><li><Link href="/account">Account Settings</Link></li><li><Link href="/account/addresses">Saved Addresses</Link></li></ul></div>
-        <div className="footer-col"><h2>Contact</h2><ul><li><a href={`mailto:${footer.support_email || "1968clothing.official@gmail.com"}`}>{footer.support_email || "1968clothing.official@gmail.com"}</a></li><li><span className="text-[13px] text-[var(--ink-secondary)]">{footer.location || "Manila, Philippines"}</span></li></ul></div>
-      </div>
-      <div className="footer-bottom">
-        <p>© {new Date().getFullYear()} 1968 Clothing. All rights reserved.</p>
-        <p>Wear the legacy. Move the culture.</p>
-      </div>
-    </footer>
-  </>;
+  return (
+    <>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+
+      {!isAuthRoute && announcement}
+
+      <header className="site-header">
+        <div className="header-inner">
+          <Link href="/" className="brand-logo min-h-11" aria-label="1968 Clothing — Home">
+            <BrandLogo variant="header" priority />
+          </Link>
+
+          <nav className={isAuthRoute ? "primary-nav invisible" : "primary-nav"} aria-label="Primary">
+            <Link
+              href="/products"
+              className={`nav-link${pathname === "/products" ? " active" : ""}`}
+              aria-current={pathname === "/products" ? "page" : undefined}
+            >
+              Shop
+            </Link>
+            <Link
+              href="/size-guide"
+              className={`nav-link${pathname === "/size-guide" ? " active" : ""}`}
+              aria-current={pathname === "/size-guide" ? "page" : undefined}
+            >
+              Size Guide
+            </Link>
+            <Link href="/#story" className="nav-link">
+              Story
+            </Link>
+            <Link
+              href="/orders"
+              className={`nav-link${pathname === "/orders" ? " active" : ""}`}
+              aria-current={pathname === "/orders" ? "page" : undefined}
+            >
+              Track Order
+            </Link>
+          </nav>
+
+          <div className="header-actions">
+            {!isAuthRoute && (
+              <button
+                ref={searchTriggerRef}
+                type="button"
+                onClick={() => setSearchOpen((v) => !v)}
+                className="icon-btn min-h-11 min-w-11"
+                aria-label={searchOpen ? "Close search" : "Search products"}
+                aria-expanded={searchOpen}
+                aria-controls="header-search-drawer"
+                title="Search"
+              >
+                <SearchIcon size={18} aria-hidden="true" />
+              </button>
+            )}
+
+            {!isAuthRoute && <Link href="/account" className="icon-btn min-h-11 min-w-11" aria-label="Account" title="Account">
+              <UserIcon size={18} aria-hidden="true" />
+            </Link>}
+
+            {cartBadge}
+
+            {!isAuthRoute && <MobileNav />}
+          </div>
+        </div>
+
+        {/* ── Expandable Search Bar Shell ─────────────────────────── */}
+        {!isAuthRoute && searchOpen && (
+          <div id="header-search-drawer" className="header-search-drawer" role="search">
+            <div className="header-search-inner">
+              <form
+                method="GET"
+                action="/products"
+                className="header-search-form"
+                onSubmit={() => setSearchOpen(false)}
+              >
+                <SearchIcon size={18} className="header-search-icon" aria-hidden="true" />
+                <label htmlFor="header-search-input" className="sr-only">
+                  Search products
+                </label>
+                <input
+                  ref={searchInputRef}
+                  id="header-search-input"
+                  type="search"
+                  name="q"
+                  placeholder="Search products, collections…"
+                  defaultValue=""
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  className="header-search-input"
+                />
+                <button type="submit" className="header-search-submit">
+                  Search
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchOpen(false);
+                    searchTriggerRef.current?.focus();
+                  }}
+                  className="header-search-close"
+                  aria-label="Close search"
+                >
+                  <span aria-hidden="true">✕</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {children}
+
+      <footer className="site-footer" id="footer">
+        <div className="footer-container">
+          <div className="footer-col">
+            <div className="footer-logo">
+              <BrandLogo variant="footer" />
+            </div>
+            <p>
+              {footer.brand_copy || "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey."}
+            </p>
+          </div>
+
+          <div className="footer-col">
+            <nav aria-label="Shop">
+              <span className="footer-nav-heading">Shop</span>
+              <ul>
+                <li><Link href="/products">All Products</Link></li>
+                {shopLinks.map((category) => (
+                  <li key={category.slug}>
+                    <Link href={`/categories/${category.slug}`}>{category.name}</Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
+
+          <div className="footer-col">
+            <nav aria-label="Customer Care">
+              <span className="footer-nav-heading">Customer Care</span>
+              <ul>
+                <li><Link href="/size-guide">Size Guide</Link></li>
+                <li><Link href="/orders">Track Order</Link></li>
+                <li><Link href="/account">Account Settings</Link></li>
+                <li><Link href="/account/addresses">Saved Addresses</Link></li>
+              </ul>
+            </nav>
+          </div>
+
+          <div className="footer-col">
+            <span className="footer-nav-heading">Contact</span>
+            <ul>
+              <li>
+                <a href={`mailto:${footer.support_email || "1968clothing.official@gmail.com"}`}>
+                  {footer.support_email || "1968clothing.official@gmail.com"}
+                </a>
+              </li>
+              <li>
+                <span className="text-[13px] text-[var(--ink-secondary)]">
+                  {footer.location || "Manila, Philippines"}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          <p>© {new Date().getFullYear()} 1968 Clothing. All rights reserved.</p>
+          <p>Wear the legacy. Move the culture.</p>
+        </div>
+      </footer>
+    </>
+  );
 }

@@ -24,7 +24,7 @@ export default async function CategoryPage({
   const products = await getProducts({ categoryId: category.id });
 
   return (
-    <main className="store-container store-page min-h-screen">
+    <main id="main-content" className="store-container store-page min-h-screen">
       {/* ── Page Header ─────────────────────────────────────────── */}
       <header className="mb-8">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
@@ -95,12 +95,13 @@ export default async function CategoryPage({
               <article key={product.id} className="group flex flex-col">
                 <Link
                   href={`/products/${product.slug}`}
-                  className="relative block aspect-[4/5] w-full overflow-hidden bg-muted rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  aria-label={product.name}
+                  className="relative block aspect-[4/5] w-full overflow-hidden bg-muted rounded-md focus:outline-none"
+                  tabIndex={-1}
+                  aria-hidden="true"
                 >
                   <Image
                     src={imagePath}
-                    alt={product.name}
+                    alt=""
                     fill
                     priority={index < 4}
                     sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
@@ -113,7 +114,7 @@ export default async function CategoryPage({
 
                 <div className="mt-3 flex flex-col">
                   <h2 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1">
-                    <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4">
+                    <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">
                       {product.name}
                     </Link>
                   </h2>

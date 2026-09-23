@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <main className="store-container page-section min-h-[70vh] flex items-center justify-center">
+    <main id="main-content" className="store-container page-section min-h-[70vh] flex items-center justify-center">
       <div className="w-full max-w-md text-center py-12 px-6">
         <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-muted text-foreground">
           <Compass className="size-8 stroke-[1.5]" />

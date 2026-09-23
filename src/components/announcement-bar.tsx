@@ -13,7 +13,7 @@ export async function AnnouncementBar() {
   }
 
   return (
-    <div className="announcement-bar" role="banner">
+    <div className="announcement-bar" role="region" aria-label="Announcement">
       {announcement.link ? (
         <Link href={announcement.link} className="hover:underline transition-all">
           <span>{announcement.text}</span>

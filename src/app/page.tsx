@@ -167,12 +167,13 @@ export default async function HomePage() {
                   <article key={product.id} className="group flex flex-col">
                     <Link
                       href={`/products/${product.slug}`}
-                      className="relative block aspect-[4/5] w-full overflow-hidden rounded-lg border border-border bg-neutral-100 transition-colors active:border-foreground/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:border-foreground/40 dark:bg-neutral-900"
-                      aria-label={product.name}
+                      className="relative block aspect-[4/5] w-full overflow-hidden rounded-lg border border-border bg-neutral-100 transition-colors group-hover:border-foreground/40 dark:bg-neutral-900 focus:outline-none"
+                      tabIndex={-1}
+                      aria-hidden="true"
                     >
                       <Image
                         src={imagePath}
-                        alt={product.name}
+                        alt=""
                         fill
                         sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, 46vw"
                         priority={index < 4}
@@ -187,7 +188,7 @@ export default async function HomePage() {
 
                     <div className="mt-3 flex flex-col">
                       <h3 className="text-sm font-semibold tracking-tight text-foreground line-clamp-1">
-                        <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4">
+                        <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">
                           {product.name}
                         </Link>
                       </h3>

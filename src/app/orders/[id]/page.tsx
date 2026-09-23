@@ -130,7 +130,7 @@ export default async function OrderConfirmationPage({
     (payment.status === "UNPAID" || payment.status === "REJECTED");
 
   return (
-    <main className="account-container page-section min-h-screen">
+    <main id="main-content" className="account-container page-section min-h-screen">
       <div className="w-full">
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-8">

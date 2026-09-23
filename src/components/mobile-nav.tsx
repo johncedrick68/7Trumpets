@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
+import { SearchIcon } from "@/components/icons";
 
 const NAV_LINKS = [
-  { href: "/products", label: "Shop / Collection" },
+  { href: "/products", label: "Shop" },
+  { href: "/size-guide", label: "Size Guide" },
   { href: "/#story", label: "Story" },
-  { href: "/orders", label: "Orders" },
+  { href: "/orders", label: "Track Order" },
   { href: "/account", label: "Account" },
   { href: "/cart", label: "Bag" },
 ];
@@ -17,7 +19,13 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const firstFocusableRef = useRef<HTMLButtonElement>(null);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }, []);
 
   // Close on route change
   useEffect(() => {
@@ -28,32 +36,56 @@ export function MobileNav() {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
-      setTimeout(() => firstLinkRef.current?.focus(), 50);
+      // Focus the close button or first interactive element
+      const timer = setTimeout(() => {
+        firstFocusableRef.current?.focus();
+      }, 50);
+      return () => {
+        clearTimeout(timer);
+        document.body.style.overflow = "";
+      };
     } else {
       document.body.style.overflow = "";
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [open]);
 
-  // Escape key closes + restores focus
+  // Trap focus & Escape key inside the open modal
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => {
+
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
+        e.preventDefault();
+        handleClose();
+        return;
+      }
+
+      if (e.key === "Tab" && overlayRef.current) {
+        const focusableElements = overlayRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open]);
 
-  function handleClose() {
-    setOpen(false);
-    triggerRef.current?.focus();
-  }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, handleClose]);
 
   return (
     <>
@@ -61,7 +93,7 @@ export function MobileNav() {
       <button
         ref={triggerRef}
         className="menu-toggle"
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={open}
         aria-controls="mobile-nav-overlay"
         onClick={() => setOpen((v) => !v)}
@@ -74,11 +106,11 @@ export function MobileNav() {
 
       {/* Full-screen overlay */}
       <div
+        ref={overlayRef}
         id="mobile-nav-overlay"
         role="dialog"
         aria-modal="true"
-        aria-label="Site navigation"
-        aria-hidden={!open}
+        aria-label="Navigation Menu"
         className={`mobile-nav-overlay${open ? " open" : ""}`}
       >
         {/* Overlay header: logo + close */}
@@ -88,25 +120,54 @@ export function MobileNav() {
             className="brand-logo"
             aria-label="1968 Clothing — Home"
             onClick={handleClose}
-            tabIndex={open ? 0 : -1}
           >
             <BrandLogo variant="header-sm" className="invert-0" />
           </Link>
 
           <button
+            ref={firstFocusableRef}
             type="button"
             onClick={handleClose}
             className="mobile-nav-close"
-            aria-label="Close menu"
-            tabIndex={open ? 0 : -1}
+            aria-label="Close navigation menu"
           >
             <span aria-hidden="true">✕</span>
           </button>
         </div>
 
+        {/* Mobile search form */}
+        <div className="mobile-nav-search-container">
+          <form
+            method="GET"
+            action="/products"
+            className="mobile-nav-search-form"
+            onSubmit={handleClose}
+            role="search"
+          >
+            <label htmlFor="mobile-search-input" className="sr-only">
+              Search products
+            </label>
+            <div className="mobile-nav-search-wrap">
+              <SearchIcon size={16} className="mobile-nav-search-icon" aria-hidden="true" />
+              <input
+                id="mobile-search-input"
+                type="search"
+                name="q"
+                placeholder="Search products, collections…"
+                autoComplete="off"
+                enterKeyHint="search"
+                className="mobile-nav-search-input"
+              />
+              <button type="submit" className="mobile-nav-search-btn">
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
+
         {/* Nav links */}
-        <nav className="mobile-nav-inner" aria-label="Mobile navigation">
-          {NAV_LINKS.map((link, idx) => {
+        <nav className="mobile-nav-inner" aria-label="Mobile primary navigation">
+          {NAV_LINKS.map((link) => {
             const isActive =
               pathname === link.href ||
               (link.href !== "/" &&
@@ -117,10 +178,8 @@ export function MobileNav() {
               <Link
                 key={link.href}
                 href={link.href}
-                ref={idx === 0 ? firstLinkRef : undefined}
                 className={`mobile-nav-link${isActive ? " active" : ""}`}
                 onClick={handleClose}
-                tabIndex={open ? 0 : -1}
                 aria-current={isActive ? "page" : undefined}
               >
                 <span>{link.label}</span>

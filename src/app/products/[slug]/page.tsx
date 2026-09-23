@@ -30,7 +30,7 @@ export default async function ProductDetailPage({
     : "1968 Clothing";
 
   return (
-    <main className="store-container store-page min-h-screen">
+    <main id="main-content" className="store-container store-page min-h-screen">
       <div className="w-full">
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-8">

@@ -29,7 +29,7 @@ export default async function ProductsPage(props: {
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
   return (
-    <main className="store-container store-page min-h-screen">
+    <main id="main-content" className="store-container store-page min-h-screen">
 
       {/* ── Page Header ─────────────────────────────────────────── */}
       <header className="mb-10">
@@ -143,15 +143,16 @@ export default async function ProductsPage(props: {
 
             return (
               <article key={product.id} className="group flex flex-col">
-                {/* Product image */}
+                {/* Product image — clickable for mouse users, aria-hidden for screen readers to avoid duplicate focus stop */}
                 <Link
                   href={`/products/${product.slug}`}
-                  className="relative block aspect-[4/5] w-full overflow-hidden rounded-md border border-border/70 bg-neutral-100 transition-[border-color,transform] hover:border-foreground/50 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 dark:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  aria-label={product.name}
+                  className="relative block aspect-[4/5] w-full overflow-hidden rounded-md border border-border/70 bg-neutral-100 transition-[border-color,transform] hover:border-foreground/50 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 dark:bg-neutral-900 focus:outline-none"
+                  tabIndex={-1}
+                  aria-hidden="true"
                 >
                   <Image
                     src={imagePath}
-                    alt={product.name}
+                    alt=""
                     fill
                     sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, (min-width: 640px) 46vw, 100vw"
                     priority={index < 4}
@@ -159,7 +160,7 @@ export default async function ProductsPage(props: {
                   />
                 </Link>
 
-                {/* Card metadata — no description text */}
+                {/* Card metadata */}
                 <div className="mt-3.5 flex flex-col gap-0.5">
                   {categoryName && (
                     <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -169,7 +170,7 @@ export default async function ProductsPage(props: {
                   <h2 className="text-body font-semibold leading-snug text-foreground">
                     <Link
                       href={`/products/${product.slug}`}
-                      className="hover:underline underline-offset-4"
+                      className="hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
                     >
                       {product.name}
                     </Link>
