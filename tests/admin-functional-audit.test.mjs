@@ -47,6 +47,21 @@ test("Admin Functional Audit: Orders page normalizes Supabase relation shapes be
   assert.doesNotMatch(pageSource, /as unknown as AdminOrderSummary\[\]/);
 });
 
+test("Admin Functional Audit: Dialog portals preserve select stacking and variant creation keeps product context", async () => {
+  const dialogSource = await read("src/components/ui/dialog.tsx");
+  const selectSource = await read("src/components/ui/select.tsx");
+  const variantSource = await read("src/components/admin/variant-dialog.tsx");
+  const catalogSource = await read("src/app/admin/catalog/page.tsx");
+
+  assert.match(dialogSource, /fixed inset-0 z-40/);
+  assert.match(dialogSource, /left-\[50%\] z-50/);
+  assert.match(selectSource, /relative z-60/);
+  assert.match(variantSource, /type="hidden" name="product_id" value=\{productId\}/);
+  assert.match(variantSource, /<DialogClose asChild>/);
+  assert.match(variantSource, /grid gap-4 sm:grid-cols-2/);
+  assert.match(catalogSource, /<VariantDialog products=\{productList\} productId=\{product\.id\} \/>/);
+});
+
 test("Admin Functional Audit: Payment review workspace computes accurate count badges for all queues", async () => {
   const workspaceSource = await read("src/components/admin/payment-review-workspace.tsx");
 

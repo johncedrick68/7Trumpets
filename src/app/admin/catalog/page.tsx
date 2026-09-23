@@ -177,7 +177,7 @@ export default async function AdminCatalogOverviewPage(props: {
                     <div className="flex min-w-0 items-center gap-2.5"><Image src={productImageUrl(image.storage_path)} alt="" width={44} height={44} unoptimized className="size-11 rounded-md border object-cover" /><div className="min-w-0"><p className="truncate text-xs font-medium">{image.alt_text}</p><p className="text-[10px] text-muted-foreground">{index === 0 ? "Primary · " : ""}Order {image.position}</p></div></div>
                     <ProductMediaActions imageId={image.id} imageLabel={image.alt_text} index={index} count={product.product_images.length} />
                   </div>)}</div>}
-                  <div className="space-y-3"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variants & stock</p>{product.product_variants.map((variant) => {
+                  <div className="space-y-3"><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variants & stock</p><VariantDialog products={productList} productId={product.id} /></div>{product.product_variants.map((variant) => {
                     const inv = Array.isArray(variant.inventory) ? variant.inventory[0] : variant.inventory;
                     const available = inv ? inv.on_hand - inv.reserved : 0;
                     return <div key={variant.id} className="space-y-3 rounded-lg border bg-background p-3">
@@ -233,6 +233,9 @@ export default async function AdminCatalogOverviewPage(props: {
                       </Badge>
                     </TableCell>
                     <TableCell className="pt-4 pb-6">
+                      <div className="mb-3 flex justify-end">
+                        <VariantDialog products={productList} productId={product.id} />
+                      </div>
                       {product.product_variants.length === 0 ? (
                         <div className="text-sm text-muted-foreground italic mb-2">No variants created yet.</div>
                       ) : (

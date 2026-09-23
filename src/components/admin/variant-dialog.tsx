@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,10 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { saveVariant } from "@/lib/admin/actions";
 import { Plus, Edit2, Loader2 } from "lucide-react";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Product = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Variant = any;
+interface Product {
+  id: string;
+  name: string;
+}
+
+interface Variant {
+  id: string;
+  product_id: string;
+  sku: string;
+  name: string | null;
+  price_minor: number;
+  compare_at_price_minor: number | null;
+  status: string;
+}
 
 export function VariantDialog({ products, variant, productId }: { products: Product[], variant?: Variant, productId?: string }) {
   const [open, setOpen] = useState(false);
@@ -31,6 +41,7 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
   // Format price from minor units to standard string (e.g. 59900 -> "599.00")
   const defaultPrice = variant?.price_minor ? (variant.price_minor / 100).toFixed(2) : "";
   const defaultCompare = variant?.compare_at_price_minor ? (variant.compare_at_price_minor / 100).toFixed(2) : "";
+  const contextualProduct = productId ? products.find((product) => product.id === productId) : undefined;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -41,31 +52,35 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
           <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" /> Add Variant</Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>{variant ? "Edit Variant" : "Create Variant"}</DialogTitle>
+          <DialogTitle>{variant ? "Edit Variant" : "Add Variant"}</DialogTitle>
           <DialogDescription>
-            {variant ? "Update SKU, pricing, and variant details." : "Add a new size, color, or variant."}
+            {variant ? "Update SKU, pricing, and availability." : contextualProduct ? `Add a size, color, or option to ${contextualProduct.name}.` : "Choose a product and add its size, color, or option."}
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit} className="space-y-4 pt-4">
+        <form action={handleSubmit} className="space-y-4 pt-2">
           {variant && <input type="hidden" name="id" value={variant.id} />}
-          
-          <div className="space-y-2">
-            <Label htmlFor={`var_prod_${variant?.id || 'new'}`}>Product</Label>
-            <Select name="product_id" defaultValue={variant?.product_id || productId || ""}>
-              <SelectTrigger id={`var_prod_${variant?.id || 'new'}`}>
-                <SelectValue placeholder="Select a product" />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {productId ? (
+            <input type="hidden" name="product_id" value={productId} />
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor={`var_prod_${variant?.id || "new"}`}>Product</Label>
+              <Select name="product_id" defaultValue={variant?.product_id || ""} required>
+                <SelectTrigger id={`var_prod_${variant?.id || "new"}`} className="w-full">
+                  <SelectValue placeholder="Select a product" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {products.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>{product.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor={`var_sku_${variant?.id || 'new'}`}>SKU</Label>
               <Input id={`var_sku_${variant?.id || 'new'}`} name="sku" required placeholder="e.g. TEE-BLK-M" defaultValue={variant?.sku || ""} />
@@ -76,7 +91,7 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor={`var_price_${variant?.id || 'new'}`}>Price (PHP)</Label>
               <Input id={`var_price_${variant?.id || 'new'}`} type="number" step="0.01" min="0" name="price" required placeholder="599.00" defaultValue={defaultPrice} />
@@ -101,12 +116,15 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
             </Select>
           </div>
 
-          <div className="pt-4 flex justify-end">
+          <DialogFooter className="pt-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={loading}>Cancel</Button>
+            </DialogClose>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {variant ? "Save Changes" : "Create Variant"}
+              {variant ? "Save Changes" : "Add Variant"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
