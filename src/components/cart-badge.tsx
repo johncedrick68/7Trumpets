@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getGuestCart } from "@/lib/cart/guest-cookie";
 import { BagIcon } from "@/components/icons";
 
 /**
  * CartBadge — Server Component
- * Reads the authoritative cart item count from Supabase for the current
- * authenticated user. Falls back to 0 for unauthenticated visitors.
+ * Reads the authoritative cart item count from Supabase for authenticated users,
+ * or from the sanitized guest cart cookie for visitors.
  * Placed in layout so it re-renders on every navigation after mutations
  * that call revalidatePath('/', 'layout').
  */
@@ -18,7 +19,7 @@ export async function CartBadge() {
     const userId = claimsData?.claims?.sub;
 
     if (userId) {
-      // Find cart
+      // Find authenticated cart
       const { data: cart } = await supabase
         .from("carts")
         .select("id")
@@ -36,6 +37,10 @@ export async function CartBadge() {
           count = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);
         }
       }
+    } else {
+      // Unauthenticated visitor — read guest cart cookie
+      const guestCart = await getGuestCart();
+      count = guestCart.items.reduce((sum, item) => sum + item.quantity, 0);
     }
   } catch {
     // silently degrade — never crash the layout over cart count

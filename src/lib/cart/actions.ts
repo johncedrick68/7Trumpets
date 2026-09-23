@@ -7,6 +7,13 @@ import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/server-log";
 import { safeCustomerRedirectPath } from "@/lib/auth/redirect";
 import { cartAddErrorMessage, parseCartQuantity } from "@/lib/cart/validation";
+import {
+  clearGuestCart,
+  getGuestCart,
+  saveGuestCart,
+} from "@/lib/cart/guest-cookie";
+
+export { clearGuestCart, getGuestCart };
 
 export type AddToCartResult =
   | { success: true; itemCount: number; lineQuantity: number }
@@ -24,6 +31,7 @@ export interface CartItemDetail {
   product_slug: string;
   image_path?: string | null;
   line_total_minor: number;
+  is_available?: boolean;
 }
 
 export interface CartDetail {
@@ -34,81 +42,251 @@ export interface CartDetail {
   item_count: number;
 }
 
+/**
+ * Reconciles items from the untrusted guest cookie into the authenticated
+ * user's database cart via the canonical add_authenticated_cart_item RPC.
+ * Unmerged items (e.g. stock exhausted) are preserved rather than destroyed.
+ */
+export async function reconcileGuestCart(userId: string): Promise<void> {
+  if (!userId) return;
+
+  try {
+    const guestCart = await getGuestCart();
+    if (guestCart.items.length === 0) return;
+
+    const supabase = await createClient();
+    const unmergedItems = [];
+
+    for (const item of guestCart.items) {
+      const { error } = await supabase.rpc("add_authenticated_cart_item", {
+        p_variant_id: item.variant_id,
+        p_quantity: item.quantity,
+      });
+
+      if (error) {
+        logServerError("cart.merge_item", "merge_failure");
+        unmergedItems.push(item);
+      }
+    }
+
+    if (unmergedItems.length === 0) {
+      await clearGuestCart();
+    } else if (unmergedItems.length < guestCart.items.length) {
+      await saveGuestCart({ version: 1, items: unmergedItems });
+    }
+
+    revalidatePath("/cart");
+    revalidatePath("/", "layout");
+  } catch {
+    logServerError("cart.reconcile", "reconciliation_failure");
+  }
+}
+
 export async function getOrCreateCart(): Promise<CartDetail | null> {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
-  if (!userId) return null;
 
-  // 1. Ensure user has a cart
-  const { data: existingCart, error: cartError } = await supabase
-    .from("carts")
-    .select("id, user_id")
-    .eq("user_id", userId)
-    .maybeSingle();
+  if (userId) {
+    // Reconcile any existing guest items into the authenticated account
+    await reconcileGuestCart(userId);
 
-  if (cartError) {
-    logServerError("cart.read", "database_failure");
-    throw new Error("CART_UNAVAILABLE");
-  }
-  let cart = existingCart;
-  if (!cart) {
-    const { data: newCart, error: insertError } = await supabase
+    // 1. Ensure user has a cart
+    const { data: existingCart, error: cartError } = await supabase
       .from("carts")
-      .insert({ user_id: userId })
       .select("id, user_id")
-      .single();
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    if (insertError) {
-      logServerError("cart.create", "database_failure");
+    if (cartError) {
+      logServerError("cart.read", "database_failure");
       throw new Error("CART_UNAVAILABLE");
     }
-    cart = newCart;
+    let cart = existingCart;
+    if (!cart) {
+      const { data: newCart, error: insertError } = await supabase
+        .from("carts")
+        .insert({ user_id: userId })
+        .select("id, user_id")
+        .single();
+
+      if (insertError) {
+        logServerError("cart.create", "database_failure");
+        throw new Error("CART_UNAVAILABLE");
+      }
+      cart = newCart;
+    }
+
+    // 2. Fetch authenticated cart items
+    const { data: items, error: itemsError } = await supabase
+      .from("cart_items")
+      .select(`
+        id,
+        variant_id,
+        quantity,
+        product_variants (
+          id,
+          sku,
+          name,
+          price_minor,
+          product_id,
+          products (
+            id,
+            name,
+            slug,
+            product_images (
+              storage_path,
+              position
+            )
+          )
+        )
+      `)
+      .eq("cart_id", cart.id)
+      .order("created_at", { ascending: true });
+
+    if (itemsError) {
+      logServerError("cart.items.read", "database_failure");
+      throw new Error("CART_UNAVAILABLE");
+    }
+
+    // 3. Check public availability for item lines
+    const variantIds = (items ?? []).map((i) => i.variant_id);
+    const availabilityMap = new Map<string, boolean>();
+    if (variantIds.length > 0) {
+      const { data: availRows } = await supabase.rpc("get_public_variant_availability");
+      for (const row of availRows ?? []) {
+        availabilityMap.set(row.variant_id, row.is_available);
+      }
+    }
+
+    let subtotal = 0;
+    let totalCount = 0;
+
+    const itemDetails: CartItemDetail[] = (items ?? []).map((item) => {
+      const variant = item.product_variants;
+      const product = variant?.products;
+      const price = variant?.price_minor ?? 0;
+      const isAvailable = availabilityMap.get(item.variant_id) === true;
+      const lineTotal = price * item.quantity;
+
+      if (isAvailable) {
+        subtotal += lineTotal;
+      }
+      totalCount += item.quantity;
+
+      type RawImage = { storage_path?: string; position?: number };
+      const rawImages: RawImage[] = ((product as unknown as { product_images?: RawImage[] })?.product_images || []);
+      const sortedImages = [...rawImages].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const rawPath = sortedImages[0]?.storage_path;
+      const imagePath = rawPath
+        ? rawPath.startsWith("/") || rawPath.startsWith("http")
+          ? rawPath
+          : `/images/${rawPath.split("/").pop()}`
+        : "/images/1968%20CLOTHING%20V1.webp";
+
+      return {
+        id: item.id,
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+        variant_name: variant?.name ?? null,
+        sku: variant?.sku ?? "",
+        price_minor: price,
+        product_id: variant?.product_id ?? "",
+        product_name: product?.name ?? "Unknown Product",
+        product_slug: product?.slug ?? "",
+        image_path: imagePath,
+        line_total_minor: lineTotal,
+        is_available: isAvailable,
+      };
+    });
+
+    return {
+      id: cart.id,
+      user_id: cart.user_id,
+      items: itemDetails,
+      subtotal_minor: subtotal,
+      item_count: totalCount,
+    };
   }
 
-  // 2. Fetch cart items
-  const { data: items, error: itemsError } = await supabase
-    .from("cart_items")
-    .select(`
-      id,
-      variant_id,
-      quantity,
-      product_variants (
+  // --- GUEST CART RESOLUTION ---
+  const guestCart = await getGuestCart();
+  if (guestCart.items.length === 0) {
+    return {
+      id: "guest",
+      user_id: "",
+      items: [],
+      subtotal_minor: 0,
+      item_count: 0,
+    };
+  }
+
+  const variantIds = guestCart.items.map((i) => i.variant_id);
+
+  const [{ data: variants, error: variantsError }, { data: availRows }] = await Promise.all([
+    supabase
+      .from("product_variants")
+      .select(`
         id,
         sku,
         name,
         price_minor,
+        status,
         product_id,
         products (
           id,
           name,
           slug,
+          status,
           product_images (
             storage_path,
             position
           )
         )
-      )
-    `)
-    .eq("cart_id", cart.id)
-    .order("created_at", { ascending: true });
+      `)
+      .in("id", variantIds),
+    supabase.rpc("get_public_variant_availability"),
+  ]);
 
-  if (itemsError) {
-    logServerError("cart.items.read", "database_failure");
-    throw new Error("CART_UNAVAILABLE");
+  if (variantsError || !variants) {
+    logServerError("guest_cart.read", "database_failure");
+    return {
+      id: "guest",
+      user_id: "",
+      items: [],
+      subtotal_minor: 0,
+      item_count: 0,
+    };
   }
+
+  const availabilityMap = new Map<string, boolean>();
+  for (const row of availRows ?? []) {
+    availabilityMap.set(row.variant_id, row.is_available);
+  }
+
+  const variantMap = new Map(variants.map((v) => [v.id, v]));
 
   let subtotal = 0;
   let totalCount = 0;
+  const itemDetails: CartItemDetail[] = [];
 
-  const itemDetails: CartItemDetail[] = (items ?? []).map((item) => {
-    const variant = item.product_variants;
-    const product = variant?.products;
-    const price = variant?.price_minor ?? 0;
-    const lineTotal = price * item.quantity;
+  for (const guestItem of guestCart.items) {
+    const variant = variantMap.get(guestItem.variant_id);
+    if (!variant) continue;
 
-    subtotal += lineTotal;
-    totalCount += item.quantity;
+    const product = variant.products;
+    const isProductPublished = product?.status === "published";
+    const isVariantActive = variant.status === "active";
+    const isStockAvailable = availabilityMap.get(variant.id) === true;
+    const isAvailable = isProductPublished && isVariantActive && isStockAvailable;
+
+    const price = variant.price_minor ?? 0;
+    const lineTotal = price * guestItem.quantity;
+
+    if (isAvailable) {
+      subtotal += lineTotal;
+    }
+    totalCount += guestItem.quantity;
 
     type RawImage = { storage_path?: string; position?: number };
     const rawImages: RawImage[] = ((product as unknown as { product_images?: RawImage[] })?.product_images || []);
@@ -120,24 +298,25 @@ export async function getOrCreateCart(): Promise<CartDetail | null> {
         : `/images/${rawPath.split("/").pop()}`
       : "/images/1968%20CLOTHING%20V1.webp";
 
-    return {
-      id: item.id,
-      variant_id: item.variant_id,
-      quantity: item.quantity,
-      variant_name: variant?.name ?? null,
-      sku: variant?.sku ?? "",
+    itemDetails.push({
+      id: guestItem.variant_id,
+      variant_id: guestItem.variant_id,
+      quantity: guestItem.quantity,
+      variant_name: variant.name ?? null,
+      sku: variant.sku ?? "",
       price_minor: price,
-      product_id: variant?.product_id ?? "",
+      product_id: variant.product_id ?? "",
       product_name: product?.name ?? "Unknown Product",
       product_slug: product?.slug ?? "",
       image_path: imagePath,
       line_total_minor: lineTotal,
-    };
-  });
+      is_available: isAvailable,
+    });
+  }
 
   return {
-    id: cart.id,
-    user_id: cart.user_id,
+    id: "guest",
+    user_id: "",
     items: itemDetails,
     subtotal_minor: subtotal,
     item_count: totalCount,
@@ -166,45 +345,97 @@ export async function addToCart(formData: FormData): Promise<AddToCartResult | n
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
-  if (!userId) {
-    redirect(`/login?next=${encodeURIComponent(safeReturnTo)}`);
+
+  if (userId) {
+    const { data, error } = await supabase.rpc("add_authenticated_cart_item", {
+      p_variant_id: variantId,
+      p_quantity: quantity,
+    });
+    if (error) {
+      logServerError("cart.item.write", "database_failure");
+      return fail(cartAddErrorMessage(error.message), "cart_update_failed");
+    }
+
+    const result = data as { item_count?: number; line_quantity?: number } | null;
+    if (
+      !result ||
+      !Number.isSafeInteger(result.item_count) ||
+      !Number.isSafeInteger(result.line_quantity) ||
+      (result.item_count ?? 0) <= 0 ||
+      (result.line_quantity ?? 0) <= 0
+    ) {
+      logServerError("cart.item.write", "invalid_database_response");
+      return fail("We could not confirm your bag update. Please try again.", "cart_update_failed");
+    }
+    const itemCount = result.item_count as number;
+    const lineQuantity = result.line_quantity as number;
+
+    revalidatePath("/cart");
+    revalidatePath("/", "layout"); // update header CartBadge across all pages
+
+    if (stay) {
+      return {
+        success: true,
+        itemCount,
+        lineQuantity,
+      };
+    }
+
+    redirect(safeReturnTo);
   }
 
-  const { data, error } = await supabase.rpc("add_authenticated_cart_item", {
-    p_variant_id: variantId,
-    p_quantity: quantity,
-  });
-  if (error) {
-    logServerError("cart.item.write", "database_failure");
-    return fail(cartAddErrorMessage(error.message), "cart_update_failed");
+  // --- GUEST ADD TO BAG ---
+  const { data: variant, error: variantError } = await supabase
+    .from("product_variants")
+    .select("id, status, products!inner(id, status)")
+    .eq("id", variantId)
+    .eq("status", "active")
+    .eq("products.status", "published")
+    .maybeSingle();
+
+  if (variantError || !variant) {
+    return fail("This product option is no longer available.", "variant_unavailable");
   }
 
-  const result = data as { item_count?: number; line_quantity?: number } | null;
-  if (
-    !result ||
-    !Number.isSafeInteger(result.item_count) ||
-    !Number.isSafeInteger(result.line_quantity) ||
-    (result.item_count ?? 0) <= 0 ||
-    (result.line_quantity ?? 0) <= 0
-  ) {
-    logServerError("cart.item.write", "invalid_database_response");
-    return fail("We could not confirm your bag update. Please try again.", "cart_update_failed");
+  const { data: availRows } = await supabase.rpc("get_public_variant_availability");
+  const isAvailable = (availRows ?? []).some(
+    (row) => row.variant_id === variantId && row.is_available === true,
+  );
+  if (!isAvailable) {
+    return fail("This size is currently out of stock.", "out_of_stock");
   }
-  const itemCount = result.item_count as number;
-  const lineQuantity = result.line_quantity as number;
+
+  const guestCart = await getGuestCart();
+  const existingItem = guestCart.items.find((i) => i.variant_id === variantId);
+  const existingQty = existingItem ? existingItem.quantity : 0;
+  const newQty = existingQty + quantity;
+
+  if (newQty > 10) {
+    return fail("Maximum quantity per item is 10. Choose a lower quantity.", "quantity_exceeds_limit");
+  }
+
+  if (existingItem) {
+    existingItem.quantity = newQty;
+  } else {
+    guestCart.items.push({ variant_id: variantId, quantity });
+  }
+
+  await saveGuestCart(guestCart);
 
   revalidatePath("/cart");
-  revalidatePath("/", "layout");  // update header CartBadge across all pages
+  revalidatePath("/", "layout");
+
+  const totalCount = guestCart.items.reduce((sum, item) => sum + item.quantity, 0);
 
   if (stay) {
     return {
       success: true,
-      itemCount,
-      lineQuantity,
+      itemCount: totalCount,
+      lineQuantity: newQty,
     };
   }
 
-  redirect("/cart");
+  redirect(safeReturnTo);
 }
 
 export async function updateCartItemQuantity(formData: FormData) {
@@ -217,26 +448,70 @@ export async function updateCartItemQuantity(formData: FormData) {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
-  if (!userId) redirect("/login?next=/cart");
 
-  let mutationError;
-  if (quantity <= 0) {
-    const { error } = await supabase.from("cart_items").delete().eq("id", itemId);
-    mutationError = error;
+  if (userId) {
+    if (quantity <= 0) {
+      const { error } = await supabase.from("cart_items").delete().eq("id", itemId);
+      if (error) {
+        logServerError("cart.item.quantity", "database_failure");
+        redirect("/cart?error=cart_update_failed");
+      }
+    } else {
+      const targetQty = Math.min(10, quantity);
+
+      // Verify stock if increasing
+      const { data: cartItem } = await supabase
+        .from("cart_items")
+        .select("variant_id, quantity")
+        .eq("id", itemId)
+        .maybeSingle();
+
+      if (cartItem && targetQty > cartItem.quantity) {
+        const { data: availRows } = await supabase.rpc("get_public_variant_availability");
+        const isAvailable = (availRows ?? []).some(
+          (row) => row.variant_id === cartItem.variant_id && row.is_available === true,
+        );
+        if (!isAvailable) {
+          redirect("/cart?error=quantity_exceeds_stock");
+        }
+      }
+
+      const { error } = await supabase
+        .from("cart_items")
+        .update({ quantity: targetQty })
+        .eq("id", itemId);
+
+      if (error) {
+        logServerError("cart.item.quantity", "database_failure");
+        redirect("/cart?error=cart_update_failed");
+      }
+    }
   } else {
-    const { error } = await supabase
-      .from("cart_items")
-      .update({ quantity: Math.min(99, quantity) })
-      .eq("id", itemId);
-    mutationError = error;
-  }
-  if (mutationError) {
-    logServerError("cart.item.quantity", "database_failure");
-    redirect("/cart?error=cart_update_failed");
+    // Guest update: itemId is variant_id
+    const guestCart = await getGuestCart();
+    if (quantity <= 0) {
+      guestCart.items = guestCart.items.filter((i) => i.variant_id !== itemId);
+    } else {
+      const item = guestCart.items.find((i) => i.variant_id === itemId);
+      if (item) {
+        const targetQty = Math.min(10, quantity);
+        if (targetQty > item.quantity) {
+          const { data: availRows } = await supabase.rpc("get_public_variant_availability");
+          const isAvailable = (availRows ?? []).some(
+            (row) => row.variant_id === itemId && row.is_available === true,
+          );
+          if (!isAvailable) {
+            redirect("/cart?error=quantity_exceeds_stock");
+          }
+        }
+        item.quantity = targetQty;
+      }
+    }
+    await saveGuestCart(guestCart);
   }
 
   revalidatePath("/cart");
-  revalidatePath("/", "layout");  // update header CartBadge
+  revalidatePath("/", "layout"); // update header CartBadge
   redirect("/cart");
 }
 
@@ -247,15 +522,21 @@ export async function removeCartItem(formData: FormData) {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
-  if (!userId) redirect("/login?next=/cart");
 
-  const { error } = await supabase.from("cart_items").delete().eq("id", itemId);
-  if (error) {
-    logServerError("cart.item.remove", "database_failure");
-    redirect("/cart?error=cart_update_failed");
+  if (userId) {
+    const { error } = await supabase.from("cart_items").delete().eq("id", itemId);
+    if (error) {
+      logServerError("cart.item.remove", "database_failure");
+      redirect("/cart?error=cart_update_failed");
+    }
+  } else {
+    // Guest remove: itemId is variant_id
+    const guestCart = await getGuestCart();
+    guestCart.items = guestCart.items.filter((i) => i.variant_id !== itemId);
+    await saveGuestCart(guestCart);
   }
 
   revalidatePath("/cart");
-  revalidatePath("/", "layout");  // update header CartBadge
+  revalidatePath("/", "layout"); // update header CartBadge
   redirect("/cart");
 }
