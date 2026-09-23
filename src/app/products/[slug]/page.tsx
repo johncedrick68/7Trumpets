@@ -31,7 +31,7 @@ export default async function ProductDetailPage({
     : "1968 Clothing";
 
   return (
-    <main id="main-content" tabIndex={-1} className="store-container store-page min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container pdp-page min-h-screen">
       <div className="w-full">
         {/* ── Breadcrumb ────────────────────────────────────────── */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-6 sm:mb-8">
@@ -41,7 +41,7 @@ export default async function ProductDetailPage({
         </nav>
 
         {/* ── Responsive PDP Layout ─────────────────────────────── */}
-        <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.75fr)] gap-8 lg:gap-14 xl:gap-20 items-start">
+        <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(21rem,0.55fr)] gap-8 lg:gap-12 xl:gap-16 items-start">
 
           {/* Product Identity Header — Single H1 on both mobile & desktop */}
           <header className="order-1 lg:order-none lg:col-start-2 lg:row-start-1 border-b border-border pb-5 lg:border-none lg:pb-0">
@@ -74,7 +74,7 @@ export default async function ProductDetailPage({
           </div>
 
           {/* Purchasing Form, Assurances & Details — Order 3 on mobile, Row 2 Column 2 on desktop */}
-          <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 flex w-full min-w-0 flex-col space-y-7">
+          <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 flex w-full min-w-0 flex-col space-y-7 lg:sticky lg:top-24">
             {/* Real Product Description */}
             {product.description && (
               <p className="text-sm leading-relaxed text-muted-foreground">
@@ -98,7 +98,7 @@ export default async function ProductDetailPage({
             )}
 
             {/* Purchase information backed by the current commerce flow */}
-            <div className="rounded-lg border border-border/80 bg-muted/20 p-4 space-y-2.5">
+            <div className="border-y border-border py-5 space-y-2.5">
               <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Purchase Information
               </p>

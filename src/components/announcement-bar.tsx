@@ -4,7 +4,7 @@ import { getStoreSetting } from "@/lib/settings/queries";
 export async function AnnouncementBar() {
   const announcement = await getStoreSetting("announcement", {
     enabled: true,
-    text: "NEW DROP: DROP 01 NOW AVAILABLE — COMPLIMENTARY METRO MANILA SHIPPING OVER ₱3,500",
+    text: "COD AND MANUAL GCASH AVAILABLE",
     link: "/products",
   });
 
@@ -12,14 +12,18 @@ export async function AnnouncementBar() {
     return null;
   }
 
+  const text = /metro manila|free shipping|complimentary shipping/i.test(announcement.text)
+    ? "COD AND MANUAL GCASH AVAILABLE"
+    : announcement.text;
+
   return (
     <div className="announcement-bar" role="region" aria-label="Announcement">
       {announcement.link ? (
         <Link href={announcement.link} className="hover:underline transition-all">
-          <span>{announcement.text}</span>
+          <span>{text}</span>
         </Link>
       ) : (
-        <span>{announcement.text}</span>
+        <span>{text}</span>
       )}
     </div>
   );

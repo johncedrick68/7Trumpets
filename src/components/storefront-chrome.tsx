@@ -57,7 +57,7 @@ export function StorefrontChrome({
   const isAuthRoute = ["/login", "/signup", "/forgot-password", "/update-password"].includes(pathname);
   const shopLinks =
     footerCategories.length > 0
-      ? footerCategories.slice(0, 4)
+      ? footerCategories.slice(0, 3)
       : [
           { name: "Current Drops", slug: "drops" },
           { name: "San Roque Collection", slug: "san-roque" },
@@ -184,9 +184,7 @@ export function StorefrontChrome({
             <div className="footer-logo">
               <BrandLogo variant="footer" />
             </div>
-            <p>
-              {footer.brand_copy || "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey."}
-            </p>
+            <p>{footer.brand_copy || "Independent clothing made for everyday wear."}</p>
           </div>
 
           <div className="footer-col">
@@ -210,7 +208,6 @@ export function StorefrontChrome({
                 <li><Link href="/size-guide">Size Guide</Link></li>
                 <li><Link href="/orders">Track Order</Link></li>
                 <li><Link href="/account">Account Settings</Link></li>
-                <li><Link href="/account/addresses">Saved Addresses</Link></li>
               </ul>
             </nav>
           </div>
@@ -236,7 +233,7 @@ export function StorefrontChrome({
 
         <div className="footer-bottom">
           <p>© {new Date().getFullYear()} 1968 Clothing. All rights reserved.</p>
-          <p>Wear the legacy. Move the culture.</p>
+          <p>Independent clothing for everyday wear.</p>
         </div>
       </footer>
     </>

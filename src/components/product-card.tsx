@@ -16,13 +16,13 @@ export function ProductCard({
   const imagePath = product.primary_image_path || "/images/1968%20CLOTHING%20V1.webp";
 
   return (
-    <article className="group flex flex-col h-full">
+    <article className="product-tile group flex h-full flex-col">
       <Link
         href={`/products/${product.slug}`}
-        className="group flex flex-col h-full rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="group flex h-full flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {/* Product image container */}
-        <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-border/80 bg-neutral-100 transition-[border-color] group-hover:border-foreground/40 active:scale-[0.99] motion-reduce:active:scale-100 dark:bg-neutral-900">
+        <div className="product-tile-image relative aspect-[4/5] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-900">
           <Image
             src={imagePath}
             alt=""
@@ -32,15 +32,9 @@ export function ProductCard({
             className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
 
-          {categoryName && (
-            <span className="absolute top-2.5 left-2.5 bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-xs">
-              {categoryName}
-            </span>
-          )}
-
           {!product.is_available && (
-            <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] flex items-center justify-center p-3">
-              <span className="bg-neutral-950 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-xs shadow-sm">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/55 p-3">
+              <span className="bg-neutral-950 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
                 Out of Stock
               </span>
             </div>
@@ -48,26 +42,25 @@ export function ProductCard({
         </div>
 
         {/* Product Information */}
-        <div className="mt-3 flex flex-1 flex-col justify-between">
+        <div className="product-tile-copy flex flex-1 flex-col justify-between">
           <div>
-            <h2 className="text-sm font-semibold leading-snug text-foreground group-hover:underline underline-offset-4 line-clamp-1">
+            {categoryName ? <p className="product-tile-category">{categoryName}</p> : null}
+            <h2 className="product-tile-name">
               {product.name}
             </h2>
-            <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+            <p className="product-tile-price">
               {formatMinorUnitsToPHP(product.min_price_minor)}
             </p>
           </div>
 
           {/* Action indicator: Choose Options (clothing requires size selection) vs Out of Stock */}
-          <div className="mt-3 pt-2 border-t border-border/50 flex items-center justify-between text-xs">
+          <div className="product-tile-state">
             <span
-              className={`font-mono text-[10px] font-bold uppercase tracking-widest ${
-                product.is_available ? "text-muted-foreground" : "text-muted-foreground/60"
-              }`}
+              className={product.is_available ? "" : "opacity-70"}
             >
               {product.is_available ? "Choose Options" : "Out of Stock"}
             </span>
-            <span aria-hidden="true" className="font-mono text-xs text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5">
+            <span aria-hidden="true" className="transition-transform duration-150 group-hover:translate-x-0.5">
               &rarr;
             </span>
           </div>

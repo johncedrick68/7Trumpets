@@ -57,10 +57,10 @@ export default async function ProductsPage(props: {
     : `${products.length} ${products.length === 1 ? "piece" : "pieces"}`;
 
   return (
-    <main id="main-content" tabIndex={-1} className="store-container store-page min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container catalog-page min-h-screen">
 
       {/* ── Page Header ─────────────────────────────────────────── */}
-      <header className="mb-8">
+      <header className="catalog-page-header">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
           Shop
         </p>
@@ -101,31 +101,31 @@ export default async function ProductsPage(props: {
             placeholder="Search products, collections…"
             enterKeyHint="search"
             autoComplete="off"
-            className="h-11 rounded-full !pl-11 !pr-4 font-mono text-xs"
+            className="h-11 rounded-none !pl-11 !pr-4 font-mono text-xs"
           />
         </div>
         <Button
           type="submit"
           variant="outline"
-          className="h-11 rounded-full px-5 font-mono text-[11px] uppercase tracking-widest min-w-[44px]"
+          className="h-11 rounded-none px-5 font-mono text-[11px] uppercase tracking-widest min-w-[44px]"
         >
           Search
         </Button>
       </form>
 
       {/* ── Category Navigation Pills ────────────────────────────── */}
-      <nav aria-label="Catalog collections" className="mb-6">
+      <nav aria-label="Catalog collections" className="catalog-rail mb-6">
         <div
-          className="flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex w-full flex-nowrap gap-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="group"
           aria-label="Category filters"
         >
           <Link
             href={buildCatalogUrl({ sort, q: search, availability })}
-            className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`catalog-rail-link ${
               !categorySlug
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
+                ? "is-active"
+                : ""
             }`}
             aria-current={!categorySlug ? "page" : undefined}
           >
@@ -135,10 +135,10 @@ export default async function ProductsPage(props: {
             <Link
               key={cat.id}
               href={buildCatalogUrl({ category: cat.slug, sort, q: search, availability })}
-              className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`catalog-rail-link ${
                 categorySlug === cat.slug
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
+                  ? "is-active"
+                  : ""
               }`}
               aria-current={categorySlug === cat.slug ? "page" : undefined}
             >

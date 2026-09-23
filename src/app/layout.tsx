@@ -17,10 +17,10 @@ const sfProDisplay = localFont({
 });
 
 export const metadata: Metadata = {
-  title: { default: "1968 Clothing — Filipino Streetwear", template: "%s | 1968 Clothing" },
-  description: "Independent Filipino streetwear · Est. 1968. Archival pieces shaped by community, heritage, and the streets.",
+  title: { default: "1968 Clothing — Official Store", template: "%s | 1968 Clothing" },
+  description: "Shop the current 1968 Clothing collection. View product availability, choose your size, and order online.",
   applicationName: "1968 Clothing",
-  keywords: ["streetwear", "Filipino fashion", "1968 clothing", "Manila"],
+  keywords: ["streetwear", "clothing", "1968 clothing"],
   icons: { icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/favicon.png", type: "image/png" }], apple: "/apple-touch-icon.png" },
 };
 
@@ -28,7 +28,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   // Global chrome must not make every route depend on catalog availability.
   // Catalog pages fetch live categories themselves; the footer has resilient
   // canonical links so auth and system pages remain usable during DB outages.
-  const footer = await getStoreSetting("footer", { brand_copy: "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey.", support_email: "1968clothing.official@gmail.com" });
+  const footer = await getStoreSetting("footer", { brand_copy: "Independent clothing made for everyday wear.", support_email: "1968clothing.official@gmail.com" });
   return <html lang="en" data-scroll-behavior="smooth"><body className={sfProDisplay.variable}>
     <StorefrontChrome announcement={<AnnouncementBar />} cartBadge={<CartBadge />} footer={footer}>{children}</StorefrontChrome>
   </body></html>;

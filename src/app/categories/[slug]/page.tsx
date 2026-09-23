@@ -24,9 +24,9 @@ export default async function CategoryPage({
   const products = await getProducts({ categoryId: category.id });
 
   return (
-    <main id="main-content" tabIndex={-1} className="store-container store-page min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container catalog-page min-h-screen">
       {/* ── Page Header ─────────────────────────────────────────── */}
-      <header className="mb-8">
+      <header className="catalog-page-header">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
           Collection
         </p>
@@ -42,15 +42,15 @@ export default async function CategoryPage({
 
       {/* ── Category Pills ───────────────────────────────────────── */}
       {categories.length > 0 && (
-        <nav aria-label="Collections" className="mb-8">
+        <nav aria-label="Collections" className="catalog-rail mb-8">
           <div
-            className="flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex w-full flex-nowrap gap-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Category filters"
           >
             <Link
               href="/products"
-              className="shrink-0 rounded-full border border-border bg-transparent px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:border-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="catalog-rail-link"
             >
               All Pieces
             </Link>
@@ -58,10 +58,10 @@ export default async function CategoryPage({
               <Link
                 key={cat.id}
                 href={`/categories/${cat.slug}`}
-                className={`shrink-0 rounded-full border px-5 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`catalog-rail-link ${
                   cat.id === category.id
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
+                    ? "is-active"
+                    : ""
                 }`}
                 aria-current={cat.id === category.id ? "page" : undefined}
               >

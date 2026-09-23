@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function SizeGuidePage() {
   return (
-    <main id="main-content" tabIndex={-1} className="store-container page-section min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container size-guide-page min-h-screen">
       {/* ── Breadcrumb ────────────────────────────────────────── */}
       <nav aria-label="Breadcrumb" className="mb-6">
         <ol className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
@@ -47,11 +47,11 @@ export default function SizeGuidePage() {
       <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
         {/* ── How to Measure Diagram ─────────────────────────── */}
         <section aria-labelledby="measurement-instructions-heading" className="lg:col-span-5 space-y-6">
-          <div className="overflow-hidden rounded-lg border border-border bg-neutral-100 dark:bg-neutral-900 p-4">
+          <div className="overflow-hidden border border-border bg-neutral-100 dark:bg-neutral-900 p-4">
             <h2 id="measurement-instructions-heading" className="font-mono text-xs font-bold uppercase tracking-wider text-foreground mb-4">
               How to Measure
             </h2>
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded border border-border bg-muted">
+            <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-muted">
               <Image
                 src="/images/size-guide-diagram.svg"
                 alt="Diagram illustrating shoulder-to-hem length and pit-to-pit chest width"
@@ -78,7 +78,7 @@ export default function SizeGuidePage() {
           </div>
 
           {/* Authoritative Quality & Pre-wash Note */}
-          <div className="rounded-lg border border-border bg-background p-5 text-xs text-muted-foreground space-y-2">
+          <div className="border-y border-border py-5 text-xs text-muted-foreground space-y-2">
             <p className="font-semibold text-foreground">Fabric &amp; Care Standard</p>
             <p className="leading-relaxed">
               {AUTHORITATIVE_SIZING_NOTE}
@@ -110,7 +110,7 @@ export default function SizeGuidePage() {
               </span>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="overflow-x-auto border border-border">
               <table className="w-full text-sm">
                 <caption className="sr-only">1968 Clothing T-Shirt Measurements</caption>
                 <thead>
@@ -146,7 +146,7 @@ export default function SizeGuidePage() {
           </div>
 
           {/* Reference Asset Note */}
-          <div className="rounded-lg border border-border bg-muted/20 p-4 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="border-y border-border py-4 flex items-center justify-between gap-4 text-xs text-muted-foreground">
             <span>Verified against authoritative 1968 production specifications.</span>
             <span className="font-mono text-[10px] uppercase tracking-widest text-foreground">S–XXL Verified</span>
           </div>

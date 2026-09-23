@@ -51,7 +51,7 @@ export default async function CartPage({
   const totalMinor = subtotalMinor + shippingMinor;
 
   return (
-    <main id="main-content" tabIndex={-1} className="store-container store-page min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container cart-page min-h-screen">
       <div className="w-full">
         {/* Page Header */}
         <header className="mb-8 md:mb-10">
@@ -153,7 +153,7 @@ export default async function CartPage({
                         {/* Item Image Thumbnail */}
                         <Link
                           href={`/products/${item.product_slug}`}
-                          className="relative block h-24 w-20 shrink-0 overflow-hidden rounded-md border border-border/60 bg-neutral-100 sm:h-28 sm:w-24 dark:bg-neutral-900"
+                          className="relative block h-28 w-24 shrink-0 overflow-hidden border border-border/60 bg-neutral-100 sm:h-32 sm:w-28 dark:bg-neutral-900"
                           aria-label={item.product_name}
                         >
                           <Image
@@ -277,7 +277,7 @@ export default async function CartPage({
 
             {/* Order Summary Sidebar */}
             <aside className="lg:sticky lg:top-24 lg:col-span-5 xl:col-span-4" aria-label="Order summary">
-              <div className="rounded-xl border border-border bg-card p-6 shadow-xs">
+              <div className="border border-border bg-card p-6">
                 <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground">
                   Order Summary
                 </h2>
