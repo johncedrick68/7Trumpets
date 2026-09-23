@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Ruler } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -168,6 +169,17 @@ export function SizeChartDialog() {
               {AUTHORITATIVE_SIZING_NOTE}
             </p>
           </section>
+
+          {/* LINK TO FULL SIZE GUIDE */}
+          <div className="flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
+            <span>Need full specifications or outerwear details?</span>
+            <Link
+              href="/size-guide"
+              className="font-semibold text-foreground underline underline-offset-4 hover:opacity-80"
+            >
+              View full size guide &rarr;
+            </Link>
+          </div>
         </div>
 
       </DialogContent>

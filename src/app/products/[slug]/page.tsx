@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatMinorUnitsToPHP, getCategories, getProductBySlug } from "@/lib/catalog/queries";
+import { AUTHORITATIVE_SIZING_NOTE } from "@/lib/catalog/sizing";
 import { ProductPurchaseForm } from "@/components/product-purchase-form";
 import { ProductGallery } from "@/components/product-gallery";
 
@@ -32,63 +33,61 @@ export default async function ProductDetailPage({
   return (
     <main id="main-content" tabIndex={-1} className="store-container store-page min-h-screen">
       <div className="w-full">
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-8">
+        {/* ── Breadcrumb ────────────────────────────────────────── */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-6 sm:mb-8">
           <Link href="/products" className="hover:text-foreground transition-colors">Collection</Link>
-          <span>/</span>
-          <span className="text-foreground font-bold">{product.name}</span>
+          <span aria-hidden="true">/</span>
+          <span className="text-foreground font-bold" aria-current="page">{product.name}</span>
         </nav>
 
-        {/* Mobile-only header — shown above gallery on small screens */}
-        <header className="mb-5 lg:hidden">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {categoryName}
-          </p>
-          <h1 className="mt-2 text-h2 text-foreground">
-            {product.name}
-          </h1>
-          <p className="mt-3 text-h3 text-foreground">
-            {formattedPrice}
-          </p>
-        </header>
+        {/* ── Responsive PDP Layout ─────────────────────────────── */}
+        <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.75fr)] gap-8 lg:gap-14 xl:gap-20 items-start">
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] lg:gap-16 xl:gap-20">
+          {/* Product Identity Header — Single H1 on both mobile & desktop */}
+          <header className="order-1 lg:order-none lg:col-start-2 lg:row-start-1 border-b border-border pb-5 lg:border-none lg:pb-0">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              {categoryName}
+            </p>
+            <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+              {product.name}
+            </h1>
+            <p className="mt-2 text-xl font-bold font-mono text-foreground sm:text-2xl">
+              {formattedPrice}
+            </p>
+          </header>
 
-          {/* ── Gallery Column ────────────────────────────────── */}
-          <ProductGallery
-            productName={product.name}
-            images={(product.images.length > 0 ? product.images : [{ id: "fallback", storage_path: "/images/1968%20CLOTHING%20V1.0.webp", alt_text: product.name, position: 0, variant_id: null }]).map((image) => ({ id: image.id, url: image.storage_path, alt: image.alt_text || product.name, position: image.position, variantId: image.variant_id }))}
-          />
+          {/* Gallery — Order 2 on mobile, Column 1 on desktop spanning both rows */}
+          <div className="order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2 w-full min-w-0">
+            <ProductGallery
+              productName={product.name}
+              images={(product.images.length > 0
+                ? product.images
+                : [{ id: "fallback", storage_path: "/images/1968%20CLOTHING%20V1.0.webp", alt_text: product.name, position: 0, variant_id: null }]
+              ).map((image) => ({
+                id: image.id,
+                url: image.storage_path,
+                alt: image.alt_text || product.name,
+                position: image.position,
+                variantId: image.variant_id
+              }))}
+            />
+          </div>
 
-          {/* ── Info Column ──────────────────────────────────── */}
-          <div className="flex w-full min-w-0 flex-col lg:sticky lg:top-24 lg:self-start">
-
-            {/* Desktop-only product identity — hidden on mobile (shown above gallery) */}
-            <div className="hidden lg:block">
-              {/* eyebrow → title: 8px */}
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {categoryName}
+          {/* Purchasing Form, Assurances & Details — Order 3 on mobile, Row 2 Column 2 on desktop */}
+          <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 flex w-full min-w-0 flex-col space-y-7">
+            {/* Real Product Description */}
+            {product.description && (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {product.description}
               </p>
-              {/* title */}
-              <h1 className="mt-2 text-h1 text-foreground">
-                {product.name}
-              </h1>
-              {/* title → price: 12px */}
-              <p className="mt-3 text-h2 text-foreground">
-                {formattedPrice}
-              </p>
-              {/* price → description: 12–16px */}
-              {product.description && (
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  {product.description}
-                </p>
-              )}
-            </div>
+            )}
 
-            {/* description → size block: 32px */}
+            {/* Purchase Form (Size Radio Selector, Quantity Stepper, Add to Bag) */}
             {product.variants.length > 0 && (
-              <div className="mt-8 lg:mt-8">
+              <div className="pt-1">
                 <ProductPurchaseForm
+                  productName={product.name}
+                  productSlug={product.slug}
                   options={product.options}
                   variants={product.variants.map((variant) => ({
                     ...variant,
@@ -98,29 +97,51 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            {/* Add to Bag → product information: 32px */}
-            <div className="mt-8 grid gap-6 border-t border-border pt-6 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              <section aria-labelledby="product-details-heading">
-                <h2 id="product-details-heading" className="font-semibold text-foreground">
-                  Product Details
-                </h2>
-                {product.description && <p className="mt-2 leading-relaxed lg:hidden">{product.description}</p>}
-                <ul className="mt-2 space-y-1.5 leading-relaxed">
-                  <li>Heavyweight pre-shrunk cotton, 220–240 GSM</li>
-                  <li>High-density plastisol screenprint</li>
-                </ul>
-              </section>
-              <section aria-labelledby="delivery-payment-heading">
-                <h2 id="delivery-payment-heading" className="font-semibold text-foreground">
-                  Delivery &amp; Payment
-                </h2>
-                <ul className="mt-2 space-y-1.5 leading-relaxed">
-                  <li>Metro Manila 2–3 days; provincial 3–6 days</li>
-                  <li>Cash on Delivery or manually verified GCash</li>
-                </ul>
-              </section>
+            {/* Verified Assurances */}
+            <div className="rounded-lg border border-border/80 bg-muted/20 p-4 space-y-2.5">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Verified Purchase Assurances
+              </p>
+              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="text-foreground" aria-hidden="true">✓</span>
+                  <span>Cash on Delivery (COD) available</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-foreground" aria-hidden="true">✓</span>
+                  <span>Manual GCash payment with verified submission</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-foreground" aria-hidden="true">✓</span>
+                  <span>Authentic 1968 archival streetwear release</span>
+                </li>
+              </ul>
             </div>
+
+            {/* Fabric & Sizing Standard Note (Verbatim from 1968 Brand Asset) */}
+            <section aria-labelledby="sizing-standard-heading" className="border-t border-border pt-5">
+              <h2 id="sizing-standard-heading" className="text-sm font-semibold text-foreground">
+                Fabric &amp; Care Standard
+              </h2>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                {AUTHORITATIVE_SIZING_NOTE}
+              </p>
+            </section>
+
+            {/* Delivery & Customer Care */}
+            <section aria-labelledby="delivery-payment-heading" className="border-t border-border pt-5">
+              <h2 id="delivery-payment-heading" className="text-sm font-semibold text-foreground">
+                Delivery &amp; Customer Care
+              </h2>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                Orders are dispatched via standard courier upon order confirmation. Need assistance with sizing or tracking?{" "}
+                <Link href="/account/support" className="font-semibold text-foreground underline underline-offset-4 hover:opacity-80">
+                  Contact Support
+                </Link>
+              </p>
+            </section>
           </div>
+
         </div>
       </div>
     </main>

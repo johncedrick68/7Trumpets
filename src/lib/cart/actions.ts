@@ -142,6 +142,11 @@ export async function addToCart(formData: FormData) {
   const variantId = formData.get("variant_id") as string;
   const quantityRaw = Number(formData.get("quantity") ?? 1);
   const quantity = Math.max(1, Math.min(99, Number.isInteger(quantityRaw) ? quantityRaw : 1));
+  const returnToRaw = formData.get("return_to") as string | null;
+  const stay = formData.get("stay") === "true";
+  const safeReturnTo = returnToRaw && returnToRaw.startsWith("/") && !returnToRaw.startsWith("//")
+    ? returnToRaw
+    : "/cart";
 
   if (!variantId) {
     redirect("/products");
@@ -151,7 +156,7 @@ export async function addToCart(formData: FormData) {
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
   if (!userId) {
-    redirect(`/login?next=/cart`);
+    redirect(`/login?next=${encodeURIComponent(safeReturnTo)}`);
   }
 
   // Verify variant exists and is active
@@ -232,6 +237,11 @@ export async function addToCart(formData: FormData) {
 
   revalidatePath("/cart");
   revalidatePath("/", "layout");  // update header CartBadge across all pages
+
+  if (stay) {
+    return { success: true };
+  }
+
   redirect("/cart");
 }
 

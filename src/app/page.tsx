@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, ShieldCheck, Truck, Sparkles, MapPin } from "lucide-react";
-import { formatMinorUnitsToPHP, getCategories, getProducts } from "@/lib/catalog/queries";
+import { getCategories, getProducts } from "@/lib/catalog/queries";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product-card";
 
