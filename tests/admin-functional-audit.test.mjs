@@ -37,6 +37,16 @@ test("Admin Functional Audit: Orders workspace queries and searches tracking, ph
   assert.match(workspaceSource, /Courier Dispatch/);
 });
 
+test("Admin Functional Audit: Orders page normalizes Supabase relation shapes before rendering", async () => {
+  const pageSource = await read("src/app/admin/orders/page.tsx");
+
+  assert.match(pageSource, /Array\.isArray\(order\.payments\)/);
+  assert.match(pageSource, /\? \[order\.payments\]/);
+  assert.match(pageSource, /Array\.isArray\(order\.shipments\)/);
+  assert.match(pageSource, /Array\.isArray\(order\.order_items\)/);
+  assert.doesNotMatch(pageSource, /as unknown as AdminOrderSummary\[\]/);
+});
+
 test("Admin Functional Audit: Payment review workspace computes accurate count badges for all queues", async () => {
   const workspaceSource = await read("src/components/admin/payment-review-workspace.tsx");
 

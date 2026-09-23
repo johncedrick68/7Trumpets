@@ -83,7 +83,28 @@ export default async function AdminOrdersListPage({
     throw new Error("ADMIN_ORDERS_UNAVAILABLE");
   }
 
-  const orderList = (orders || []) as unknown as AdminOrderSummary[];
+  // Supabase returns one-to-one relations as an object in production, while
+  // generated query types may describe the same relation as an array. Keep the
+  // client workspace on one predictable shape so search and quick-view logic
+  // can safely iterate related records.
+  const orderList: AdminOrderSummary[] = (orders || []).map((order) => ({
+    ...order,
+    payments: Array.isArray(order.payments)
+      ? order.payments
+      : order.payments
+        ? [order.payments]
+        : [],
+    shipments: Array.isArray(order.shipments)
+      ? order.shipments
+      : order.shipments
+        ? [order.shipments]
+        : [],
+    order_items: Array.isArray(order.order_items)
+      ? order.order_items
+      : order.order_items
+        ? [order.order_items]
+        : [],
+  }));
 
   return (
     <div className="space-y-6">
