@@ -62,6 +62,18 @@ test("Admin Functional Audit: Dialog portals preserve select stacking and varian
   assert.match(catalogSource, /<VariantDialog products=\{productList\} productId=\{product\.id\} \/>/);
 });
 
+test("Admin Functional Audit: POS visibly and functionally blocks sales while the register is closed", async () => {
+  const terminalSource = await read("src/components/admin/pos-terminal.tsx");
+  const actionsSource = await read("src/lib/pos/actions.ts");
+
+  assert.match(terminalSource, /if \(!activeSession \|\| variant\.available_count <= 0\) return/);
+  assert.match(terminalSource, /disabled=\{isOutOfStock \|\| !activeSession\}/);
+  assert.match(terminalSource, /disabled=\{!activeSession \|\| cart\.length === 0/);
+  assert.match(terminalSource, /Open Register to Start Sale/);
+  assert.match(terminalSource, /lg:sticky lg:top-20/);
+  assert.match(actionsSource, /\.rpc\("create_pos_sale"/);
+});
+
 test("Admin Functional Audit: Payment review workspace computes accurate count badges for all queues", async () => {
   const workspaceSource = await read("src/components/admin/payment-review-workspace.tsx");
 

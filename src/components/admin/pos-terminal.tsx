@@ -169,7 +169,7 @@ export function PosTerminal({
 
   // Cart operations
   const addToCart = (product: PosProduct, variant: PosVariant) => {
-    if (variant.available_count <= 0) return;
+    if (!activeSession || variant.available_count <= 0) return;
 
     setCart((prev) => {
       const existing = prev.find((item) => item.variant_id === variant.id);
@@ -332,10 +332,10 @@ export function PosTerminal({
                         <button
                           key={variant.id}
                           type="button"
-                          disabled={isOutOfStock}
+                          disabled={isOutOfStock || !activeSession}
                           onClick={() => addToCart(product, variant)}
                           className={`w-full flex items-center justify-between p-2 rounded-md border text-left text-xs transition-colors ${
-                            isOutOfStock
+                            isOutOfStock || !activeSession
                               ? "border-border/50 text-muted-foreground bg-muted/20 cursor-not-allowed"
                               : "border-border hover:border-primary hover:bg-primary/5 active:bg-primary/10"
                           }`}
@@ -377,7 +377,7 @@ export function PosTerminal({
       </div>
 
       {/* ── Right Side: Register Shift & Sale Ticket (5 Cols) ─────── */}
-      <aside ref={saleTicketRef} className="space-y-4 scroll-mt-20 lg:col-span-5">
+      <aside ref={saleTicketRef} className="space-y-4 scroll-mt-20 lg:sticky lg:top-20 lg:col-span-5">
         {/* Active Register Session Status Banner */}
         {activeSession ? (
           <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs">
@@ -400,7 +400,7 @@ export function PosTerminal({
               ⚠️ Register Drawer Closed
             </div>
             <div className="text-[11px] text-amber-800 mt-0.5">
-              Open drawer below with starting cash float before ringing sales.
+              Open the register from the page header before adding items or completing a sale.
             </div>
           </div>
         )}
@@ -670,7 +670,7 @@ export function PosTerminal({
             {/* Complete Sale Form */}
             <form
               action={async (formData: FormData) => {
-                if (cart.length === 0 || isTenderInsufficient) return;
+                if (!activeSession || cart.length === 0 || isTenderInsufficient) return;
                 setIsSubmitting(true);
                 try {
                   const itemsPayload = JSON.stringify(
@@ -697,11 +697,13 @@ export function PosTerminal({
               <Button
                 type="submit"
                 size="lg"
-                disabled={cart.length === 0 || isSubmitting || isTenderInsufficient}
+                disabled={!activeSession || cart.length === 0 || isSubmitting || isTenderInsufficient}
                 className="min-h-12 w-full gap-2 text-base font-extrabold uppercase tracking-wide shadow-md"
               >
                 {isSubmitting ? (
                   <span>Processing Counter Sale...</span>
+                ) : !activeSession ? (
+                  <span>Open Register to Start Sale</span>
                 ) : isTenderInsufficient ? (
                   <span>Insufficient Cash Tendered</span>
                 ) : (
