@@ -5,6 +5,18 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
+const testFetch = (input, init = {}) => fetch(input, {
+  ...init,
+  signal: init.signal
+    ? AbortSignal.any([init.signal, AbortSignal.timeout(5_000)])
+    : AbortSignal.timeout(5_000),
+});
+
+const testClientOptions = {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  global: { fetch: testFetch },
+};
+
 function verifyN8nWebhookSignature(rawBody, timestamp, signature, secret) {
   if (!signature || !timestamp || !secret) return false;
   const parsedTs = parseInt(timestamp, 10);
@@ -210,7 +222,7 @@ test("Live Customer Security Proofs: Authenticated customer cannot mutate privil
   if (!anonKey) return;
 
   const { createClient } = await import("@supabase/supabase-js");
-  const customerClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+  const customerClient = createClient(supabaseUrl, anonKey, testClientOptions);
 
   // 1. Authenticate Customer
   const { data: custAuth, error: authErr } = await customerClient.auth.signInWithPassword({
@@ -359,9 +371,9 @@ test("Direct Negative RPC Tests: Anon, Customer, AAL1 Admin, and AAL2 Admin boun
   const { createClient } = await import("@supabase/supabase-js");
   const { generateTOTP } = await import("../scripts/generate-totp.mjs");
 
-  const anonClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
-  const customerClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
-  const adminClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+  const anonClient = createClient(supabaseUrl, anonKey, testClientOptions);
+  const customerClient = createClient(supabaseUrl, anonKey, testClientOptions);
+  const adminClient = createClient(supabaseUrl, anonKey, testClientOptions);
 
   // 1. Authenticate Customer
   const { data: custAuth, error: authErr } = await customerClient.auth.signInWithPassword({
