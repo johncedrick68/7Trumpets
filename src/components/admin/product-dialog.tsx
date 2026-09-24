@@ -32,7 +32,7 @@ export function ProductDialog({ categories, product }: { categories: Category[],
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {product ? (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></Button>
+          <Button aria-label={`Edit ${product.name}`} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></Button>
         ) : (
           <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Add Product</Button>
         )}

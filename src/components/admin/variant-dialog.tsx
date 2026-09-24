@@ -47,7 +47,7 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {variant ? (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></Button>
+          <Button aria-label={`Edit variant ${variant.name || variant.sku}`} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></Button>
         ) : (
           <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" /> Add Variant</Button>
         )}

@@ -30,7 +30,7 @@ export function CategoryDialog({ category }: { category?: Category }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {category ? (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></Button>
+          <Button aria-label={`Edit ${category.name} category`} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></Button>
         ) : (
           <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Add Category</Button>
         )}

@@ -160,11 +160,9 @@ export default async function AdminPosPage({
         <div className="flex items-center gap-2">
           {activeSession ? (
             <details className="relative">
-              <summary className="list-none cursor-pointer">
-                <Button variant="outline" size="sm" className="min-h-11 gap-1.5 border-emerald-600/30 bg-emerald-50 font-mono text-xs text-emerald-800 hover:bg-emerald-100 lg:min-h-8">
-                  <Lock className="size-3.5" />
-                  Close Shift ({formatMinorUnitsToPHP(activeSession.expected_cash_minor)})
-                </Button>
+              <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-md border border-emerald-600/30 bg-emerald-50 px-3 font-mono text-xs font-medium text-emerald-800 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
+                <Lock className="size-3.5" />
+                Close Shift ({formatMinorUnitsToPHP(activeSession.expected_cash_minor)})
               </summary>
               <div className="absolute right-0 mt-2 w-80 p-4 bg-background border border-border shadow-xl rounded-lg z-30 animate-in fade-in zoom-in-95 space-y-3">
                 <h3 className="font-bold text-sm">Close Cashier Shift</h3>
@@ -201,11 +199,9 @@ export default async function AdminPosPage({
             </details>
           ) : (
             <details className="relative">
-              <summary className="list-none cursor-pointer">
-                <Button size="sm" className="min-h-11 gap-1.5 font-mono text-xs shadow-xs lg:min-h-8">
-                  <Unlock className="size-3.5" />
-                  Open Register Drawer
-                </Button>
+              <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-md bg-primary px-3 font-mono text-xs font-medium text-primary-foreground shadow-xs hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
+                <Unlock className="size-3.5" />
+                Open Register Drawer
               </summary>
               <div className="absolute right-0 mt-2 w-80 p-4 bg-background border border-border shadow-xl rounded-lg z-30 animate-in fade-in zoom-in-95 space-y-3">
                 <h3 className="font-bold text-sm">Open Register Shift</h3>

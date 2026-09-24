@@ -122,6 +122,7 @@ async function scan(page, label) {
       help: violation.help,
       nodes: violation.nodes.length,
       targets: violation.nodes.slice(0, 5).map((node) => node.target.join(" ")),
+      examples: violation.nodes.slice(0, 3).map((node) => node.html),
     })),
   };
 }
