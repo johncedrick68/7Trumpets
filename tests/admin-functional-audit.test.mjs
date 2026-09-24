@@ -119,6 +119,16 @@ test("Admin Functional Audit: operational query failures are not presented as em
   assert.doesNotMatch(settingsSource, /Error saving settings: \{error\}/);
 });
 
+test("Admin Functional Audit: dashboard localizes non-critical query failures", async () => {
+  const dashboard = await read("src/app/admin/page.tsx");
+
+  assert.doesNotMatch(dashboard, /throw new Error\("ADMIN_DASHBOARD_UNAVAILABLE"\)/);
+  assert.match(dashboard, /partial_database_failure/);
+  assert.match(dashboard, /queryErrors\.payments \? "Queue unavailable"/);
+  assert.match(dashboard, /queryErrors\.inventory \? "Inventory unavailable"/);
+  assert.match(dashboard, /queryErrors\.orders \? "Unavailable"/);
+});
+
 test("Admin Functional Audit: Google OAuth configured in config.toml with env substitution and localhost redirects", async () => {
   const config = await read("supabase/config.toml");
   const envExample = await read(".env.example");
