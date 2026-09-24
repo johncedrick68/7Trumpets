@@ -220,9 +220,9 @@ export default async function AdminReturnsPage({
                       <TableCell className="text-right">
                         <details className="relative inline-block text-left">
                           <summary className="list-none cursor-pointer">
-                            <Button size="sm" variant="outline" className="h-7 text-xs font-mono">
+                            <span className="inline-flex h-7 items-center justify-center rounded-md border border-input bg-background px-3 font-mono text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
                               Manage
-                            </Button>
+                            </span>
                           </summary>
                           <div className="absolute right-0 mt-2 w-72 p-4 bg-background border border-border shadow-xl rounded-lg z-30 space-y-3">
                             <h4 className="font-bold text-xs">Review Return #{req.id.slice(0, 8)}</h4>

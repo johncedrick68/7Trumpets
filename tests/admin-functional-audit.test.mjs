@@ -74,6 +74,38 @@ test("Admin Functional Audit: catalog dialogs let redirecting server actions own
   }
 });
 
+test("Admin Functional Audit: mutation fixtures are hard-guarded to local Supabase", async () => {
+  const guard = await read("scripts/local-supabase-guard.mjs");
+  const fullDomain = await read("scripts/verify-full-domain-e2e.mjs");
+  const retailFlows = await read("scripts/verify-master-retail-flows.mjs");
+  const demoUsers = await read("scripts/create-demo-users.mjs");
+
+  assert.match(guard, /new Set\(\["localhost", "127\.0\.0\.1", "::1"\]\)/);
+  assert.match(guard, /process\.env\.NODE_ENV === "production"/);
+  assert.match(guard, /process\.env\.VERCEL/);
+  for (const source of [fullDomain, retailFlows, demoUsers]) {
+    assert.match(source, /assertLocalSupabaseTarget\(/);
+  }
+});
+
+test("Admin Functional Audit: payment settings preserve the configured COD ceiling", async () => {
+  const settingsPage = await read("src/app/admin/settings/page.tsx");
+  assert.match(settingsPage, /cod_max_minor: payment\.cod_max_minor/);
+});
+
+test("Admin Functional Audit: support composer communicates its keyboard behavior", async () => {
+  const inbox = await read("src/components/admin/support-inbox.tsx");
+  assert.match(inbox, /htmlFor="admin-support-message"/);
+  assert.match(inbox, /aria-describedby="admin-support-message-hint"/);
+  assert.match(inbox, /Enter to send · Shift\+Enter for a new line/);
+  assert.match(inbox, /aria-label=\{replyMode === "internal" \? "Save internal staff note" : "Send message"\}/);
+});
+
+test("Admin Functional Audit: returns disclosure does not nest a button inside summary", async () => {
+  const returnsPage = await read("src/app/admin/returns/page.tsx");
+  assert.doesNotMatch(returnsPage, /<summary[^>]*>[\s\S]{0,300}<Button/);
+});
+
 test("Admin Functional Audit: POS visibly and functionally blocks sales while the register is closed", async () => {
   const terminalSource = await read("src/components/admin/pos-terminal.tsx");
   const actionsSource = await read("src/lib/pos/actions.ts");

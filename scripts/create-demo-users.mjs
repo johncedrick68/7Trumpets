@@ -17,6 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { assertLocalSupabaseTarget } from "./local-supabase-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,10 +50,7 @@ if (!SUPABASE_URL || !SECRET_KEY) {
   process.exit(1);
 }
 
-if (!SUPABASE_URL.includes("127.0.0.1") && !SUPABASE_URL.includes("localhost")) {
-  console.error("❌  SUPABASE_URL does not look like a local instance. Refusing to run against remote.");
-  process.exit(1);
-}
+assertLocalSupabaseTarget(SUPABASE_URL, "Demo-account bootstrap");
 
 const admin = createClient(SUPABASE_URL, SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },

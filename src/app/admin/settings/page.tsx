@@ -378,7 +378,7 @@ export default async function AdminSettingsPage({
                 const gcash_qr_path = formData.get("gcash_qr_path") as string;
                 const gcash_enabled = formData.get("gcash_enabled") === "on";
                 const cod_enabled = formData.get("cod_enabled") === "on";
-                const payload = { gcash_number, gcash_account_name, gcash_qr_path, gcash_enabled, cod_enabled };
+                const payload = { gcash_number, gcash_account_name, gcash_qr_path, gcash_enabled, cod_enabled, cod_max_minor: payment.cod_max_minor };
                 formData.set("key", "payment");
                 formData.set("value_json", JSON.stringify(payload));
                 await updateStoreSetting(formData);

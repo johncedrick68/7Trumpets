@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { generateTOTP } from "./generate-totp.mjs";
+import { assertLocalSupabaseTarget } from "./local-supabase-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -33,6 +34,8 @@ loadEnv();
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+assertLocalSupabaseTarget(supabaseUrl, "Retail-flow QA");
 
 assert.ok(anonKey, "Publishable key must be defined");
 assert.ok(serviceRoleKey, "Secret key must be defined");
@@ -118,6 +121,23 @@ async function runEmpiricalFlows() {
   console.log(`[CATALOG] Var A: ${variantA.sku} (₱${variantA.price_minor / 100})`);
   console.log(`[CATALOG] Var B: ${variantB.sku} (₱${variantB.price_minor / 100})`);
   console.log(`[CATALOG] Var C: ${variantC.sku} (₱${variantC.price_minor / 100})`);
+
+  // Repeated local verification consumes real stock. Restore only the minimum
+  // deterministic headroom through the same audited admin RPC used by the UI.
+  for (const variant of [variantA, variantB, variantC]) {
+    const inventory = Array.isArray(variant.inventory) ? variant.inventory[0] : variant.inventory;
+    const available = Number(inventory?.on_hand ?? 0) - Number(inventory?.reserved ?? 0);
+    if (available < 40) {
+      const { error: restockError } = await adminClient.rpc("admin_adjust_inventory", {
+        p_variant_id: variant.id,
+        p_delta: 40 - available,
+        p_type: "adjustment",
+        p_reason: "Local deterministic QA fixture headroom",
+        p_idempotency_key: `qa-restock-${variant.id}-${Date.now()}`,
+      });
+      assert.ifError(restockError);
+    }
+  }
 
   // Close any pre-existing sessions for cashier
   const { data: openSessions } = await serviceClient

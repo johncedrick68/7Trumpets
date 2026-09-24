@@ -417,7 +417,7 @@ export function SupportInbox({
                   ) : (
                     <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
                       <DialogTrigger asChild>
-                        <Button size="sm" className="text-xs h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Button size="sm" className="text-xs h-8 gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Resolve Ticket
                         </Button>
                       </DialogTrigger>
@@ -445,7 +445,7 @@ export function SupportInbox({
                           <Button variant="outline" size="sm" onClick={() => setResolveOpen(false)}>
                             Cancel
                           </Button>
-                          <Button size="sm" onClick={handleResolve} disabled={isActionPending} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                          <Button size="sm" onClick={handleResolve} disabled={isActionPending}>
                             Confirm Resolution
                           </Button>
                         </DialogFooter>
@@ -561,7 +561,12 @@ export function SupportInbox({
               </div>
 
               <form onSubmit={handleSendReply} className="flex items-end gap-2">
+                <label htmlFor="admin-support-message" className="sr-only">
+                  {replyMode === "internal" ? "Internal staff note" : "Message to customer"}
+                </label>
                 <textarea
+                  id="admin-support-message"
+                  aria-describedby="admin-support-message-hint"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onKeyDown={(e) => {
@@ -584,6 +589,7 @@ export function SupportInbox({
                 />
                 <Button
                   type="submit"
+                  aria-label={replyMode === "internal" ? "Save internal staff note" : "Send message"}
                   size="default"
                   disabled={!content.trim() || isSubmitting}
                   className={`h-11 px-4 gap-1.5 ${
@@ -596,6 +602,9 @@ export function SupportInbox({
                   {replyMode === "internal" ? "Save Note" : "Send Reply"}
                 </Button>
               </form>
+              <p id="admin-support-message-hint" className="text-[10px] text-muted-foreground">
+                Enter to send · Shift+Enter for a new line
+              </p>
             </div>
           </Card>
         ) : (

@@ -6,6 +6,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { generateTOTP } from "./generate-totp.mjs";
+import { assertLocalSupabaseTarget } from "./local-supabase-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +33,8 @@ loadEnv();
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+assertLocalSupabaseTarget(supabaseUrl, "Full-domain QA");
 
 assert.ok(anonKey, "Publishable key must be defined in .env.local");
 assert.ok(serviceRoleKey, "SUPABASE_SECRET_KEY must be defined");
