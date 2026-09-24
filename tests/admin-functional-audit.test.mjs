@@ -62,6 +62,8 @@ test("Admin Functional Audit: Dialog portals preserve select stacking and varian
   assert.match(variantSource, /<DialogClose asChild>/);
   assert.match(variantSource, /grid gap-4 sm:grid-cols-2/);
   assert.match(catalogSource, /<VariantDialog products=\{productList\} productId=\{product\.id\} \/>/);
+  assert.match(catalogSource, /Array\.isArray\(variant\.inventory\) \? variant\.inventory\[0\] : variant\.inventory/);
+  assert.doesNotMatch(catalogSource, /const inv = variant\.inventory\?\.\[0\]/);
 });
 
 test("Admin Functional Audit: POS visibly and functionally blocks sales while the register is closed", async () => {

@@ -240,9 +240,8 @@ export default async function AdminCatalogOverviewPage(props: {
                         <div className="text-sm text-muted-foreground italic mb-2">No variants created yet.</div>
                       ) : (
                         <div className="flex flex-col gap-3">
-                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                          {product.product_variants.map((variant: any) => {
-                            const inv = variant.inventory?.[0];
+                          {product.product_variants.map((variant) => {
+                            const inv = Array.isArray(variant.inventory) ? variant.inventory[0] : variant.inventory;
                             const available = inv ? inv.on_hand - inv.reserved : 0;
                             const isLowStock = available <= (inv?.safety_stock ?? 0);
                             const isOutOfStock = available <= 0;

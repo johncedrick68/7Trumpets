@@ -16,7 +16,7 @@ interface Product {
 
 interface Variant {
   id: string;
-  product_id: string;
+  product_id?: string;
   sku: string;
   name: string | null;
   price_minor: number;
