@@ -5,7 +5,7 @@ export default function AdminSupportLoading() {
     <div className="space-y-6">
       <div className="space-y-2">
         <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-96" />
+        <Skeleton className="h-4 w-full max-w-96" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[600px]">

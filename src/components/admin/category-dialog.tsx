@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveCategory } from "@/lib/admin/actions";
-import { Plus, Edit2, Loader2 } from "lucide-react";
+import { Plus, Edit2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,17 +14,6 @@ type Category = any;
 
 export function CategoryDialog({ category }: { category?: Category }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    try {
-      await saveCategory(formData);
-      setOpen(false);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -42,7 +31,7 @@ export function CategoryDialog({ category }: { category?: Category }) {
             {category ? "Update this collection category." : "Add a new collection to group your pieces."}
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit} className="space-y-4 pt-4">
+        <form action={saveCategory} className="space-y-4 pt-4">
           {category && <input type="hidden" name="id" value={category.id} />}
           
           <div className="space-y-2">
@@ -68,8 +57,7 @@ export function CategoryDialog({ category }: { category?: Category }) {
           )}
 
           <div className="pt-4 flex justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit">
               {category ? "Save Changes" : "Create Category"}
             </Button>
           </div>

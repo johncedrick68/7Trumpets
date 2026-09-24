@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveProduct } from "@/lib/admin/actions";
-import { Plus, Edit2, Loader2 } from "lucide-react";
+import { Plus, Edit2 } from "lucide-react";
 
 type Category = { id: string; name: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,17 +16,6 @@ type Product = any;
 
 export function ProductDialog({ categories, product }: { categories: Category[], product?: Product }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    try {
-      await saveProduct(formData);
-      setOpen(false);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -44,7 +33,7 @@ export function ProductDialog({ categories, product }: { categories: Category[],
             {product ? "Update the details of your product listing." : "Add a new product to your streetwear catalog."}
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit} className="space-y-4 pt-4">
+        <form action={saveProduct} className="space-y-4 pt-4">
           {product && <input type="hidden" name="id" value={product.id} />}
           
           <div className="space-y-2">
@@ -93,8 +82,7 @@ export function ProductDialog({ categories, product }: { categories: Category[],
           </div>
 
           <div className="pt-4 flex justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit">
               {product ? "Save Changes" : "Create Product"}
             </Button>
           </div>

@@ -7,7 +7,7 @@ export default function AdminOrdersLoading() {
         <div className="space-y-2">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-9 w-60" />
-          <Skeleton className="h-4 w-80" />
+          <Skeleton className="h-4 w-full max-w-80" />
         </div>
         <Skeleton className="h-6 w-28" />
       </div>

@@ -7,7 +7,7 @@ export default function AdminPosLoading() {
         <div className="space-y-2">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-9 w-60" />
-          <Skeleton className="h-4 w-96" />
+          <Skeleton className="h-4 w-full max-w-96" />
         </div>
         <Skeleton className="h-6 w-32" />
       </div>

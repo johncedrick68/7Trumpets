@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveVariant } from "@/lib/admin/actions";
-import { Plus, Edit2, Loader2 } from "lucide-react";
+import { Plus, Edit2 } from "lucide-react";
 
 interface Product {
   id: string;
@@ -26,17 +26,6 @@ interface Variant {
 
 export function VariantDialog({ products, variant, productId }: { products: Product[], variant?: Variant, productId?: string }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    try {
-      await saveVariant(formData);
-      setOpen(false);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   // Format price from minor units to standard string (e.g. 59900 -> "599.00")
   const defaultPrice = variant?.price_minor ? (variant.price_minor / 100).toFixed(2) : "";
@@ -59,7 +48,7 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
             {variant ? "Update SKU, pricing, and availability." : contextualProduct ? `Add a size, color, or option to ${contextualProduct.name}.` : "Choose a product and add its size, color, or option."}
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit} className="space-y-4 pt-2">
+        <form action={saveVariant} className="space-y-4 pt-2">
           {variant && <input type="hidden" name="id" value={variant.id} />}
 
           {productId ? (
@@ -118,10 +107,9 @@ export function VariantDialog({ products, variant, productId }: { products: Prod
 
           <DialogFooter className="pt-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={loading}>Cancel</Button>
+              <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit">
               {variant ? "Save Changes" : "Add Variant"}
             </Button>
           </DialogFooter>

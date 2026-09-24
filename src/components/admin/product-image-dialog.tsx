@@ -7,24 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveProductImage } from "@/lib/admin/actions";
-import { Loader2, ImagePlus } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Product = any;
 
 export function ProductImageDialog({ products, productId }: { products: Product[], productId?: string }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    try {
-      await saveProductImage(formData);
-      setOpen(false);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -38,7 +27,7 @@ export function ProductImageDialog({ products, productId }: { products: Product[
             Upload a high-quality WebP, JPG, or PNG image for your product.
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit} className="space-y-4 pt-4">
+        <form action={saveProductImage} className="space-y-4 pt-4">
           
           <div className="space-y-2">
             <Label htmlFor="img_prod">Product</Label>
@@ -83,8 +72,7 @@ export function ProductImageDialog({ products, productId }: { products: Product[
           </div>
 
           <div className="pt-4 flex justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit">
               Upload Image
             </Button>
           </div>

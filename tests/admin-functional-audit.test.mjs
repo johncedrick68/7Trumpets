@@ -66,6 +66,14 @@ test("Admin Functional Audit: Dialog portals preserve select stacking and varian
   assert.doesNotMatch(catalogSource, /const inv = variant\.inventory\?\.\[0\]/);
 });
 
+test("Admin Functional Audit: catalog dialogs let redirecting server actions own submission", async () => {
+  for (const file of ["category-dialog.tsx", "product-dialog.tsx", "variant-dialog.tsx", "product-image-dialog.tsx"]) {
+    const source = await read(`src/components/admin/${file}`);
+    assert.doesNotMatch(source, /await save(?:Category|Product|Variant|ProductImage)\(formData\)/);
+    assert.match(source, /<form action=\{save(?:Category|Product|Variant|ProductImage)\}/);
+  }
+});
+
 test("Admin Functional Audit: POS visibly and functionally blocks sales while the register is closed", async () => {
   const terminalSource = await read("src/components/admin/pos-terminal.tsx");
   const actionsSource = await read("src/lib/pos/actions.ts");
