@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/server-log";
 import { sortByMinPrice } from "@/lib/catalog/variants";
+export { formatMinorUnitsToPHP } from "@/lib/money";
 
 export interface Category {
   id: string;
@@ -63,16 +64,6 @@ export interface ProductDetail {
   variants: ProductVariant[];
   options: ProductOption[];
   images: ProductImage[];
-}
-
-export function formatMinorUnitsToPHP(minorUnits: number): string {
-  const php = minorUnits / 100;
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(php);
 }
 
 export function productImageUrl(path: string): string {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { SearchIcon } from "@/components/icons";
+import { formatMinorUnitsToPHP } from "@/lib/money";
 
 type SearchResult = {
   id: string;
@@ -15,15 +16,6 @@ type SearchResult = {
   priceMinor: number;
   available: boolean;
 };
-
-function formatPHP(minorUnits: number) {
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(minorUnits / 100);
-}
 
 export function PredictiveSearch({
   inputRef,
@@ -159,7 +151,7 @@ export function PredictiveSearch({
                     <span>{result.category}</span>
                   </span>
                   <span className="predictive-search-price">
-                    {formatPHP(result.priceMinor)}
+              {formatMinorUnitsToPHP(result.priceMinor)}
                     {!result.available ? <span>Out of stock</span> : null}
                   </span>
                 </Link>
