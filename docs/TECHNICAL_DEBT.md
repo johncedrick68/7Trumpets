@@ -28,6 +28,15 @@
 - **Evidence:** relation-normalization and Admin functional-audit tests plus
   typecheck and route build verification.
 
+### Local Admin axe identity lifecycle is reset-safe
+
+- **Original impact:** database reset removed the persistent demo Auth/MFA
+  identity and made automated accessibility scans depend on stale local secrets.
+- **Repair:** each scan now creates a loopback-only ordinary admin, enrolls and
+  verifies real TOTP in memory, confirms AAL2, then deletes the disposable user.
+- **Evidence:** remote-target rejection tests plus two successful axe runs after
+  a clean local reset.
+
 ## Critical
 
 - None currently documented.
@@ -45,17 +54,6 @@
   defect, and production cannot be used as a substitute.
 
 ## Active
-
-### Automated admin axe login depends on a local TOTP seed
-
-- **Impact:** resetting/re-enrolling the local factor invalidates unattended axe
-  authentication until the ignored local credential is updated.
-- **Evidence:** `scripts/admin-axe.mjs` requires `DEMO_ADMIN_TOTP_SECRET` for a
-  verified factor.
-- **Recommendation:** use an ephemeral local-only QA identity/factor lifecycle
-  managed by a guarded harness, without printing or committing its seed.
-- **Why deferred:** changing MFA fixture governance requires a dedicated review;
-  weakening AAL2 is prohibited.
 
 ### Project status ledger is stale
 

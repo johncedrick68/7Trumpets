@@ -8,6 +8,7 @@ import axe from "axe-core";
 import { chromium } from "playwright-core";
 
 import { generateTOTP } from "./generate-totp.mjs";
+import { assertLocalSupabaseUrl, createEphemeralLocalAdmin } from "./local-qa-admin.mjs";
 
 const baseUrl = process.env.AXE_BASE_URL || "http://localhost:3000";
 const navigationTimeout = Number(process.env.AXE_NAVIGATION_TIMEOUT_MS || 20_000);
@@ -86,20 +87,16 @@ function browserExecutable() {
   return executable;
 }
 
-async function authenticate(page, env) {
-  const email = process.env.DEMO_ADMIN_EMAIL || env.DEMO_ADMIN_EMAIL || "admin.demo@1968.local";
-  const password = process.env.DEMO_ADMIN_PASSWORD || env.DEMO_ADMIN_PASSWORD || "Demo1968Admin!";
-  const totpSecret = process.env.DEMO_ADMIN_TOTP_SECRET || env.DEMO_ADMIN_TOTP_SECRET;
+async function authenticate(page, identity) {
   await page.goto(`${baseUrl}/login?next=/admin`, { waitUntil: "domcontentloaded" });
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(password);
+  await page.locator('input[name="email"]').fill(identity.email);
+  await page.locator('input[name="password"]').fill(identity.password);
   await Promise.all([
     page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: navigationTimeout }),
     page.getByRole("button", { name: /sign in/i }).click(),
   ]);
   if (new URL(page.url()).pathname === "/mfa/verify") {
-    if (!totpSecret) throw new Error("A verified admin requires DEMO_ADMIN_TOTP_SECRET for the accessibility session.");
-    await page.locator('input[autocomplete="one-time-code"]').fill(generateTOTP(totpSecret));
+    await page.locator('input[autocomplete="one-time-code"]').fill(generateTOTP(identity.totpSecret));
     await Promise.all([
       page.waitForURL((url) => url.pathname.startsWith("/admin"), { timeout: navigationTimeout }),
       page.getByRole("button", { name: /verify/i }).click(),
@@ -136,6 +133,10 @@ async function gotoAdminRoute(page, route) {
 
 async function main() {
   const env = await loadLocalEnv();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+  const secretKey = process.env.SUPABASE_SECRET_KEY || env.SUPABASE_SECRET_KEY;
+  assertLocalSupabaseUrl(supabaseUrl);
+  const identity = await createEphemeralLocalAdmin({ supabaseUrl, secretKey });
   const app = await startAppIfNeeded();
   let browser;
   let context;
@@ -145,17 +146,38 @@ async function main() {
     context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await context.newPage();
     page.setDefaultTimeout(navigationTimeout);
-    await authenticate(page, env);
+    const initialCode = generateTOTP(identity.totpSecret);
+    const { error: verifyError } = await identity.sessionClient.auth.mfa.challengeAndVerify({
+      factorId: identity.factorId,
+      code: initialCode,
+    });
+    if (verifyError) throw verifyError;
+    const { data: assurance, error: assuranceError } = await identity.sessionClient.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assuranceError || assurance.currentLevel !== "aal2") {
+      throw assuranceError || new Error("Ephemeral Admin axe identity did not reach AAL2.");
+    }
+    await identity.sessionClient.auth.signOut();
+    while (generateTOTP(identity.totpSecret) === initialCode) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    await authenticate(page, identity);
     for (const route of routes) {
       await gotoAdminRoute(page, route);
       findings.push(await scan(page, route));
     }
     await gotoAdminRoute(page, "/admin/orders");
-    await page.getByRole("button", { name: /quick view|inspect/i }).first().click();
-    const orderHref = await page.locator('a[href^="/admin/orders/"]').first().getAttribute("href");
-    if (!orderHref) throw new Error("No valid local order detail link was found.");
-    await gotoAdminRoute(page, orderHref);
-    findings.push(await scan(page, "/admin/orders/[id]"));
+    const inspectButtons = page.getByRole("button", { name: /quick view|inspect/i });
+    if (await inspectButtons.count()) {
+      await inspectButtons.first().click();
+      const orderHref = await page.locator('a[href^="/admin/orders/"]').first().getAttribute("href");
+      if (!orderHref) throw new Error("No valid local order detail link was found.");
+      await gotoAdminRoute(page, orderHref);
+      findings.push(await scan(page, "/admin/orders/[id]"));
+    } else {
+      await gotoAdminRoute(page, "/admin/catalog");
+      await page.getByRole("button", { name: "Add Product" }).first().click();
+      findings.push(await scan(page, "/admin/catalog · Add Product dialog"));
+    }
 
     await gotoAdminRoute(page, "/admin/catalog");
     await page.getByRole("button", { name: "Add Variant" }).first().click();
@@ -169,6 +191,7 @@ async function main() {
     await context?.close();
     await browser?.close();
     if (app && app.exitCode === null) app.kill();
+    await identity.cleanup();
   }
   console.log("AUTOMATED AXE FINDINGS");
   console.log(JSON.stringify(findings, null, 2));

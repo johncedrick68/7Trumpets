@@ -43,6 +43,10 @@ must never push a database, deploy, merge, or seed a remote environment.
 
 ## Current pending production migrations
 
+Read-only ledger snapshot on 2026-09-26: 33 local migrations, 27 applied to
+linked project `eckhwcoigctkczzmkwqi`, and the following six pending. This is an
+observation only and grants no migration approval.
+
 | Migration | Purpose and dependencies | Security/locking/compatibility | Recovery and smoke |
 | --- | --- | --- | --- |
 | `20260922020000_public_catalog_availability.sql` | Adds a public, read-only availability projection over existing catalog/inventory state. | Explicit execute grants; no inventory mutation. Backward-compatible additive RPC. | Revoke/drop only before consumers depend on it; verify anon catalog availability and denied writes. |

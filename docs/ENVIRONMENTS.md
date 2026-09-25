@@ -11,6 +11,13 @@ environment boundaries those steps must respect.
 - Data: disposable synthetic fixtures.
 - Local reset is allowed only after the target host is verified as loopback and
   the discarded QA state is recorded.
+- Automated Admin accessibility scans create a disposable ordinary `admin`
+  identity after proving the target is the loopback Supabase API on its known
+  local port. Random login credentials and the enrolled TOTP secret exist only
+  in runner memory; the user is deleted when the scan finishes. A database reset
+  removes any interrupted fixture, and the next run recreates it safely.
+- This disposable identity is not a `super_admin`, commits no credentials, and
+  does not satisfy the external super-admin governance UAT requirement.
 
 ## Staging / UAT
 
