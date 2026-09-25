@@ -3,6 +3,10 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select extensions.plan(42);
 
+-- Keep this historical suite on the original checkout signature. The drop is
+-- transactional and rolled back with the suite.
+drop function if exists public.checkout_order(uuid, text, jsonb, bigint, text, timestamptz, jsonb, text, text);
+
 insert into auth.users (
   id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data,
   created_at, updated_at
