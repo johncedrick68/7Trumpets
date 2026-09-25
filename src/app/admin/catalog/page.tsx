@@ -20,6 +20,7 @@ import { PackagePlus } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { ProductMediaActions } from "@/components/admin/product-media-actions";
 import { ProductOptionsPanel } from "@/components/admin/product-options-panel";
+import { relationToMany, relationToOne } from "@/lib/data/relations";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +105,19 @@ export default async function AdminCatalogOverviewPage(props: {
     logServerError("admin.catalog", "database_failure");
     throw new Error("ADMIN_CATALOG_UNAVAILABLE");
   }
-  const productList = products || [];
+  const productList = (products || []).map((product) => ({
+    ...product,
+    product_variants: relationToMany(product.product_variants).map((variant) => ({
+      ...variant,
+      inventory: relationToOne(variant.inventory),
+      variant_option_values: relationToMany(variant.variant_option_values),
+    })),
+    product_options: relationToMany(product.product_options).map((option) => ({
+      ...option,
+      product_option_values: relationToMany(option.product_option_values),
+    })),
+    product_images: relationToMany(product.product_images),
+  }));
   const categoryList = categories || [];
 
   return (
@@ -178,7 +191,7 @@ export default async function AdminCatalogOverviewPage(props: {
                     <ProductMediaActions imageId={image.id} imageLabel={image.alt_text} index={index} count={product.product_images.length} />
                   </div>)}</div>}
                   <div className="space-y-3"><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variants & stock</p><VariantDialog products={productList} productId={product.id} /></div>{product.product_variants.map((variant) => {
-                    const inv = Array.isArray(variant.inventory) ? variant.inventory[0] : variant.inventory;
+                    const inv = variant.inventory;
                     const available = inv ? inv.on_hand - inv.reserved : 0;
                     return <div key={variant.id} className="space-y-3 rounded-lg border bg-background p-3">
                       <div className="flex items-start justify-between gap-2"><div><p className="text-sm font-semibold">{variant.name || variant.sku}</p><p className="font-mono text-[10px] text-muted-foreground">{variant.sku}</p></div><div className="text-right"><p className="text-sm font-semibold">{formatMinorUnitsToPHP(variant.price_minor)}</p><p className="text-xs text-muted-foreground">{available} available</p></div></div>
@@ -241,7 +254,7 @@ export default async function AdminCatalogOverviewPage(props: {
                       ) : (
                         <div className="flex flex-col gap-3">
                           {product.product_variants.map((variant) => {
-                            const inv = Array.isArray(variant.inventory) ? variant.inventory[0] : variant.inventory;
+                            const inv = variant.inventory;
                             const available = inv ? inv.on_hand - inv.reserved : 0;
                             const isLowStock = available <= (inv?.safety_stock ?? 0);
                             const isOutOfStock = available <= 0;

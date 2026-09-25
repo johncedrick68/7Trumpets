@@ -6,6 +6,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { OrdersWorkspace, AdminOrderSummary } from "@/components/admin/orders-workspace";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { relationToMany } from "@/lib/data/relations";
 
 export const dynamic = "force-dynamic";
 
@@ -89,21 +90,12 @@ export default async function AdminOrdersListPage({
   // can safely iterate related records.
   const orderList: AdminOrderSummary[] = (orders || []).map((order) => ({
     ...order,
-    payments: Array.isArray(order.payments)
-      ? order.payments
-      : order.payments
-        ? [order.payments]
-        : [],
-    shipments: Array.isArray(order.shipments)
-      ? order.shipments
-      : order.shipments
-        ? [order.shipments]
-        : [],
-    order_items: Array.isArray(order.order_items)
-      ? order.order_items
-      : order.order_items
-        ? [order.order_items]
-        : [],
+    payments: relationToMany(order.payments).map((payment) => ({
+      ...payment,
+      payment_submissions: relationToMany(payment.payment_submissions),
+    })),
+    shipments: relationToMany(order.shipments),
+    order_items: relationToMany(order.order_items),
   }));
 
   return (

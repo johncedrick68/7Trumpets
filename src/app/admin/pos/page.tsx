@@ -6,6 +6,7 @@ import { openRegisterSessionAction, closeRegisterSessionAction } from "@/lib/pos
 import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getStoreSetting } from "@/lib/settings/queries";
+import { relationToMany, relationToOne } from "@/lib/data/relations";
 import { PosTerminal, PosProduct, PosCategory, ActiveSessionInfo } from "@/components/admin/pos-terminal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,12 +85,10 @@ export default async function AdminPosPage({
 
   // Format products for PosTerminal
   const products: PosProduct[] = (productsRes.data || []).map((p) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawVariants = (p.product_variants as any[]) || [];
-    const variants = rawVariants
+    const variants = relationToMany(p.product_variants)
       .filter((v) => v.status === "active")
       .map((v) => {
-        const inv = Array.isArray(v.inventory) ? v.inventory[0] : v.inventory;
+        const inv = relationToOne(v.inventory);
         const onHand = inv?.on_hand ?? 0;
         const reserved = inv?.reserved ?? 0;
         const safetyStock = inv?.safety_stock ?? 0;
@@ -105,9 +104,7 @@ export default async function AdminPosPage({
         };
       });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const images = (p.product_images as any[]) || [];
-    images.sort((a, b) => a.position - b.position);
+    const images = [...relationToMany(p.product_images)].sort((a, b) => a.position - b.position);
     const primaryImage = images[0]?.storage_path || null;
 
     return {

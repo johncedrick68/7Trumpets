@@ -7,6 +7,7 @@ import { aggregateProducts, buildDailyRevenue, percentChange, summarizePeriod, t
 import { formatMinorUnitsToPHP } from "@/lib/money";
 import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
+import { relationToMany, relationToOne } from "@/lib/data/relations";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,12 +71,24 @@ export default async function AdminDashboardPage() {
     logServerError("admin.dashboard", "partial_database_failure");
   }
 
-  const orders = (ordersRes.data ?? []) as unknown as (AnalyticsOrder & { sales_channel?: string })[];
+  const orders: Array<AnalyticsOrder & { sales_channel?: string }> = (ordersRes.data ?? []).map((order) => ({
+    ...order,
+    payments: relationToMany(order.payments),
+    order_items: relationToMany(order.order_items),
+  }));
   const current = summarizePeriod(orders, currentStart, periodEnd);
   const previous = summarizePeriod(orders, previousStart, currentStart);
   const products = aggregateProducts(orders, currentStart, periodEnd);
   const daily = buildDailyRevenue(orders, currentStart, 30);
-  const inventory = (inventoryRes.data ?? []) as unknown as InventoryInsightRow[];
+  const inventory: InventoryInsightRow[] = (inventoryRes.data ?? []).map((row) => {
+    const variant = relationToOne(row.product_variants);
+    return {
+      ...row,
+      product_variants: variant
+        ? { ...variant, products: relationToOne(variant.products) }
+        : null,
+    };
+  });
   const lowStock = inventory.filter((row) => row.on_hand - row.reserved > 0 && row.on_hand - row.reserved <= row.safety_stock);
   const outOfStock = inventory.filter((row) => row.on_hand - row.reserved <= 0);
   const soldProductIds = new Set(products.map((product) => product.productId).filter(Boolean));
@@ -87,8 +100,7 @@ export default async function AdminDashboardPage() {
   // Channel breakdown
   const paidOrdersInWindow = orders.filter((o) => {
     const placed = new Date(o.placed_at);
-    const paymentObj = Array.isArray(o.payments) ? o.payments[0] : o.payments;
-    return placed >= currentStart && placed < periodEnd && paymentObj?.status === "PAID";
+    return placed >= currentStart && placed < periodEnd && o.payments.some((payment) => payment.status === "PAID");
   });
   const storefrontRevenueMinor = paidOrdersInWindow
     .filter((o) => o.sales_channel !== "POS")

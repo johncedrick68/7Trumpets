@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { relationToOne } from "@/lib/data/relations";
 
 export interface SupportConversation {
   id: string;
@@ -53,7 +54,7 @@ export async function getCustomerConversations(): Promise<SupportConversation[]>
 
   return data.map((d) => {
     const raw = d as unknown as Record<string, unknown>;
-    const orderData = Array.isArray(raw.orders) ? raw.orders[0] : raw.orders;
+    const orderData = relationToOne(raw.orders as SupportConversation["order"] | SupportConversation["order"][]);
     return {
       ...d,
       order: (orderData as SupportConversation["order"]) || null,
@@ -90,7 +91,7 @@ export async function getConversationWithMessages(conversationId: string): Promi
     .order("created_at", { ascending: true });
 
   const rawConv = conv as unknown as Record<string, unknown>;
-  const orderData = Array.isArray(rawConv.orders) ? rawConv.orders[0] : rawConv.orders;
+  const orderData = relationToOne(rawConv.orders as SupportConversation["order"] | SupportConversation["order"][]);
 
   return {
     conversation: {

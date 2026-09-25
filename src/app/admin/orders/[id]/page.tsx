@@ -9,6 +9,7 @@ import { formatMinorUnitsToPHP } from "@/lib/catalog/queries";
 import { getCourierDisplayName, getCourierTrackingUrl } from "@/lib/orders/courier";
 import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
+import { relationToOne } from "@/lib/data/relations";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,7 +111,7 @@ export default async function AdminOrderDetailPage({
     notFound();
   }
 
-  const payment = Array.isArray(order.payments) ? order.payments[0] : order.payments;
+  const payment = relationToOne(order.payments);
   const history = order.order_status_history || [];
   // Sort history newest first
   history.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());

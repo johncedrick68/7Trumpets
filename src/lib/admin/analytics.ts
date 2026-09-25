@@ -4,7 +4,7 @@ export type AnalyticsOrder = {
   total_minor: number;
   user_id: string | null;
   status: string;
-  payments?: Array<{ status: string; paid_at: string | null }> | { status: string; paid_at: string | null } | null;
+  payments: Array<{ status: string; paid_at: string | null }>;
   order_items?: Array<{
     product_id: string | null;
     variant_id: string | null;
@@ -24,8 +24,7 @@ export type PeriodSummary = {
 };
 
 export function isPaidOrder(order: AnalyticsOrder) {
-  const payments = Array.isArray(order.payments) ? order.payments : order.payments ? [order.payments] : [];
-  return payments.some((payment) => payment.status === "PAID");
+  return order.payments.some((payment) => payment.status === "PAID");
 }
 
 export function summarizePeriod(orders: AnalyticsOrder[], start: Date, end: Date): PeriodSummary {

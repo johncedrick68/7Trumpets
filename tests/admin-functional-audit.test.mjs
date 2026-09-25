@@ -22,7 +22,7 @@ test("Admin Functional Audit: Order detail renders return requests, refunds, and
   assert.match(orderDetailSource, /refunds \(/);
   assert.match(orderDetailSource, /Returns &amp; Refunds/);
   assert.match(orderDetailSource, /Data Integrity Issue: Payment Missing/);
-  assert.match(orderDetailSource, /Array\.isArray\(order\.payments\) \? order\.payments\[0\] : order\.payments/);
+  assert.match(orderDetailSource, /relationToOne\(order\.payments\)/);
   assert.doesNotMatch(orderDetailSource, /order\.payments as any/);
 });
 
@@ -41,11 +41,12 @@ test("Admin Functional Audit: Orders workspace queries and searches tracking, ph
 
 test("Admin Functional Audit: Orders page normalizes Supabase relation shapes before rendering", async () => {
   const pageSource = await read("src/app/admin/orders/page.tsx");
+  const relationSource = await read("src/lib/data/relations.ts");
 
-  assert.match(pageSource, /Array\.isArray\(order\.payments\)/);
-  assert.match(pageSource, /\? \[order\.payments\]/);
-  assert.match(pageSource, /Array\.isArray\(order\.shipments\)/);
-  assert.match(pageSource, /Array\.isArray\(order\.order_items\)/);
+  assert.match(pageSource, /payments: relationToMany\(order\.payments\)/);
+  assert.match(pageSource, /shipments: relationToMany\(order\.shipments\)/);
+  assert.match(pageSource, /order_items: relationToMany\(order\.order_items\)/);
+  assert.match(relationSource, /export function relationToMany/);
   assert.doesNotMatch(pageSource, /as unknown as AdminOrderSummary\[\]/);
 });
 
@@ -62,8 +63,9 @@ test("Admin Functional Audit: Dialog portals preserve select stacking and varian
   assert.match(variantSource, /<DialogClose asChild>/);
   assert.match(variantSource, /grid gap-4 sm:grid-cols-2/);
   assert.match(catalogSource, /<VariantDialog products=\{productList\} productId=\{product\.id\} \/>/);
-  assert.match(catalogSource, /Array\.isArray\(variant\.inventory\) \? variant\.inventory\[0\] : variant\.inventory/);
-  assert.doesNotMatch(catalogSource, /const inv = variant\.inventory\?\.\[0\]/);
+  assert.match(catalogSource, /inventory: relationToOne\(variant\.inventory\)/);
+  assert.match(catalogSource, /const inv = variant\.inventory/);
+  assert.doesNotMatch(catalogSource, /Array\.isArray\(variant\.inventory\)/);
 });
 
 test("Admin Functional Audit: catalog dialogs let redirecting server actions own submission", async () => {

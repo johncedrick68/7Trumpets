@@ -2,6 +2,7 @@ import { requireAdminAal2 } from "@/lib/admin/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SupportInbox } from "@/components/admin/support-inbox";
 import { SupportConversation, SupportMessage } from "@/lib/support/queries";
+import { relationToOne } from "@/lib/data/relations";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function AdminSupportPage({
 
   const conversations: SupportConversation[] = (convData || []).map((d) => {
     const raw = d as unknown as Record<string, unknown>;
-    const orderData = Array.isArray(raw.orders) ? raw.orders[0] : raw.orders;
+    const orderData = relationToOne(raw.orders as SupportConversation["order"] | SupportConversation["order"][]);
     return {
       ...d,
       order: (orderData as SupportConversation["order"]) || null,
