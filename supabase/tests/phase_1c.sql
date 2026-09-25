@@ -127,9 +127,9 @@ select extensions.set_eq(
 );
 
 select extensions.ok(
-  (select public and file_size_limit = 5242880 and allowed_mime_types = array['image/webp']::text[]
+  (select public and file_size_limit = 5242880 and allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']::text[]
    from storage.buckets where id = 'product-images'),
-  'product images bucket is public WebP with a 5 MB limit'
+  'product images bucket is public for validated JPEG, PNG, and WebP files with a 5 MB limit'
 );
 
 select extensions.ok(

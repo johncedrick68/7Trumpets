@@ -113,6 +113,14 @@ test("Admin Functional Audit: GCash review idempotency keys fit the database lim
   assert.doesNotMatch(actions, /gcash_(?:appr|rej)_\$\{paymentId\}_\$\{submissionId\}/);
 });
 
+test("Admin Functional Audit: product media storage accepts every server-validated format", async () => {
+  const migration = await read("supabase/migrations/20260925010000_product_images_png_jpeg.sql");
+  assert.match(migration, /allowed_mime_types\s*=\s*ARRAY\['image\/jpeg', 'image\/png', 'image\/webp'\]/);
+  const actions = await read("src/lib/admin/actions.ts");
+  assert.match(actions, /inspectReceiptImage\(buffer\)/);
+  assert.match(actions, /file\.type !== image\.mime/);
+});
+
 test("Admin Functional Audit: support composer communicates its keyboard behavior", async () => {
   const inbox = await read("src/components/admin/support-inbox.tsx");
   assert.match(inbox, /htmlFor="admin-support-message"/);
