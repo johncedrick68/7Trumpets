@@ -4,6 +4,11 @@ create extension if not exists pgtap with schema extensions;
 
 select extensions.plan(175);
 
+-- This historical suite validates the original eight-argument checkout
+-- contract. Remove the additive fulfillment overload only inside this rolled
+-- back test transaction so legacy calls remain unambiguous.
+drop function if exists public.checkout_order(uuid, text, jsonb, bigint, text, timestamptz, jsonb, text, text);
+
 -- Schema contract
 select extensions.set_eq(
   $$
@@ -21,9 +26,15 @@ select extensions.set_eq(
     ('public.addresses'), ('public.orders'), ('public.order_items'),
     ('public.order_status_history'), ('public.payments'),
     ('public.payment_submissions'), ('public.payment_events'),
-    ('public.audit_logs')
+    ('public.audit_logs'), ('public.admin_daily_briefs'),
+    ('public.staff_invitations'), ('public.refunds'),
+    ('public.ai_usage_logs'), ('public.register_sessions'),
+    ('public.support_conversations'), ('public.store_settings'),
+    ('public.automation_outbox'), ('public.shipments'),
+    ('public.return_requests'), ('public.register_session_activities'),
+    ('public.support_messages')
   $$,
-  'the 22 Phase 1 tables plus the Phase 3B throttle table exist'
+  'the complete additive application table contract exists'
 );
 
 select extensions.is(
@@ -122,8 +133,8 @@ select extensions.throws_ok(
 -- Storage contract, without depending on storage implementation details.
 select extensions.set_eq(
   $$ select id from storage.buckets $$,
-  $$ values ('product-images'), ('payment-receipts') $$,
-  'exactly two buckets exist and return-proofs is absent'
+  $$ values ('product-images'), ('payment-receipts'), ('return-proofs') $$,
+  'the three canonical storage buckets exist'
 );
 
 select extensions.ok(
@@ -1344,7 +1355,9 @@ select extensions.throws_ok(
   '42501', 'permission denied for table audit_logs', 'customer cannot write audit logs'
 );
 
-select extensions.throws_ok(
+-- The later authenticated checkout boundary deliberately grants this canonical
+-- operation to signed-in customers while retaining server-side actor checks.
+select extensions.lives_ok(
   $$
     select public.checkout_order(
       '11111111-1111-1111-1111-111111111111', 'browser-checkout',
@@ -1354,7 +1367,7 @@ select extensions.throws_ok(
       null
     )
   $$,
-  '42501', null, 'authenticated browser cannot execute authoritative checkout'
+  'authenticated customer can execute the reviewed checkout boundary'
 );
 
 select extensions.throws_ok(
@@ -1765,6 +1778,12 @@ select extensions.set_eq(
   $$,
     $$ values
     ('public.checkout_order'),
+    ('public.cancel_order'),
+    ('public.create_customer_return_request'),
+    ('public.admin_assign_staff'),
+    ('public.admin_reopen_support'),
+    ('public.customer_close_support'),
+    ('public.customer_reopen_support'),
     ('private.reserve_inventory'), ('private.transition_inventory_reservation'),
     ('private.start_gcash_review'),
     ('private.close_expired_gcash_payment')
@@ -1791,7 +1810,25 @@ select extensions.set_eq(
     ('public.admin_save_variant'), ('public.admin_save_product_image'),
     ('public.admin_delete_product_image'), ('public.admin_adjust_inventory'),
     ('public.admin_save_product_option'), ('public.admin_save_option_value'),
-    ('public.admin_set_variant_option_value')
+    ('public.admin_set_variant_option_value'),
+    ('public.list_expired_gcash_payments'),
+    ('public.close_expired_gcash_payment'),
+    ('public.add_authenticated_cart_item'),
+    ('public.checkout_order'), ('public.cancel_order'),
+    ('public.get_public_variant_availability'),
+    ('public.open_register_session'), ('public.close_register_session'),
+    ('public.create_pos_sale'), ('public.admin_settle_pickup_payment'),
+    ('public.admin_create_shipment'), ('public.admin_issue_refund'),
+    ('public.admin_process_return_request'), ('public.admin_process_exchange'),
+    ('public.create_customer_return_request'),
+    ('public.get_customer_growth_analytics'),
+    ('public.admin_reorder_product_image'),
+    ('public.create_support_conversation'),
+    ('public.send_customer_support_message'),
+    ('public.request_human_support'),
+    ('public.admin_reply_support'), ('public.admin_assign_staff'),
+    ('public.admin_resolve_support'), ('public.admin_reopen_support'),
+    ('public.customer_close_support'), ('public.customer_reopen_support')
   $$,
   'authenticated can execute only current-user and narrowly authorized operations'
 );
@@ -1825,8 +1862,13 @@ select extensions.ok(
 
 select extensions.set_eq(
   $$ select policyname from pg_catalog.pg_policies where schemaname = 'storage' and tablename = 'objects' $$,
-  $$ values ('product_images_public_read'), ('payment_receipts_owner_insert') $$,
-  'storage objects expose public product reads and owner-bound receipt inserts only'
+  $$ values
+    ('product_images_public_read'),
+    ('payment_receipts_owner_insert'),
+    ('return_proofs_owner_insert'),
+    ('return_proofs_owner_read')
+  $$,
+  'storage objects expose only reviewed public and owner-bound object policies'
 );
 
 select * from extensions.finish();

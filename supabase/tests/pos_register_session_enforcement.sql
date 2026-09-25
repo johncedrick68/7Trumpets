@@ -6,6 +6,19 @@ BEGIN;
 -- context so the SECURITY DEFINER boundary is exercised as deployed.
 SET LOCAL ROLE postgres;
 
+-- Keep this standalone suite independent from local auth seed state.
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+) VALUES
+  ('af4422c6-9573-41e4-9281-d759dcce3fab', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pos-admin@example.test', '{}'::jsonb, '{}'::jsonb, now(), now()),
+  ('20820841-d0f5-449d-a7d4-2f3f00c4b5bd', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pos-customer@example.test', '{}'::jsonb, '{}'::jsonb, now(), now())
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO private.user_roles (user_id, role)
+VALUES ('af4422c6-9573-41e4-9281-d759dcce3fab', 'admin')
+ON CONFLICT DO NOTHING;
+
 INSERT INTO public.register_sessions (
   id, cashier_id, status, opened_at, closed_at, opening_cash_minor, expected_cash_minor, actual_cash_minor
 ) VALUES
