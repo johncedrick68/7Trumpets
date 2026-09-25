@@ -30,7 +30,7 @@ export async function approveGcashSubmission(formData: FormData) {
     redirect("/admin/payments?error=missing_parameters");
   }
 
-  const idempotencyKey = `gcash_appr_${paymentId}_${submissionId}_${Date.now()}_${randomUUID().replace(/-/g, "")}`;
+  const idempotencyKey = `gcash_appr_${randomUUID()}`;
   const supabase = await createClient();
   const { error: rpcError } = await supabase.rpc("approve_gcash_submission", {
     p_payment_id: paymentId,
@@ -64,7 +64,7 @@ export async function rejectGcashSubmission(formData: FormData) {
     redirect("/admin/payments?error=rejection_reason_required");
   }
 
-  const idempotencyKey = `gcash_rej_${paymentId}_${submissionId}_${Date.now()}_${randomUUID().replace(/-/g, "")}`;
+  const idempotencyKey = `gcash_rej_${randomUUID()}`;
   const supabase = await createClient();
   const { error: rpcError } = await supabase.rpc("reject_gcash_submission", {
     p_payment_id: paymentId,

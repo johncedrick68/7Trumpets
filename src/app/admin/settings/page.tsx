@@ -60,27 +60,30 @@ export default async function AdminSettingsPage({
 
   const settings = await getAllStoreSettings();
 
-  const announcement = (settings.announcement?.value as AnnouncementSettings) || {
+  const announcementDefaults: AnnouncementSettings = {
     enabled: true,
     text: "NEW DROP: DROP 01 NOW AVAILABLE — COMPLIMENTARY METRO MANILA SHIPPING OVER ₱3,500",
     link: "/products",
   };
+  const announcement = { ...announcementDefaults, ...((settings.announcement?.value as Partial<AnnouncementSettings>) || {}) };
 
-  const hero = (settings.hero?.value as HeroSettings) || {
+  const heroDefaults: HeroSettings = {
     title: "1968 CLOTHING",
     subtitle: "DEFEND THE CULTURE. ARCHIVAL STREETWEAR.",
     cta_text: "EXPLORE DROP 01",
     cta_link: "/products",
   };
+  const hero = { ...heroDefaults, ...((settings.hero?.value as Partial<HeroSettings>) || {}) };
 
-  const fulfillment = (settings.fulfillment?.value as FulfillmentSettings) || {
+  const fulfillmentDefaults: FulfillmentSettings = {
     shipping_fee_minor: 15000,
     free_shipping_threshold_minor: 350000,
     allow_store_pickup: true,
     pickup_address: "1968 Flagship Store, Makati City",
   };
+  const fulfillment = { ...fulfillmentDefaults, ...((settings.fulfillment?.value as Partial<FulfillmentSettings>) || {}) };
 
-  const payment = (settings.payment?.value as PaymentSettings) || {
+  const paymentDefaults: PaymentSettings = {
     gcash_enabled: true,
     gcash_number: "0917-196-8000",
     gcash_account_name: "1968 CLOTHING PH",
@@ -88,11 +91,13 @@ export default async function AdminSettingsPage({
     cod_enabled: true,
     cod_max_minor: 1000000,
   };
-  const footer = (settings.footer?.value as FooterSettings) || {
+  const payment = { ...paymentDefaults, ...((settings.payment?.value as Partial<PaymentSettings>) || {}) };
+  const footerDefaults: FooterSettings = {
     brand_copy: "Independent Filipino streetwear · Est. 1968. Archival garments crafted for the daily journey.",
     support_email: "1968clothing.official@gmail.com",
     location: "Manila, Philippines",
   };
+  const footer = { ...footerDefaults, ...((settings.footer?.value as Partial<FooterSettings>) || {}) };
 
   return (
     <div className="space-y-8 max-w-5xl">

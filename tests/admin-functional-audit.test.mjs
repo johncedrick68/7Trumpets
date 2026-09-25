@@ -91,6 +91,26 @@ test("Admin Functional Audit: mutation fixtures are hard-guarded to local Supaba
 test("Admin Functional Audit: payment settings preserve the configured COD ceiling", async () => {
   const settingsPage = await read("src/app/admin/settings/page.tsx");
   assert.match(settingsPage, /cod_max_minor: payment\.cod_max_minor/);
+  assert.match(settingsPage, /const payment = \{ \.\.\.paymentDefaults, \.\.\.\(\(settings\.payment\?\.value as Partial<PaymentSettings>\) \|\| \{\}\) \}/);
+  assert.match(settingsPage, /const footer = \{ \.\.\.footerDefaults, \.\.\.\(\(settings\.footer\?\.value as Partial<FooterSettings>\) \|\| \{\}\) \}/);
+});
+
+test("Admin Functional Audit: settings writes can reach admin-only RLS without delete grants", async () => {
+  const migration = await read("supabase/migrations/20260924010000_store_settings_admin_grants.sql");
+  assert.match(migration, /GRANT INSERT, UPDATE ON TABLE public\.store_settings TO authenticated/);
+  assert.match(migration, /REVOKE DELETE ON TABLE public\.store_settings FROM authenticated/);
+  assert.doesNotMatch(migration, /GRANT[^;]*DELETE[^;]*authenticated/);
+  const foundation = await read("supabase/migrations/20260920000000_domain_hierarchy_expansion.sql");
+  assert.match(foundation, /store_settings_admin_mutate/);
+  assert.match(foundation, /private\.has_role\('admin'/);
+  assert.match(foundation, /private\.has_role\('super_admin'/);
+});
+
+test("Admin Functional Audit: GCash review idempotency keys fit the database limit", async () => {
+  const actions = await read("src/lib/admin/actions.ts");
+  assert.match(actions, /`gcash_appr_\$\{randomUUID\(\)\}`/);
+  assert.match(actions, /`gcash_rej_\$\{randomUUID\(\)\}`/);
+  assert.doesNotMatch(actions, /gcash_(?:appr|rej)_\$\{paymentId\}_\$\{submissionId\}/);
 });
 
 test("Admin Functional Audit: support composer communicates its keyboard behavior", async () => {
