@@ -9,6 +9,7 @@ import {
   CreditCard,
   RotateCcw,
   Box,
+  Layers,
   Store,
   Users,
   MessageSquare,
@@ -55,6 +56,7 @@ const navigationGroups: NavGroup[] = [
     label: "Merchandise",
     items: [
       { href: "/admin/catalog", label: "Catalog", icon: Box },
+      { href: "/admin/inventory", label: "Inventory", icon: Layers },
     ],
   },
   {

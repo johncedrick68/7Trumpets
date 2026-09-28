@@ -467,7 +467,8 @@ export async function reorderProductImage(formData: FormData) {
  * Adjust stock for a variant. Requires AAL2 admin.
  */
 export async function adjustInventory(formData: FormData) {
-  await requireAdminAal2("/admin/catalog");
+  const returnTo = (formData.get("return_to") as string)?.trim() || "/admin/catalog";
+  await requireAdminAal2(returnTo);
 
   const variantId = (formData.get("variant_id") as string)?.trim();
   const deltaRaw = (formData.get("delta") as string)?.trim();
@@ -475,12 +476,12 @@ export async function adjustInventory(formData: FormData) {
   const reason = (formData.get("reason") as string)?.trim();
 
   if (!variantId || !deltaRaw || !reason) {
-    redirect("/admin/catalog?error=missing_inventory_fields");
+    redirect(`${returnTo}?error=missing_inventory_fields`);
   }
 
   const delta = parseInt(deltaRaw, 10);
   if (isNaN(delta) || delta === 0) {
-    redirect("/admin/catalog?error=invalid_delta");
+    redirect(`${returnTo}?error=invalid_delta`);
   }
 
   const idempotencyKey = `inv_adj_${variantId}_${Date.now()}_${randomUUID().replace(/-/g, "")}`;
@@ -495,11 +496,12 @@ export async function adjustInventory(formData: FormData) {
 
   if (error) {
     logServerError("admin.adjustInventory", "rpc_error");
-    redirect("/admin/catalog?error=adjust_inventory_failed");
+    redirect(`${returnTo}?error=adjust_inventory_failed`);
   }
 
   revalidatePath("/admin/catalog");
-  redirect("/admin/catalog?notice=inventory_adjusted");
+  revalidatePath("/admin/inventory");
+  redirect(`${returnTo}?notice=inventory_adjusted`);
 }
 
 /**

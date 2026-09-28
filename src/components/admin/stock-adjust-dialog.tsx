@@ -34,6 +34,7 @@ interface StockAdjustDialogProps {
   reserved: number;
   available: number;
   trigger?: React.ReactNode;
+  returnTo?: string;
 }
 
 export function StockAdjustDialog({
@@ -45,6 +46,7 @@ export function StockAdjustDialog({
   reserved,
   available,
   trigger,
+  returnTo,
 }: StockAdjustDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [delta, setDelta] = React.useState<number | "">("");
@@ -77,6 +79,7 @@ export function StockAdjustDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
         <form action={adjustInventory}>
+          <input type="hidden" name="return_to" value={returnTo || "/admin/inventory"} />
           <input type="hidden" name="variant_id" value={variantId} />
           <input type="hidden" name="type" value={movementType} />
 
