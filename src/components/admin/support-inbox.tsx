@@ -12,7 +12,9 @@ import {
   Lock,
   RefreshCw,
   ExternalLink,
+  ArrowLeft,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { SupportConversation, SupportMessage } from "@/lib/support/queries";
 import {
@@ -60,9 +62,12 @@ export function SupportInbox({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolutionNote, setResolutionNote] = useState("");
+  const [mobileView, setMobileView] = useState<"list" | "detail">(activeConversation ? "detail" : "list");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [isActionPending, startActionTransition] = useTransition();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
 
   // Scroll to bottom on message change
@@ -73,7 +78,10 @@ export function SupportInbox({
   // Sync initial messages when activeConversation changes
   useEffect(() => {
     setMessages(initialMessages);
-  }, [initialMessages, activeConversation?.id]);
+    if (activeConversation) {
+      setMobileView("detail");
+    }
+  }, [initialMessages, activeConversation]);
 
   // Realtime subscription for incoming messages with reconnect reconciliation
   useEffect(() => {
@@ -156,17 +164,53 @@ export function SupportInbox({
   // Handle send reply (public or internal note)
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || !activeConversation || isSubmitting) return;
+    const trimmed = content.trim();
+    if (!trimmed || !activeConversation || isSubmitting) return;
 
+    const previousContent = trimmed;
+    setSendError(null);
     setIsSubmitting(true);
+
+    // Optimistic message append so reply appears immediately
+    const tempId = `temp_${Date.now()}`;
+    const optimisticMessage: SupportMessage = {
+      id: tempId,
+      conversation_id: activeConversation.id,
+      sender_type: "STAFF",
+      sender_user_id: currentStaffId,
+      content: trimmed,
+      is_internal: replyMode === "internal",
+      metadata: {},
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
+    setContent("");
+
     const formData = new FormData();
     formData.set("conversation_id", activeConversation.id);
-    formData.set("content", content.trim());
+    formData.set("content", trimmed);
     formData.set("is_internal", replyMode === "internal" ? "true" : "false");
 
-    setContent("");
-    await adminReplySupport(formData);
-    setIsSubmitting(false);
+    try {
+      await adminReplySupport(formData);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (
+        errorMsg === "NEXT_REDIRECT" ||
+        (typeof err === "object" &&
+          err !== null &&
+          "digest" in err &&
+          String((err as { digest?: string }).digest).startsWith("NEXT_REDIRECT"))
+      ) {
+        return;
+      }
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setContent(previousContent);
+      setSendError("Failed to send reply. Please verify connection and retry.");
+    } finally {
+      setIsSubmitting(false);
+      textareaRef.current?.focus();
+    }
   };
 
   // Handle resolve
@@ -209,9 +253,14 @@ export function SupportInbox({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start lg:min-h-[700px]">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start lg:min-h-[700px] w-full min-w-0">
       {/* ── Left Pane: Queue List (~360px) ── */}
-      <div className="lg:col-span-4 space-y-4">
+      <div
+        className={cn(
+          "space-y-4 w-full min-w-0",
+          mobileView === "detail" ? "hidden lg:block lg:col-span-4" : "block lg:col-span-4"
+        )}
+      >
         {/* Search */}
         <div>
           <SearchField
@@ -225,7 +274,7 @@ export function SupportInbox({
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
           <Button
             variant={filter === "open" ? "default" : "outline"}
             size="sm"
@@ -277,6 +326,7 @@ export function SupportInbox({
                 <Link
                   key={conv.id}
                   href={`/admin/support?id=${conv.id}`}
+                  onClick={() => setMobileView("detail")}
                   className={`block p-3 rounded-lg border text-xs transition-all ${
                     isSelected
                       ? "border-foreground bg-accent/40 shadow-sm"
@@ -328,14 +378,32 @@ export function SupportInbox({
       </div>
 
       {/* ── Right Pane: Conversation Details & Composer ── */}
-      <div className="lg:col-span-8">
+      <div
+        className={cn(
+          "lg:col-span-8 w-full min-w-0",
+          mobileView === "list" ? "hidden lg:block" : "block"
+        )}
+      >
         {activeConversation ? (
-          <Card className="flex flex-col min-h-[620px] lg:h-[700px]">
+          <Card className="flex flex-col min-h-[620px] lg:h-[700px] w-full min-w-0 overflow-hidden">
             {/* Conversation Header */}
-            <CardHeader className="p-4 border-b flex-shrink-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
+            <CardHeader className="p-4 border-b flex-shrink-0 min-w-0">
+              {/* Mobile Back Button */}
+              <div className="lg:hidden mb-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMobileView("list")}
+                  className="h-8 gap-1.5 text-xs font-semibold"
+                >
+                  <ArrowLeft className="size-3.5" aria-hidden="true" />
+                  <span>Back to Tickets</span>
+                </Button>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold text-sm">
                       {activeConversation.category.replace(/_/g, " ")}
                     </span>
@@ -348,8 +416,10 @@ export function SupportInbox({
                       </Badge>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-2 mt-1">
-                    <span className="font-mono">Customer: {activeConversation.customer_id}</span>
+                  <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-2 mt-1 min-w-0">
+                    <span className="font-mono truncate max-w-[200px]" title={activeConversation.customer_id}>
+                      Customer: {activeConversation.customer_id}
+                    </span>
                     {activeConversation.order && (
                       <>
                         <span>·</span>
@@ -366,7 +436,7 @@ export function SupportInbox({
                 </div>
 
                 {/* Header Action Buttons */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   {staffMembers && staffMembers.length > 0 && activeConversation.status !== "RESOLVED" && (
                     <select
                       value={activeConversation.assigned_staff_id || ""}
@@ -520,7 +590,7 @@ export function SupportInbox({
 
                     {/* Bubble */}
                     <div
-                      className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 leading-relaxed whitespace-pre-wrap ${
+                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed whitespace-pre-wrap break-words ${
                         isCustomer
                           ? "bg-card border shadow-xs rounded-tl-xs"
                           : isLegacyAutomated
@@ -537,8 +607,8 @@ export function SupportInbox({
             </div>
 
             {/* Admin Composer */}
-            <div className="p-3 border-t bg-card flex-shrink-0 space-y-2">
-              <div className="flex items-center gap-2">
+            <div className="p-3 border-t bg-card flex-shrink-0 space-y-2 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
                 <Button
                   type="button"
                   size="sm"
@@ -560,11 +630,18 @@ export function SupportInbox({
                 </Button>
               </div>
 
-              <form onSubmit={handleSendReply} className="flex items-end gap-2">
+              {sendError && (
+                <div role="alert" className="p-2 rounded-md bg-rose-50 border border-rose-200 text-[11px] text-rose-800 dark:bg-rose-950/20 dark:border-rose-900/60 dark:text-rose-300 font-medium">
+                  {sendError}
+                </div>
+              )}
+
+              <form onSubmit={handleSendReply} className="flex items-end gap-2 min-w-0">
                 <label htmlFor="admin-support-message" className="sr-only">
                   {replyMode === "internal" ? "Internal staff note" : "Message to customer"}
                 </label>
                 <textarea
+                  ref={textareaRef}
                   id="admin-support-message"
                   aria-describedby="admin-support-message-hint"
                   value={content}
@@ -581,7 +658,7 @@ export function SupportInbox({
                       : "Write a public reply to the customer..."
                   }
                   rows={2}
-                  className={`flex-1 min-h-[44px] max-h-32 rounded-md border p-2.5 text-xs ring-offset-background focus:outline-none focus:ring-2 resize-none ${
+                  className={`flex-1 min-w-0 min-h-[44px] max-h-32 rounded-md border p-2.5 text-xs ring-offset-background focus:outline-none focus:ring-2 resize-none ${
                     replyMode === "internal"
                       ? "border-amber-500/50 bg-amber-50/20 dark:bg-amber-950/20 focus:ring-amber-500"
                       : "border-input bg-background focus:ring-ring"

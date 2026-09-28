@@ -130,7 +130,7 @@ export function StockAdjustDialog({
                 value={movementType}
                 onValueChange={(val) => setMovementType(val as "adjustment" | "restock")}
               >
-                <SelectTrigger id="stock-adj-type" className="h-9 text-xs">
+                <SelectTrigger id="stock-adj-type" aria-label="Movement Classification" className="h-9 text-xs">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>

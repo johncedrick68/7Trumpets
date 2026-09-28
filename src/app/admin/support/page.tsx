@@ -1,6 +1,9 @@
 import { requireAdminAal2 } from "@/lib/admin/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/server-log";
 import { SupportInbox } from "@/components/admin/support-inbox";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminErrorState } from "@/components/admin/admin-table";
 import { SupportConversation, SupportMessage } from "@/lib/support/queries";
 import { relationToOne } from "@/lib/data/relations";
 
@@ -23,13 +26,31 @@ export default async function AdminSupportPage({
   const supabase = await createClient();
 
   // 1. Fetch all support conversations
-  const { data: convData } = await supabase
+  const { data: convData, error: convError } = await supabase
     .from("support_conversations")
     .select(`
       id, customer_id, order_id, category, priority, status, assigned_staff_id, ai_state, summary, last_message_at, resolved_at, created_at,
       orders:order_id (order_number, status, total_minor, fulfillment_method)
     `)
     .order("last_message_at", { ascending: false });
+
+  if (convError) {
+    logServerError("admin.support.load", "database_failure");
+    return (
+      <div className="space-y-6">
+        <AdminPageHeader
+          title="Support Operations Inbox"
+          description="Triage customer inquiries, post internal staff notes, and resolve tickets."
+        />
+        <div className="rounded-xl border border-border bg-card p-6">
+          <AdminErrorState
+            title="Support Inbox Unavailable"
+            description="Unable to load customer support conversations from PostgreSQL. Please check database permissions and retry."
+          />
+        </div>
+      </div>
+    );
+  }
 
   const conversations: SupportConversation[] = (convData || []).map((d) => {
     const raw = d as unknown as Record<string, unknown>;
@@ -69,12 +90,10 @@ export default async function AdminSupportPage({
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-extrabold tracking-tight mb-1">Support Operations Inbox</h1>
-        <p className="text-xs text-muted-foreground max-w-2xl">
-          Triage customer inquiries, post internal staff notes, and resolve tickets.
-        </p>
-      </header>
+      <AdminPageHeader
+        title="Support Operations Inbox"
+        description="Triage customer inquiries, post internal staff notes, and resolve tickets."
+      />
 
       <SupportInbox
         conversations={conversations}

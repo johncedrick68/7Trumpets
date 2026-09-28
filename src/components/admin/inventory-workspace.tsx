@@ -239,7 +239,7 @@ export function InventoryWorkspace({
 
           {/* Category Filter */}
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="h-9 w-full sm:w-[180px] text-xs">
+            <SelectTrigger aria-label="Filter inventory by category" className="h-9 w-full sm:w-[180px] text-xs">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -254,7 +254,7 @@ export function InventoryWorkspace({
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-full sm:w-[160px] text-xs">
+            <SelectTrigger aria-label="Filter inventory by stock level" className="h-9 w-full sm:w-[160px] text-xs">
               <SelectValue placeholder="All Stock Levels" />
             </SelectTrigger>
             <SelectContent>

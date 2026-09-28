@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Lock, Store, Unlock } from "lucide-react";
+import { AlertCircle, CheckCircle2, Lock, Unlock } from "lucide-react";
 
 import { requireAdminAal2 } from "@/lib/admin/auth";
 import { formatMinorUnitsToPHP } from "@/lib/money";
@@ -8,6 +8,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getStoreSetting } from "@/lib/settings/queries";
 import { relationToMany, relationToOne } from "@/lib/data/relations";
 import { PosTerminal, PosProduct, PosCategory, ActiveSessionInfo } from "@/components/admin/pos-terminal";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminErrorState } from "@/components/admin/admin-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,7 +82,20 @@ export default async function AdminPosPage({
 
   if (productsRes.error || categoriesRes.error) {
     logServerError("admin.pos.load", "database_failure");
-    throw new Error("POS_UNAVAILABLE");
+    return (
+      <div className="space-y-6">
+        <AdminPageHeader
+          title="Point of Sale"
+          description="In-person checkout, cash drawer reconciliation & instant stock deduction."
+        />
+        <div className="rounded-xl border border-border bg-card p-6">
+          <AdminErrorState
+            title="Point of Sale Unavailable"
+            description="Could not query retail products or categories from PostgreSQL. Please check database connection and retry."
+          />
+        </div>
+      </div>
+    );
   }
 
   // Format products for PosTerminal
@@ -139,102 +154,92 @@ export default async function AdminPosPage({
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Counter Operations · Register Shift
-          </p>
-          <h1 className="admin-h1 text-foreground flex items-center gap-2 mt-1">
-            <Store className="size-7 text-primary" />
-            Point of Sale
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Cashier: <strong className="text-foreground">{adminCtx.email}</strong> · In-person checkout, cash drawer reconciliation &amp; instant stock deduction.
-          </p>
-        </div>
-
-        {/* Register Session Controls */}
-        <div className="flex items-center gap-2">
-          {activeSession ? (
-            <details className="relative">
-              <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-md border border-emerald-600/30 bg-emerald-50 px-3 font-mono text-xs font-medium text-emerald-800 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
-                <Lock className="size-3.5" />
-                Close Shift ({formatMinorUnitsToPHP(activeSession.expected_cash_minor)})
-              </summary>
-              <div className="absolute right-0 mt-2 w-80 p-4 bg-background border border-border shadow-xl rounded-lg z-30 animate-in fade-in zoom-in-95 space-y-3">
-                <h3 className="font-bold text-sm">Close Cashier Shift</h3>
-                <p className="text-xs text-muted-foreground">
-                  Expected cash in drawer based on float and sales: <strong>{formatMinorUnitsToPHP(activeSession.expected_cash_minor)}</strong>.
-                </p>
-                <form action={closeRegisterSessionAction} className="space-y-3">
-                  <input type="hidden" name="session_id" value={activeSession.id} />
-                  <div>
-                    <Label htmlFor="close_actual_cash" className="text-xs">Counted Cash in Drawer (Centavos)</Label>
-                    <Input
-                      id="close_actual_cash"
-                      name="actual_cash_minor"
-                      type="number"
-                      defaultValue={activeSession.expected_cash_minor}
-                      className="h-8 text-xs font-mono mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="close_notes" className="text-xs">Shift Close Notes</Label>
-                    <Input
-                      id="close_notes"
-                      name="notes"
-                      placeholder="e.g. Shift balanced clean"
-                      className="h-8 text-xs mt-1"
-                    />
-                  </div>
-                  <Button type="submit" variant="destructive" size="sm" className="w-full text-xs">
-                    Confirm Close Register Drawer
-                  </Button>
-                </form>
-              </div>
-            </details>
-          ) : (
-            <details className="relative">
-              <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-md bg-primary px-3 font-mono text-xs font-medium text-primary-foreground shadow-xs hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
-                <Unlock className="size-3.5" />
-                Open Register Drawer
-              </summary>
-              <div className="absolute right-0 mt-2 w-80 p-4 bg-background border border-border shadow-xl rounded-lg z-30 animate-in fade-in zoom-in-95 space-y-3">
-                <h3 className="font-bold text-sm">Open Register Shift</h3>
-                <p className="text-xs text-muted-foreground">
-                  Enter the starting petty cash float in the drawer.
-                </p>
-                <form action={openRegisterSessionAction} className="space-y-3">
-                  <div>
-                    <Label htmlFor="open_cash_minor" className="text-xs">Starting Float (Centavos, e.g. 200000 = ₱2,000)</Label>
-                    <Input
-                      id="open_cash_minor"
-                      name="opening_cash_minor"
-                      type="number"
-                      defaultValue="200000"
-                      className="h-8 text-xs font-mono mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="open_notes" className="text-xs">Notes (Optional)</Label>
-                    <Input
-                      id="open_notes"
-                      name="notes"
-                      placeholder="e.g. Morning shift float"
-                      className="h-8 text-xs mt-1"
-                    />
-                  </div>
-                  <Button type="submit" size="sm" className="w-full text-xs">
-                    Start Shift &amp; Open Drawer
-                  </Button>
-                </form>
-              </div>
-            </details>
-          )}
-        </div>
-      </header>
+      <AdminPageHeader
+        title="Point of Sale"
+        description={`Cashier: ${adminCtx.email} · In-person checkout, cash drawer reconciliation & instant stock deduction.`}
+        actions={
+          <div className="flex items-center gap-2">
+            {activeSession ? (
+              <details className="relative">
+                <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-lg border border-emerald-600/30 bg-emerald-50 px-3 font-mono text-xs font-semibold text-emerald-800 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
+                  <Lock className="size-3.5" />
+                  Close Shift ({formatMinorUnitsToPHP(activeSession.expected_cash_minor)})
+                </summary>
+                <div className="absolute right-0 mt-2 w-80 p-4 bg-background border border-border shadow-xl rounded-xl z-30 animate-in fade-in zoom-in-95 space-y-3">
+                  <h3 className="font-bold text-sm">Close Cashier Shift</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Expected cash in drawer based on float and sales: <strong>{formatMinorUnitsToPHP(activeSession.expected_cash_minor)}</strong>.
+                  </p>
+                  <form action={closeRegisterSessionAction} className="space-y-3">
+                    <input type="hidden" name="session_id" value={activeSession.id} />
+                    <div>
+                      <Label htmlFor="close_actual_cash" className="text-xs">Counted Cash in Drawer (Centavos)</Label>
+                      <Input
+                        id="close_actual_cash"
+                        name="actual_cash_minor"
+                        type="number"
+                        defaultValue={activeSession.expected_cash_minor}
+                        className="h-8 text-xs font-mono mt-1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="close_notes" className="text-xs">Shift Close Notes</Label>
+                      <Input
+                        id="close_notes"
+                        name="notes"
+                        placeholder="e.g. Shift balanced clean"
+                        className="h-8 text-xs mt-1"
+                      />
+                    </div>
+                    <Button type="submit" variant="destructive" size="sm" className="w-full text-xs">
+                      Confirm Close Register Drawer
+                    </Button>
+                  </form>
+                </div>
+              </details>
+            ) : (
+              <details className="relative">
+                <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-lg bg-primary px-3 font-mono text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
+                  <Unlock className="size-3.5" />
+                  Open Register Drawer
+                </summary>
+                <div className="absolute right-0 mt-2 w-80 p-4 bg-background border border-border shadow-xl rounded-xl z-30 animate-in fade-in zoom-in-95 space-y-3">
+                  <h3 className="font-bold text-sm">Open Register Shift</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Enter the starting petty cash float in the drawer.
+                  </p>
+                  <form action={openRegisterSessionAction} className="space-y-3">
+                    <div>
+                      <Label htmlFor="open_cash_minor" className="text-xs">Starting Float (Centavos, e.g. 200000 = ₱2,000)</Label>
+                      <Input
+                        id="open_cash_minor"
+                        name="opening_cash_minor"
+                        type="number"
+                        defaultValue="200000"
+                        className="h-8 text-xs font-mono mt-1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="open_notes" className="text-xs">Notes (Optional)</Label>
+                      <Input
+                        id="open_notes"
+                        name="notes"
+                        placeholder="e.g. Morning shift float"
+                        className="h-8 text-xs mt-1"
+                      />
+                    </div>
+                    <Button type="submit" size="sm" className="w-full text-xs">
+                      Start Shift &amp; Open Drawer
+                    </Button>
+                  </form>
+                </div>
+              </details>
+            )}
+          </div>
+        }
+      />
 
       {notice === "register_opened" && (
         <div className="p-4 rounded-lg bg-emerald-500/10 text-emerald-800 border border-emerald-500/20 flex items-center gap-2 text-sm">

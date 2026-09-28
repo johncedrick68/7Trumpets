@@ -16,6 +16,7 @@ const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"]
 const routes = [
   "/admin",
   "/admin/catalog",
+  "/admin/inventory",
   "/admin/orders",
   "/admin/payments",
   "/admin/pos",

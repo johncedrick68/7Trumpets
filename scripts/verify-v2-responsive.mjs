@@ -94,10 +94,13 @@ async function run() {
     const testRoutes = [
       "/admin",
       "/admin/catalog",
+      "/admin/inventory",
       "/admin/orders",
       sampleOrderRoute,
       "/admin/payments",
       "/admin/returns",
+      "/admin/pos",
+      "/admin/support",
     ];
 
     console.log(`Routes to test: ${testRoutes.join(", ")}`);
