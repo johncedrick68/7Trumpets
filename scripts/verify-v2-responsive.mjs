@@ -6,13 +6,16 @@ import { generateTOTP } from "./generate-totp.mjs";
 import { createEphemeralLocalAdmin } from "./local-qa-admin.mjs";
 
 const baseUrl = process.env.QA_BASE_URL || "http://localhost:3000";
+
 const viewports = [
-  { name: "Mobile Small", width: 320, height: 640 },
-  { name: "Mobile Standard", width: 390, height: 844 },
-  { name: "Tablet", width: 768, height: 1024 },
-  { name: "Laptop Small", width: 1280, height: 800 },
-  { name: "Desktop Large", width: 1440, height: 900 },
-  { name: "Ultra-Wide", width: 1920, height: 1080 },
+  { name: "320x568 (Mobile Small)", width: 320, height: 568 },
+  { name: "390x844 (Mobile Standard)", width: 390, height: 844 },
+  { name: "768x1024 (Tablet Portrait)", width: 768, height: 1024 },
+  { name: "820x1180 (Tablet Air)", width: 820, height: 1180 },
+  { name: "1024x768 (Tablet Landscape / Small Desktop)", width: 1024, height: 768 },
+  { name: "1280x800 (Laptop)", width: 1280, height: 800 },
+  { name: "1440x900 (Desktop Large)", width: 1440, height: 900 },
+  { name: "1920x1080 (Ultra-Wide)", width: 1920, height: 1080 },
 ];
 
 function browserExecutable() {
@@ -83,49 +86,65 @@ async function run() {
 
     await authenticate(page, identity);
 
+    // Find a sample order id for order detail check
+    await page.goto(`${baseUrl}/admin/orders`, { waitUntil: "domcontentloaded" });
+    const orderLink = await page.locator('a[href^="/admin/orders/"]').first().getAttribute("href").catch(() => null);
+    const sampleOrderRoute = orderLink || "/admin/orders";
+
+    const testRoutes = [
+      "/admin",
+      "/admin/catalog",
+      "/admin/orders",
+      sampleOrderRoute,
+      "/admin/payments",
+      "/admin/returns",
+    ];
+
+    console.log(`Routes to test: ${testRoutes.join(", ")}`);
+
     for (const vp of viewports) {
       console.log(`\nTesting Viewport: ${vp.name} (${vp.width}x${vp.height})`);
       await page.setViewportSize({ width: vp.width, height: vp.height });
 
-      for (const route of ["/admin", "/admin/catalog"]) {
+      for (const route of testRoutes) {
         await page.goto(`${baseUrl}${route}`, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(600);
+        await page.waitForTimeout(500);
 
         // Check 1: Exactly one H1
         const h1Count = await page.locator("h1").count();
         const h1Text = h1Count > 0 ? await page.locator("h1").first().innerText() : "NONE";
-        assert.equal(h1Count, 1, `${route} at ${vp.width}px must have exactly one H1`);
+        assert.equal(h1Count, 1, `${route} at ${vp.width}px must have exactly one H1 (found ${h1Count})`);
 
         // Check 2: No horizontal window scroll overflow on body
         const isOverflowing = await page.evaluate(() => {
           return document.documentElement.scrollWidth > window.innerWidth;
         });
+        assert.equal(isOverflowing, false, `${route} at ${vp.width}px has horizontal overflow!`);
 
-        // Check 3: Sidebar / Drawer trigger presence
-        const isMobile = vp.width < 768;
+        // Check 3: Sidebar / Drawer trigger presence according to tablet lg (1024px) breakpoint
+        const isDrawerMode = vp.width < 1024;
         const mobileToggleVisible = await page.locator('button[aria-label="Open navigation menu"]').isVisible();
         const desktopSidebarVisible = await page.locator('aside[aria-label="Admin sidebar"]').isVisible();
 
-        if (isMobile) {
-          assert.ok(mobileToggleVisible, `${route} at ${vp.width}px must show mobile navigation toggle`);
+        if (isDrawerMode) {
+          assert.ok(mobileToggleVisible, `${route} at ${vp.width}px must show mobile/tablet drawer trigger`);
         } else {
           assert.ok(desktopSidebarVisible, `${route} at ${vp.width}px must show desktop sidebar`);
         }
 
-        console.log(`  ✓ ${route.padEnd(16)} | H1: "${h1Text}" | Overflow: ${isOverflowing ? "FAIL" : "NONE"} | Nav: OK`);
+        console.log(`  ✓ ${route.padEnd(28)} | H1: "${h1Text.slice(0, 24)}" | Overflow: NONE | Nav: ${isDrawerMode ? "Tablet Drawer" : "Desktop Sidebar"}`);
 
         results.push({
-          viewport: `${vp.name} (${vp.width}px)`,
+          viewport: vp.name,
           route,
-          h1Count,
-          h1Text,
-          overflow: isOverflowing ? "OVERFLOW" : "PASS",
-          navState: isMobile ? "Mobile Drawer Trigger" : "Desktop Sidebar",
+          h1: h1Text.slice(0, 24),
+          overflow: isOverflowing ? "FAIL" : "PASS",
+          navigation: isDrawerMode ? "Tablet/Mobile Drawer" : "Desktop Sidebar",
         });
       }
     }
 
-    console.log("\nAll responsive tests passed successfully across all 6 viewports!");
+    console.log("\nAll responsive matrix tests passed successfully across all 8 viewports!");
     console.table(results);
   } finally {
     await browser.close();

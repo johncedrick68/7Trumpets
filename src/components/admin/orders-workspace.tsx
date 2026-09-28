@@ -6,18 +6,37 @@ import {
   ArrowRight, 
   ExternalLink, 
   Eye, 
-  Inbox, 
   Phone, 
   User, 
+  Truck,
+  CreditCard,
+  Package,
 } from "lucide-react";
 
 import { formatMinorUnitsToPHP } from "@/lib/money";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SearchField } from "@/components/admin/search-field";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AdminTableContainer,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableHead,
+  AdminTableCell,
+  AdminTableEmpty,
+  AdminTablePagination,
+} from "@/components/admin/admin-table";
+import { StatusBadge, type StatusVariant } from "@/components/admin/status-badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { AdminToolbar } from "@/components/admin/admin-toolbar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface OrderItemSummary {
   id: string;
@@ -58,11 +77,70 @@ interface OrdersWorkspaceProps {
   initialStatusFilter?: string;
 }
 
+function getFulfillmentStatusVariant(status: string): StatusVariant {
+  switch (status) {
+    case "COMPLETED":
+    case "DELIVERED":
+      return "success";
+    case "CANCELLED":
+    case "DELIVERY_FAILED":
+      return "danger";
+    case "READY_FOR_SHIPMENT":
+      return "warning";
+    case "CONFIRMED":
+    case "PROCESSING":
+    case "PACKING":
+    case "SHIPPED":
+    case "IN_TRANSIT":
+    case "OUT_FOR_DELIVERY":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+function getPaymentStatusVariant(status: string): StatusVariant {
+  switch (status) {
+    case "PAID":
+      return "success";
+    case "SUBMITTED":
+      return "warning";
+    case "FAILED":
+    case "CANCELLED":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+function getNextActionHint(status: string, paymentMethod?: string, paymentStatus?: string) {
+  if (paymentMethod === "MANUAL_GCASH" && paymentStatus === "SUBMITTED") {
+    return { label: "Review GCash", variant: "warning" as StatusVariant };
+  }
+  switch (status) {
+    case "CONFIRMED":
+      return { label: "Pack Order", variant: "info" as StatusVariant };
+    case "PROCESSING":
+    case "PACKING":
+      return { label: "Prepare Dispatch", variant: "info" as StatusVariant };
+    case "READY_FOR_SHIPMENT":
+      return { label: "Courier Dispatch", variant: "warning" as StatusVariant };
+    case "DELIVERY_FAILED":
+      return { label: "Inspect Handover", variant: "danger" as StatusVariant };
+    default:
+      return null;
+  }
+}
+
+const PAGE_SIZE = 15;
+
 export function OrdersWorkspace({ orders, initialStatusFilter }: OrdersWorkspaceProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedStatus, setSelectedStatus] = React.useState<string>(initialStatusFilter || "ALL");
+  const [paymentFilter, setPaymentFilter] = React.useState<string>("ALL");
   const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   // Selected order details
   const activeOrder = React.useMemo(() => {
@@ -92,249 +170,299 @@ export function OrdersWorkspace({ orders, initialStatusFilter }: OrdersWorkspace
 
       if (!matchesSearch) return false;
 
-      if (selectedStatus === "ALL") return true;
-      if (selectedStatus === "PROCESSING") {
-        return order.status === "PROCESSING" || order.status === "PACKING";
+      // Status filter
+      if (selectedStatus !== "ALL") {
+        if (selectedStatus === "PROCESSING") {
+          if (order.status !== "PROCESSING" && order.status !== "PACKING") return false;
+        } else if (selectedStatus === "IN_TRANSIT") {
+          if (!["SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY"].includes(order.status)) return false;
+        } else if (selectedStatus === "COMPLETED") {
+          if (!["DELIVERED", "COMPLETED"].includes(order.status)) return false;
+        } else if (order.status !== selectedStatus) {
+          return false;
+        }
       }
-      if (selectedStatus === "IN_TRANSIT") {
-        return order.status === "SHIPPED" || order.status === "IN_TRANSIT" || order.status === "OUT_FOR_DELIVERY";
+
+      // Payment filter
+      if (paymentFilter !== "ALL") {
+        const primaryPayment = order.payments?.[0];
+        if (paymentFilter === "PAID" && primaryPayment?.status !== "PAID") return false;
+        if (paymentFilter === "SUBMITTED" && primaryPayment?.status !== "SUBMITTED") return false;
+        if (paymentFilter === "UNPAID" && (primaryPayment?.status === "PAID" || primaryPayment?.status === "SUBMITTED")) return false;
       }
-      if (selectedStatus === "COMPLETED") {
-        return order.status === "DELIVERED" || order.status === "COMPLETED";
-      }
-      return order.status === selectedStatus;
+
+      return true;
     });
-  }, [orders, selectedStatus, searchQuery]);
+  }, [orders, selectedStatus, paymentFilter, searchQuery]);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedStatus, paymentFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const paginatedOrders = React.useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredOrders.slice(start, start + PAGE_SIZE);
+  }, [filteredOrders, currentPage]);
 
   const openDrawer = (orderId: string) => {
     setSelectedOrderId(orderId);
     setIsSheetOpen(true);
   };
 
-  const getStatusVariant = (status: string) => {
-    if (status === "COMPLETED" || status === "DELIVERED") return "default";
-    if (status === "CANCELLED" || status === "DELIVERY_FAILED") return "destructive";
-    if (status === "CONFIRMED") return "secondary";
-    return "outline";
-  };
+  const hasActiveFilters = searchQuery !== "" || selectedStatus !== "ALL" || paymentFilter !== "ALL";
 
   return (
-    <div className="space-y-6">
-      {/* ── Filter & Search Toolbar ── */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <SearchField
-              placeholder="Search orders, customers, tracking…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onClear={() => setSearchQuery("")}
-              aria-label="Search orders"
-            />
-          </div>
+    <div className="space-y-4">
+      {/* ── TailAdmin Operational Toolbar ── */}
+      <AdminToolbar className="flex-col md:flex-row gap-3">
+        <div className="flex-1 w-full md:max-w-md">
+          <SearchField
+            placeholder="Search order #, customer, phone, tracking, reference…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery("")}
+            aria-label="Search orders"
+          />
         </div>
 
-        {/* Status Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {[
-            { key: "ALL", label: "All Orders" },
-            { key: "CONFIRMED", label: "Confirmed" },
-            { key: "PROCESSING", label: "Processing / Packing" },
-            { key: "READY_FOR_SHIPMENT", label: "Ready for Shipment" },
-            { key: "IN_TRANSIT", label: "In Transit" },
-            { key: "DELIVERY_FAILED", label: "Delivery Failed" },
-            { key: "COMPLETED", label: "Delivered / Completed" },
-          ].map((tab) => (
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* Status Filter */}
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="h-9 text-xs w-[170px]" aria-label="Filter by order status">
+              <SelectValue placeholder="Fulfillment Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+              <SelectItem value="PROCESSING">Processing / Packing</SelectItem>
+              <SelectItem value="READY_FOR_SHIPMENT">Ready for Shipment</SelectItem>
+              <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
+              <SelectItem value="DELIVERY_FAILED">Delivery Failed</SelectItem>
+              <SelectItem value="COMPLETED">Delivered / Completed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Payment Filter */}
+          <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+            <SelectTrigger className="h-9 text-xs w-[150px]" aria-label="Filter by payment status">
+              <SelectValue placeholder="Payment Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Payments</SelectItem>
+              <SelectItem value="PAID">Paid Only</SelectItem>
+              <SelectItem value="SUBMITTED">Awaiting Review</SelectItem>
+              <SelectItem value="UNPAID">Unpaid (COD)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
             <Button
-              key={tab.key}
               type="button"
-              variant={selectedStatus === tab.key ? "default" : "outline"}
+              variant="ghost"
               size="sm"
-              onClick={() => setSelectedStatus(tab.key)}
-              className="h-10 text-xs rounded-lg shrink-0"
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedStatus("ALL");
+                setPaymentFilter("ALL");
+              }}
+              className="h-9 text-xs text-muted-foreground hover:text-foreground"
             >
-              {tab.label}
+              Reset Filters
             </Button>
-          ))}
+          )}
         </div>
-      </div>
+      </AdminToolbar>
 
-      {/* ── Main Orders Workspace ── */}
-      <Card className="border-border shadow-xs">
-        <CardHeader className="py-4 px-6 border-b border-border bg-muted/20 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <Inbox className="size-5" />
-              <span>Orders Queue</span>
-              <Badge variant="secondary" className="font-mono text-xs ml-1">
-                {filteredOrders.length}
-              </Badge>
-            </CardTitle>
-            <CardDescription>Click any order to inspect details in the operational drawer.</CardDescription>
-          </div>
-        </CardHeader>
-
-        {filteredOrders.length === 0 ? (
-          <CardContent className="border-t border-dashed py-16 text-center text-muted-foreground">
-            <Inbox className="size-10 mx-auto mb-2 text-muted-foreground/30" />
-            <p className="text-sm font-medium">No orders match active filter</p>
-            <p className="text-xs mt-1">Try switching status tabs or clearing your search.</p>
-          </CardContent>
-        ) : (
-          <>
-            {/* Mobile Cards (specialized mobile layout) */}
-            <div className="divide-y border-t md:hidden">
-              {filteredOrders.map((order) => {
+      {/* ── Main Orders Data Table ── */}
+      <AdminTableContainer>
+        <AdminTable>
+          <AdminTableHeader>
+            <AdminTableRow>
+              <AdminTableHead align="left" className="w-[130px]">Order #</AdminTableHead>
+              <AdminTableHead align="left">Customer</AdminTableHead>
+              <AdminTableHead align="left">Placed</AdminTableHead>
+              <AdminTableHead align="left">Payment</AdminTableHead>
+              <AdminTableHead align="left">Fulfillment</AdminTableHead>
+              <AdminTableHead align="left">Next Action</AdminTableHead>
+              <AdminTableHead align="right">Total</AdminTableHead>
+              <AdminTableHead align="right" className="w-[140px]">Actions</AdminTableHead>
+            </AdminTableRow>
+          </AdminTableHeader>
+          <AdminTableBody>
+            {paginatedOrders.length === 0 ? (
+              <AdminTableEmpty
+                colSpan={8}
+                title="No orders found"
+                description={
+                  hasActiveFilters
+                    ? "No orders match your active search or status criteria. Try resetting filters."
+                    : "No orders have been recorded in the system yet."
+                }
+                action={
+                  hasActiveFilters ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedStatus("ALL");
+                        setPaymentFilter("ALL");
+                      }}
+                    >
+                      Clear active filters
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : (
+              paginatedOrders.map((order) => {
                 const payment = order.payments?.[0];
+                const actionHint = getNextActionHint(order.status, payment?.method, payment?.status);
+
                 return (
-                  <article
+                  <AdminTableRow
                     key={order.id}
                     onClick={() => openDrawer(order.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openDrawer(order.id);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Inspect order ${order.order_number}`}
-                    className="cursor-pointer space-y-3 p-4 text-left transition-colors hover:bg-muted/20 active:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    className="cursor-pointer"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-mono text-xs font-bold text-foreground">
-                          #{order.order_number}
-                        </p>
-                        <p className="text-sm font-semibold mt-0.5">{order.recipient_name}</p>
-                        <p className="text-xs text-muted-foreground">{order.customer_email}</p>
+                    {/* Order # */}
+                    <AdminTableCell align="left">
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        #{order.order_number}
+                      </span>
+                    </AdminTableCell>
+
+                    {/* Customer Info */}
+                    <AdminTableCell align="left">
+                      <div className="font-semibold text-sm text-foreground">
+                        {order.recipient_name}
                       </div>
-                      <Badge variant={getStatusVariant(order.status)} className="text-[10px] uppercase">
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        {order.customer_email}
+                      </div>
+                    </AdminTableCell>
+
+                    {/* Placed Date */}
+                    <AdminTableCell align="left">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(order.placed_at).toLocaleDateString("en-PH", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </AdminTableCell>
+
+                    {/* Payment Info */}
+                    <AdminTableCell align="left">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-medium text-foreground">
+                          {payment?.method === "MANUAL_GCASH" ? "Manual GCash" : "Cash on Delivery"}
+                        </span>
+                        <StatusBadge
+                          variant={getPaymentStatusVariant(payment?.status ?? "UNPAID")}
+                          dot={false}
+                          className="w-fit text-[10px]"
+                        >
+                          {payment?.status ?? "UNPAID"}
+                        </StatusBadge>
+                      </div>
+                    </AdminTableCell>
+
+                    {/* Fulfillment Status */}
+                    <AdminTableCell align="left">
+                      <StatusBadge variant={getFulfillmentStatusVariant(order.status)}>
                         {order.status.replace(/_/g, " ")}
-                      </Badge>
-                    </div>
+                      </StatusBadge>
+                    </AdminTableCell>
 
-                    <div className="grid grid-cols-2 gap-3 border-y py-2.5 text-xs">
-                      <div>
-                        <p className="text-muted-foreground text-[10px]">Payment</p>
-                        <p className="font-medium mt-0.5">
-                          {payment?.method === "MANUAL_GCASH" ? "GCash" : "COD"} · {payment?.status ?? "UNPAID"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-[10px]">Total</p>
-                        <p className="font-mono font-bold text-foreground mt-0.5">
-                          {formatMinorUnitsToPHP(order.total_minor)}
-                        </p>
-                      </div>
-                    </div>
+                    {/* Action Needed */}
+                    <AdminTableCell align="left">
+                      {actionHint ? (
+                        <StatusBadge variant={actionHint.variant} dot={false} className="text-[10px]">
+                          {actionHint.label}
+                        </StatusBadge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </AdminTableCell>
 
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        {new Date(order.placed_at).toLocaleDateString()}
+                    {/* Total Amount */}
+                    <AdminTableCell align="right">
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        {formatMinorUnitsToPHP(order.total_minor)}
                       </span>
-                      <span className="inline-flex h-8 items-center gap-1 text-xs font-medium text-primary">
-                        <span>Inspect</span>
-                        <ArrowRight className="size-3" />
-                      </span>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                    </AdminTableCell>
 
-            {/* Desktop / Tablet Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[140px]">Order #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Fulfillment Status</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Placed</TableHead>
-                    <TableHead className="text-right w-[140px]">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.map((order) => {
-                    const payment = order.payments?.[0];
-                    return (
-                      <TableRow
-                        key={order.id}
-                        onClick={() => openDrawer(order.id)}
-                        className="cursor-pointer hover:bg-muted/30 transition-colors"
+                    {/* Action Buttons */}
+                    <AdminTableCell align="right">
+                      <div
+                        className="flex items-center justify-end gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <TableCell className="font-mono font-bold text-sm text-foreground">
-                          #{order.order_number}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold text-sm">{order.recipient_name}</div>
-                          <div className="text-xs text-muted-foreground">{order.customer_email}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusVariant(order.status)} className="text-[10px] uppercase">
-                            {order.status.replace(/_/g, " ")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs font-medium">
-                            {payment?.method === "MANUAL_GCASH" ? "Manual GCash" : "Cash on Delivery"}
-                          </div>
-                          <div className="text-[10px] font-mono text-muted-foreground">
-                            {payment?.status ?? "—"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-bold text-sm">
-                          {formatMinorUnitsToPHP(order.total_minor)}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(order.placed_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDrawer(order.id);
-                            }}
-                            className="h-8 text-xs gap-1"
-                          >
-                            <Eye className="size-3.5" />
-                            <span>Quick View</span>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        )}
-      </Card>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDrawer(order.id)}
+                          className="h-8 px-2 text-xs"
+                          aria-label={`Quick view order ${order.order_number}`}
+                        >
+                          <Eye className="size-3.5" aria-hidden="true" />
+                          <span className="sr-only sm:not-sr-only sm:ml-1">View</span>
+                        </Button>
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 text-xs font-semibold"
+                        >
+                          <Link href={`/admin/orders/${order.id}`}>
+                            <span>Manage</span>
+                            <ArrowRight className="size-3 ml-1" aria-hidden="true" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </AdminTableCell>
+                  </AdminTableRow>
+                );
+              })
+            )}
+          </AdminTableBody>
+        </AdminTable>
 
-      {/* ── Order Detail Drawer / Sheet ── */}
+        {filteredOrders.length > 0 && (
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredOrders.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+        )}
+      </AdminTableContainer>
+
+      {/* ── Order Detail Drawer / Sheet (Accessible Sheet Primitive) ── */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent side="right" className="sm:max-w-lg overflow-y-auto p-6 space-y-6">
           {activeOrder && (
             <>
               <SheetHeader className="pb-4 border-b border-border">
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant={getStatusVariant(activeOrder.status)} className="text-[10px] uppercase">
+                  <StatusBadge variant={getFulfillmentStatusVariant(activeOrder.status)}>
                     {activeOrder.status.replace(/_/g, " ")}
-                  </Badge>
+                  </StatusBadge>
                   <span className="font-mono text-xs text-muted-foreground">
                     {new Date(activeOrder.placed_at).toLocaleString()}
                   </span>
                 </div>
-                <SheetTitle className="text-2xl font-extrabold mt-2">
+                <SheetTitle className="text-xl font-bold mt-2">
                   Order #{activeOrder.order_number}
                 </SheetTitle>
-                <SheetDescription>
+                <SheetDescription className="text-xs text-muted-foreground">
                   Operational overview and customer fulfillment details.
                 </SheetDescription>
               </SheetHeader>
@@ -342,7 +470,7 @@ export function OrdersWorkspace({ orders, initialStatusFilter }: OrdersWorkspace
               {/* Customer Contact & Address */}
               <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border text-sm">
                 <div className="flex items-center gap-2 font-bold text-foreground">
-                  <User className="size-4 text-primary" />
+                  <User className="size-4 text-foreground" />
                   <span>Customer &amp; Delivery</span>
                 </div>
                 <div className="text-xs space-y-1 text-muted-foreground">
@@ -366,25 +494,31 @@ export function OrdersWorkspace({ orders, initialStatusFilter }: OrdersWorkspace
 
               {/* Payment Info */}
               <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-2 text-sm">
-                <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
-                  Payment Status
-                </p>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">
-                    {activeOrder.payments?.[0]?.method === "MANUAL_GCASH" ? "Manual GCash" : "Cash on Delivery"}
-                  </span>
-                  <Badge variant="outline" className="font-mono text-xs uppercase">
+                  <div className="flex items-center gap-2 font-bold text-foreground text-xs uppercase tracking-wider font-mono">
+                    <CreditCard className="size-3.5" />
+                    <span>Payment Status</span>
+                  </div>
+                  <StatusBadge
+                    variant={getPaymentStatusVariant(activeOrder.payments?.[0]?.status ?? "UNPAID")}
+                    dot={false}
+                    className="text-[10px]"
+                  >
                     {activeOrder.payments?.[0]?.status ?? "UNPAID"}
-                  </Badge>
+                  </StatusBadge>
                 </div>
+                <p className="text-xs text-foreground font-medium">
+                  Method: {activeOrder.payments?.[0]?.method === "MANUAL_GCASH" ? "Manual GCash" : "Cash on Delivery"}
+                </p>
               </div>
 
               {/* Shipment & Tracking Details */}
               {activeOrder.shipments && activeOrder.shipments.length > 0 && activeOrder.shipments[0].tracking_number && (
                 <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-2 text-sm">
-                  <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
-                    Courier Dispatch ({activeOrder.shipments[0].provider})
-                  </p>
+                  <div className="flex items-center gap-2 font-bold text-foreground text-xs uppercase tracking-wider font-mono">
+                    <Truck className="size-3.5" />
+                    <span>Courier Dispatch ({activeOrder.shipments[0].provider})</span>
+                  </div>
                   <p className="font-mono font-bold text-sm text-foreground select-all">
                     {activeOrder.shipments[0].tracking_number}
                   </p>
@@ -394,9 +528,10 @@ export function OrdersWorkspace({ orders, initialStatusFilter }: OrdersWorkspace
               {/* Items List */}
               {activeOrder.order_items && activeOrder.order_items.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
-                    Items ({activeOrder.order_items.length})
-                  </p>
+                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
+                    <Package className="size-3.5" />
+                    <span>Items ({activeOrder.order_items.length})</span>
+                  </div>
                   <div className="divide-y divide-border border rounded-xl overflow-hidden text-sm">
                     {activeOrder.order_items.map((item) => (
                       <div key={item.id} className="p-3 flex justify-between items-center bg-card">
@@ -425,7 +560,7 @@ export function OrdersWorkspace({ orders, initialStatusFilter }: OrdersWorkspace
 
               {/* Action Buttons */}
               <div className="pt-4 border-t border-border flex flex-col gap-2">
-                <Button asChild size="lg" className="w-full font-bold h-12 gap-2 shadow-md">
+                <Button asChild size="lg" className="w-full font-bold h-11 gap-2">
                   <Link href={`/admin/orders/${activeOrder.id}`}>
                     <span>Open Full Order Operations</span>
                     <ExternalLink className="size-4" />

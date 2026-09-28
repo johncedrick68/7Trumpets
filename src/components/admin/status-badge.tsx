@@ -2,6 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 export type StatusBadgeVariant = "success" | "warning" | "danger" | "info" | "neutral";
+export type StatusVariant = StatusBadgeVariant;
 
 interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: StatusBadgeVariant;

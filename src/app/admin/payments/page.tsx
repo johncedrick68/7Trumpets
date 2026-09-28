@@ -11,7 +11,16 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AdminTableContainer,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableHead,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+} from "@/components/admin/admin-table";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { 
   PaymentReviewWorkspace, 
   PaymentSubmissionItem, 
@@ -215,58 +224,64 @@ export default async function AdminPaymentsPage({
                 </article>
               ))}
             </div>
-            <div className="hidden border-t md:block md:overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[160px]">Order</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Payment State</TableHead>
-                    <TableHead>Expired At</TableHead>
-                    <TableHead className="text-center">Active Holds</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <AdminTableContainer className="border-0 rounded-none shadow-none">
+              <AdminTable>
+                <AdminTableHeader>
+                  <AdminTableRow>
+                    <AdminTableHead align="left" className="w-[160px]">Order</AdminTableHead>
+                    <AdminTableHead align="left">Customer</AdminTableHead>
+                    <AdminTableHead align="right">Amount</AdminTableHead>
+                    <AdminTableHead align="left">Payment State</AdminTableHead>
+                    <AdminTableHead align="left">Expired At</AdminTableHead>
+                    <AdminTableHead align="right">Active Holds</AdminTableHead>
+                    <AdminTableHead align="right">Action</AdminTableHead>
+                  </AdminTableRow>
+                </AdminTableHeader>
+                <AdminTableBody>
                   {expiredList.map((exp) => (
-                    <TableRow key={exp.payment_id}>
-                      <TableCell>
-                        <Link href={`/admin/orders/${exp.order_id}`} className="font-medium hover:underline text-primary font-mono text-sm">
-                          {exp.order_number}
+                    <AdminTableRow key={exp.payment_id}>
+                      <AdminTableCell align="left">
+                        <Link href={`/admin/orders/${exp.order_id}`} className="font-semibold hover:underline text-foreground font-mono text-sm">
+                          #{exp.order_number}
                         </Link>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm font-medium">{exp.recipient_name}</div>
+                      </AdminTableCell>
+                      <AdminTableCell align="left">
+                        <div className="text-sm font-semibold text-foreground">{exp.recipient_name}</div>
                         <div className="text-xs text-muted-foreground">{exp.customer_email}</div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatMinorUnitsToPHP(exp.amount_minor)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
+                      </AdminTableCell>
+                      <AdminTableCell align="right">
+                        <span className="font-mono font-bold text-sm text-foreground">
+                          {formatMinorUnitsToPHP(exp.amount_minor)}
+                        </span>
+                      </AdminTableCell>
+                      <AdminTableCell align="left">
+                        <StatusBadge variant="danger" dot={false} className="text-[10px]">
                           {exp.payment_status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {new Date(exp.reservation_expires_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-center font-mono text-xs">
-                        {exp.active_reservation_count} item(s)
-                      </TableCell>
-                      <TableCell className="text-right">
+                        </StatusBadge>
+                      </AdminTableCell>
+                      <AdminTableCell align="left">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(exp.reservation_expires_at).toLocaleString("en-PH")}
+                        </span>
+                      </AdminTableCell>
+                      <AdminTableCell align="right">
+                        <span className="font-mono text-xs text-foreground font-semibold">
+                          {exp.active_reservation_count} item(s)
+                        </span>
+                      </AdminTableCell>
+                      <AdminTableCell align="right">
                         <form action={expireGcashPayment}>
                           <input type="hidden" name="payment_id" value={exp.payment_id} />
-                          <Button type="submit" variant="destructive" size="sm" className="h-8 text-xs">
+                          <Button type="submit" variant="destructive" size="sm" className="h-8 text-xs font-semibold">
                             Expire &amp; Release Stock
                           </Button>
                         </form>
-                      </TableCell>
-                    </TableRow>
+                      </AdminTableCell>
+                    </AdminTableRow>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
+                </AdminTableBody>
+              </AdminTable>
+            </AdminTableContainer>
           </>
         )}
       </Card>

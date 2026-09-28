@@ -23,6 +23,7 @@ import { formatMinorUnitsToPHP } from "@/lib/money";
 import { approveGcashSubmission, rejectGcashSubmission, expireGcashPayment } from "@/lib/admin/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SearchField } from "@/components/admin/search-field";
@@ -278,9 +279,9 @@ export function PaymentReviewWorkspace({
                       </span>
                       <p className="text-xs text-muted-foreground mt-0.5">{exp.customer_email}</p>
                     </div>
-                    <Badge variant="destructive" className="font-mono text-[10px]">
+                    <StatusBadge variant="danger" dot={false} className="text-[10px]">
                       EXPIRED
-                    </Badge>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-border">
                     <span className="font-mono font-bold text-foreground">
@@ -332,18 +333,19 @@ export function PaymentReviewWorkspace({
                         {order?.recipient_name || order?.customer_email}
                       </p>
                     </div>
-                    <Badge
+                    <StatusBadge
                       variant={
                         sub.review_status === "APPROVED"
-                          ? "default"
+                          ? "success"
                           : sub.review_status === "REJECTED"
-                          ? "destructive"
-                          : "secondary"
+                          ? "danger"
+                          : "warning"
                       }
-                      className="font-mono text-[10px] shrink-0 uppercase tracking-wide"
+                      dot={false}
+                      className="text-[10px]"
                     >
                       {sub.review_status}
-                    </Badge>
+                    </StatusBadge>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between text-xs pt-2 border-t border-border">
