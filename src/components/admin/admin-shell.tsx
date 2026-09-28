@@ -1,97 +1,83 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
-import { useState } from "react";
+import * as React from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { AdminHeader } from "@/components/admin/admin-header";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BrandLogo } from "@/components/brand-logo";
+import { cn } from "@/lib/utils";
 
-type Props = { children: React.ReactNode; email: string; role: "admin" | "super_admin"; aal: string };
-
-const routeNames: Record<string, string> = {
-  "/admin": "Overview",
-  "/admin/pos": "Point of sale",
-  "/admin/orders": "Orders",
-  "/admin/payments": "Payments",
-  "/admin/returns": "Returns",
-  "/admin/customers": "Customers",
-  "/admin/support": "Support inbox",
-  "/admin/catalog": "Catalog",
-  "/admin/settings": "Settings",
-  "/admin/audit": "Audit log",
-  "/admin/users": "Staff & Roles",
-};
-
-function currentRouteName(pathname: string) {
-  const route = Object.keys(routeNames)
-    .sort((a, b) => b.length - a.length)
-    .find((item) => (item === "/admin" ? pathname === item : pathname.startsWith(item)));
-  return route ? routeNames[route] : "Operations";
+interface AdminShellProps {
+  children: React.ReactNode;
+  email: string;
+  role: "cashier" | "admin" | "super_admin";
+  aal: string;
 }
 
-function Brand() {
-  return (
-    <Link
-      href="/admin"
-      aria-label="1968 Clothing operations home"
-      className="inline-flex min-h-11 items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <BrandLogo variant="admin" priority />
-    </Link>
-  );
-}
-
-export function AdminShell({ children, email, role, aal }: Props) {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+export function AdminShell({ children, email, role, aal }: AdminShellProps) {
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      {/* Desktop Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-background md:flex">
-        <div className="flex h-16 shrink-0 items-center border-b px-6">
-          <Brand />
-        </div>
-        <AdminSidebar email={email} role={role} aal={aal} />
-      </aside>
+    <div className="min-h-screen bg-muted/20 text-foreground flex">
+      {/* Desktop Fixed Sidebar */}
+      <div className="hidden md:flex shrink-0">
+        <AdminSidebar
+          email={email}
+          role={role}
+          aal={aal}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+          className={cn(
+            "fixed inset-y-0 left-0 z-30",
+            sidebarCollapsed ? "w-20" : "w-64"
+          )}
+        />
+      </div>
 
-      {/* Mobile Top Header */}
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-11" aria-label="Open admin navigation">
-              <Menu className="size-5" aria-hidden="true" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[min(88vw,20rem)] gap-0 p-0" showCloseButton={false}>
-            <SheetHeader className="flex h-16 shrink-0 flex-row items-center border-b px-5 py-0">
-              <SheetTitle className="sr-only">Admin navigation</SheetTitle>
-              <SheetDescription className="sr-only">Navigate the 1968 Clothing operations workspace.</SheetDescription>
-              <Brand />
-            </SheetHeader>
-            <AdminSidebar email={email} role={role} aal={aal} onNavigate={() => setOpen(false)} />
-          </SheetContent>
-        </Sheet>
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Operations</p>
-          <p className="truncate text-sm font-semibold">{currentRouteName(pathname)}</p>
-        </div>
-      </header>
+      {/* Mobile Drawer (Accessible Sheet with Focus Trap & Escape) */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="w-[min(85vw,18rem)] p-0 gap-0" showCloseButton={false}>
+          <SheetHeader className="flex h-16 shrink-0 flex-row items-center border-b border-border px-5 py-0">
+            <SheetTitle className="sr-only">Operations Navigation</SheetTitle>
+            <SheetDescription className="sr-only">
+              Navigate 1968 administration workspaces.
+            </SheetDescription>
+            <div className="flex items-center">
+              <BrandLogo variant="admin" priority />
+            </div>
+          </SheetHeader>
+          <AdminSidebar
+            email={email}
+            role={role}
+            aal={aal}
+            isCollapsed={false}
+            onNavigate={() => setMobileNavOpen(false)}
+            className="w-full border-r-0 h-[calc(100vh-4rem)]"
+          />
+        </SheetContent>
+      </Sheet>
 
-      {/* Main Content Area */}
-      <div className="min-w-0 md:pl-64">
-        <header className="hidden md:flex h-16 items-center border-b bg-background/95 px-8 backdrop-blur sticky top-0 z-20">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Operations Workspace</p>
-            <p className="text-sm font-bold tracking-tight text-foreground">{currentRouteName(pathname)}</p>
+      {/* Main Layout Area */}
+      <div
+        className={cn(
+          "flex-1 flex flex-col min-w-0 transition-all duration-200",
+          sidebarCollapsed ? "md:pl-20" : "md:pl-64"
+        )}
+      >
+        {/* Unified Topbar */}
+        <AdminHeader
+          email={email}
+          role={role}
+          aal={aal}
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+        />
+
+        {/* Content Container */}
+        <main id="main-admin-content" tabIndex={-1} className="flex-1 outline-none">
+          <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 xl:p-10 space-y-6">
+            {children}
           </div>
-        </header>
-
-        <main>
-          <div className="admin-shell-container p-4 sm:p-6 lg:p-8 xl:p-10">{children}</div>
         </main>
       </div>
     </div>
