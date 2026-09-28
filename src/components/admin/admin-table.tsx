@@ -294,3 +294,83 @@ export function AdminTablePagination({
     </div>
   );
 }
+
+export function AdminEmptyState({
+  title = "No records found",
+  description = "No items match your filter criteria or have been created yet.",
+  action,
+  icon: Icon = Inbox,
+  className,
+}: {
+  title?: string;
+  description?: string;
+  action?: React.ReactNode;
+  icon?: React.ComponentType<{ className?: string }>;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-xl border border-dashed border-border bg-card",
+        className
+      )}
+    >
+      <div className="size-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-3">
+        <Icon className="size-6" />
+      </div>
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="text-xs text-muted-foreground max-w-sm mt-1 leading-relaxed">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+export function AdminErrorState({
+  title = "Failed to load records",
+  description = "An unexpected error occurred while communicating with the database.",
+  onRetry,
+  className,
+}: {
+  title?: string;
+  description?: string;
+  onRetry?: () => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/30 dark:bg-rose-950/10",
+        className
+      )}
+    >
+      <div className="size-12 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400 flex items-center justify-center mb-3">
+        <AlertCircle className="size-6" />
+      </div>
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="text-xs text-muted-foreground max-w-sm mt-1 leading-relaxed">{description}</p>
+      {onRetry && (
+        <div className="mt-4">
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            Retry query
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AdminLoadingState({
+  message = "Loading records...",
+  className,
+}: {
+  message?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-3", className)}>
+      <div className="size-8 rounded-full border-2 border-muted-foreground/30 border-t-foreground animate-spin" />
+      <p className="text-xs font-medium text-muted-foreground">{message}</p>
+    </div>
+  );
+}
+

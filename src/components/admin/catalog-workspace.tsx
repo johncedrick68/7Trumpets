@@ -9,9 +9,7 @@ import {
   Layers,
 } from "lucide-react";
 import { formatMinorUnitsToPHP, productImageUrl } from "@/lib/catalog/queries";
-import { adjustInventory } from "@/lib/admin/actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AdminTableContainer,
@@ -30,6 +28,7 @@ import { VariantDialog } from "@/components/admin/variant-dialog";
 import { ProductImageDialog } from "@/components/admin/product-image-dialog";
 import { ProductMediaActions } from "@/components/admin/product-media-actions";
 import { ProductOptionsPanel } from "@/components/admin/product-options-panel";
+import { StockAdjustDialog } from "@/components/admin/stock-adjust-dialog";
 
 export interface Category {
   id: string;
@@ -504,38 +503,17 @@ export function CatalogWorkspace({ products, categories }: CatalogWorkspaceProps
                                               {isOut ? "Out of Stock" : isLow ? `Low (${available})` : "Healthy"}
                                             </StatusBadge>
                                           </td>
-                                          {/* Inline Audit-Traceable Stock Adjust Form */}
+                                          {/* Focused TailAdmin Stock Adjustment Modal */}
                                           <td className="px-3 py-2 text-right">
-                                            <form
-                                              action={adjustInventory}
-                                              className="inline-flex items-center gap-1.5"
-                                            >
-                                              <input type="hidden" name="variant_id" value={variant.id} />
-                                              <input type="hidden" name="type" value="adjustment" />
-                                              <Input
-                                                type="number"
-                                                name="delta"
-                                                required
-                                                placeholder="± qty"
-                                                className="h-8 w-18 text-xs px-2 text-right"
-                                                aria-label="Quantity delta"
-                                              />
-                                              <Input
-                                                name="reason"
-                                                required
-                                                placeholder="Audit reason"
-                                                className="h-8 w-32 sm:w-40 text-xs px-2"
-                                                aria-label="Adjustment reason"
-                                              />
-                                              <Button
-                                                type="submit"
-                                                variant="secondary"
-                                                size="sm"
-                                                className="h-8 px-2 text-xs font-semibold"
-                                              >
-                                                Adjust
-                                              </Button>
-                                            </form>
+                                            <StockAdjustDialog
+                                              productName={product.name}
+                                              variantId={variant.id}
+                                              variantName={variant.name}
+                                              sku={variant.sku}
+                                              onHand={onHand}
+                                              reserved={reserved}
+                                              available={available}
+                                            />
                                           </td>
                                         </tr>
                                       );

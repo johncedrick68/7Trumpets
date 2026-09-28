@@ -151,6 +151,7 @@ export default async function AdminDashboardPage() {
     returnsRes,
     confirmedRes,
     supportRes,
+    registerRes,
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -180,6 +181,7 @@ export default async function AdminDashboardPage() {
     supabase.from("return_requests").select("id", { count: "exact", head: true }).eq("status", "REQUESTED"),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "CONFIRMED"),
     supabase.from("support_conversations").select("id", { count: "exact", head: true }).in("status", ["OPEN", "WAITING_FOR_STAFF"]),
+    supabase.from("register_sessions").select("id, status").eq("status", "OPEN").maybeSingle(),
   ]);
 
   const queryErrors = {
@@ -190,6 +192,7 @@ export default async function AdminDashboardPage() {
     readyToShip: Boolean(readyRes.error),
     audit: Boolean(auditRes.error),
     returns: Boolean(returnsRes.error),
+    register: Boolean(registerRes.error),
   };
 
   if (Object.values(queryErrors).some(Boolean)) {
@@ -295,6 +298,14 @@ export default async function AdminDashboardPage() {
             >
               Processing
             </Link>
+            {failedCount > 0 && (
+              <Link
+                href="/admin/orders?status=DELIVERY_FAILED"
+                className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-foreground underline underline-offset-4"
+              >
+                Delivery Exceptions ({failedCount})
+              </Link>
+            )}
           </div>
         </div>
 
@@ -349,14 +360,14 @@ export default async function AdminDashboardPage() {
             tone={outOfStock.length > 0 ? "danger" : lowStock.length > 0 ? "warning" : "neutral"}
           />
 
-          {/* 6. Delivery Exceptions */}
+          {/* 6. Register Session Status */}
           <StatCard
-            title="Delivery Failures"
-            value={queryErrors.deliveryFailures ? "—" : failedCount}
-            subtitle={queryErrors.deliveryFailures ? "Queue unavailable" : "Failed handover checks"}
-            icon={AlertTriangle}
-            href="/admin/orders?status=DELIVERY_FAILED"
-            tone={failedCount > 0 ? "danger" : "neutral"}
+            title="Register Status"
+            value={queryErrors.register ? "—" : registerRes.data ? "OPEN" : "CLOSED"}
+            subtitle={queryErrors.register ? "Status unavailable" : registerRes.data ? "Active register shift" : "Register closed · Open POS"}
+            icon={ShoppingBag}
+            href="/admin/pos"
+            tone={registerRes.data ? "success" : "neutral"}
           />
         </div>
       </section>
@@ -497,21 +508,21 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Audit Log Stream */}
+        {/* Recent Activity Stream (Small useful subset for Overview; full audit is at /admin/audit) */}
         <Card className="shadow-xs border-border bg-card">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base font-semibold">Audit Activity Stream</CardTitle>
+              <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
               <CardDescription className="text-xs">
-                Latest immutable system and administrative operations.
+                Latest immutable operations (showing 5 most recent).
               </CardDescription>
             </div>
             <Button asChild variant="outline" size="sm">
-              <Link href="/admin/audit">View Full Log</Link>
+              <Link href="/admin/audit">View Full Audit Log</Link>
             </Button>
           </CardHeader>
           <CardContent className="divide-y divide-border">
-            {(auditRes.data ?? []).map((log) => (
+            {(auditRes.data ?? []).slice(0, 5).map((log) => (
               <div key={log.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <div className="size-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
                   <Clock3 className="size-3.5" aria-hidden="true" />

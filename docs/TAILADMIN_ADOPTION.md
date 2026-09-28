@@ -91,10 +91,52 @@ The following generic demo features from TailAdmin are explicitly rejected to pr
 
 ---
 
-## 4. Phase 1 Implementation Scope
+## 4. Foundation Implementation Scope
 
-As specified in Prompt Section 44, Phase 1 establishes the structural core and applies it to:
-1. `/admin` (Overview Dashboard)
+The structural core encompasses:
+1. `/admin` (Overview Operations Center)
 2. `/admin/catalog` (Merchandise Catalog)
+3. Reusable TailAdmin operational primitives (`AdminShell`, `AdminSidebar`, `AdminHeader`, `AdminTable`, `AdminFilterBar`, `AdminToolbar`, `AdminPageHeader`, `StatusBadge`, `StockAdjustDialog`, `StatCard`, loading/empty/error states).
 
-Following validation of these two routes, subsequent phases will port `/admin/orders`, `/admin/payments`, `/admin/returns`, `/admin/pos`, `/admin/customers`, and `/admin/support`.
+---
+
+## 5. Domain Boundary: Catalog vs. Inventory
+
+| Dimension | Catalog (`/admin/catalog`) | Inventory (`/admin/inventory`) |
+| :--- | :--- | :--- |
+| **Operational Question** | *What merchandise do we sell?* | *What physical quantities exist right now?* |
+| **Primary Domain Scope** | Products, categories, slugs, descriptions, published status, option dimensions (Color/Size), media galleries, base variant options. | Physical stock ledger, SKUs, on-hand counts, active reservations, net available stock, safety thresholds, movements. |
+| **Key Actions** | Create Product, Edit Metadata, Upload Media, Add Variant, Archive Product. | Quick Restock (+ batch), Audit Discrepancy (± count write-off), Trace Movement History. |
+| **Status Vocabulary** | `ACTIVE`, `DRAFT`, `ARCHIVED` | `AVAILABLE`, `OUT_OF_STOCK` (Note: `LOW_STOCK` is an operational query heuristic based on `safety_stock`, not a database enum). |
+
+### Canonical Inventory Workspace Contract (`/admin/inventory`)
+- **Query Foundation**:
+  ```sql
+  SELECT i.variant_id, i.on_hand, i.reserved, i.safety_stock,
+         v.sku, v.name as variant_name, v.price_minor, v.status as variant_status,
+         p.name as product_name, p.slug
+  FROM inventory i
+  JOIN product_variants v ON v.id = i.variant_id
+  JOIN products p ON p.id = v.product_id;
+  ```
+- **Standard Columns**:
+  - `Product`: Brand item name and link
+  - `Variant / Size`: Specific sizing or option
+  - `SKU`: Monospace unique stock identifier
+  - `On Hand` (Numeric right): Physical count in warehouse
+  - `Reserved` (Numeric right): In-checkout or pending order reservations
+  - `Available` (Numeric right, bold): Authoritative `(on_hand - reserved)`
+  - `Stock Status`: `Available` (green) vs `Out of Stock` (red) vs `Safety Risk` (amber if `available <= safety_stock`)
+  - `Actions`: `StockAdjustDialog` trigger (`admin_adjust_inventory`)
+
+---
+
+## 6. Product Editor Architecture (`/admin/catalog/[productId]`)
+
+Instead of overloading a single dialog or table row with nested multi-domain mutations, the dedicated product route `/admin/catalog/[productId]` organizes workflows into contextual sections:
+1. **Overview**: Product name, slug, description, category selector, active/draft status.
+2. **Media**: WebP/PNG/JPEG gallery (max 5 MiB), ordering, primary cover selection, file preview.
+3. **Options**: Option definitions (e.g. Size, Color) and attribute values.
+4. **Variants**: Tabular variant generator (Size $\times$ Color), SKU assignment, variant-level pricing.
+5. **Inventory**: Variant-level on-hand stock and safety thresholds. All variant additions inherit product context automatically without redundant product selection prompts.
+

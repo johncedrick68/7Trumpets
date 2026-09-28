@@ -55,7 +55,7 @@ export function AdminHeader({
           variant="ghost"
           size="icon"
           onClick={onOpenMobileNav}
-          className="size-10 md:hidden shrink-0"
+          className="size-10 lg:hidden shrink-0"
           aria-label="Open navigation menu"
         >
           <Menu className="size-5" aria-hidden="true" />
