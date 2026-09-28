@@ -365,15 +365,15 @@ test("Direct Negative RPC Tests: Anon, Customer, AAL1 Admin, and AAL2 Admin boun
 
   const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL") || "http://127.0.0.1:54321";
   const anonKey = getEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
-  const totpSecret = getEnv("DEMO_ADMIN_TOTP_SECRET");
+  const secretKey = getEnv("SUPABASE_SECRET_KEY");
   if (!anonKey) return;
 
   const { createClient } = await import("@supabase/supabase-js");
   const { generateTOTP } = await import("../scripts/generate-totp.mjs");
+  const { createEphemeralLocalAdmin } = await import("../scripts/local-qa-admin.mjs");
 
   const anonClient = createClient(supabaseUrl, anonKey, testClientOptions);
   const customerClient = createClient(supabaseUrl, anonKey, testClientOptions);
-  const adminClient = createClient(supabaseUrl, anonKey, testClientOptions);
 
   // 1. Authenticate Customer
   const { data: custAuth, error: authErr } = await customerClient.auth.signInWithPassword({
@@ -456,54 +456,51 @@ test("Direct Negative RPC Tests: Anon, Customer, AAL1 Admin, and AAL2 Admin boun
   assert.ok(custAdminReopenErr, "Customer must be denied admin_reopen_support");
   assert.match(custAdminReopenErr.message, /administrat|admin role|aal2|42501/i);
 
-  // Boundary 5: AAL1 admin cannot execute admin support RPCs if AAL2 required
-  const { data: adminAuth, error: adminSignInErr } = await adminClient.auth.signInWithPassword({
-    email: "admin.demo@1968.local",
-    password: "Demo1968Admin!",
-  });
-  if (adminSignInErr) return;
-  const adminUserId = adminAuth.user.id;
+  // Boundary 5 & 6: Ephemeral Admin AAL1 rejection and AAL2 elevation
+  if (secretKey) {
+    const ephemeral = await createEphemeralLocalAdmin({ supabaseUrl, secretKey });
+    try {
+      const adminUserId = ephemeral.userId;
+      const adminSessionClient = ephemeral.sessionClient;
 
-  const { error: aal1AssignErr } = await adminClient.rpc("admin_assign_staff", {
-    p_conversation_id: convId,
-    p_staff_id: adminUserId,
-  });
-  assert.ok(aal1AssignErr, "AAL1 Admin must be denied admin_assign_staff");
-  assert.match(aal1AssignErr.message, /administrat|admin role|aal2|42501/i);
+      // Boundary 5: AAL1 admin cannot execute admin support RPCs if AAL2 required
+      const { error: aal1AssignErr } = await adminSessionClient.rpc("admin_assign_staff", {
+        p_conversation_id: convId,
+        p_staff_id: adminUserId,
+      });
+      assert.ok(aal1AssignErr, "AAL1 Admin must be denied admin_assign_staff");
+      assert.match(aal1AssignErr.message, /administrat|admin role|aal2|42501/i);
 
-  const { error: aal1ReopenErr } = await adminClient.rpc("admin_reopen_support", {
-    p_conversation_id: convId,
-  });
-  assert.ok(aal1ReopenErr, "AAL1 Admin must be denied admin_reopen_support");
-  assert.match(aal1ReopenErr.message, /administrat|admin role|aal2|42501/i);
+      const { error: aal1ReopenErr } = await adminSessionClient.rpc("admin_reopen_support", {
+        p_conversation_id: convId,
+      });
+      assert.ok(aal1ReopenErr, "AAL1 Admin must be denied admin_reopen_support");
+      assert.match(aal1ReopenErr.message, /administrat|admin role|aal2|42501/i);
 
-  // Boundary 6: AAL2 admin succeeds
-  if (totpSecret) {
-    const { data: factors, error: factorsErr } = await adminClient.auth.mfa.listFactors();
-    assert.ifError(factorsErr);
-    const verifiedFactor = factors.totp.find((f) => f.status === "verified");
-    assert.ok(verifiedFactor, "Admin must have a verified factor");
+      // Boundary 6: AAL2 admin succeeds
+      const totpCode = generateTOTP(ephemeral.totpSecret);
+      const { data: challengeData, error: challengeErr } = await adminSessionClient.auth.mfa.challengeAndVerify({
+        factorId: ephemeral.factorId,
+        code: totpCode,
+      });
+      assert.ifError(challengeErr);
+      assert.equal(challengeData.user.aal || "aal2", "aal2", "Admin must be elevated to AAL2");
 
-    const totpCode = generateTOTP(totpSecret);
-    const { data: challengeData, error: challengeErr } = await adminClient.auth.mfa.challengeAndVerify({
-      factorId: verifiedFactor.id,
-      code: totpCode,
-    });
-    assert.ifError(challengeErr);
-    assert.equal(challengeData.user.aal || "aal2", "aal2", "Admin must be elevated to AAL2");
+      const { data: aal2AssignRes, error: aal2AssignErr } = await adminSessionClient.rpc("admin_assign_staff", {
+        p_conversation_id: convId,
+        p_staff_id: adminUserId,
+      });
+      assert.ifError(aal2AssignErr);
+      assert.equal(aal2AssignRes, true, "AAL2 Admin can assign staff");
 
-    const { data: aal2AssignRes, error: aal2AssignErr } = await adminClient.rpc("admin_assign_staff", {
-      p_conversation_id: convId,
-      p_staff_id: adminUserId,
-    });
-    assert.ifError(aal2AssignErr);
-    assert.equal(aal2AssignRes, true, "AAL2 Admin can assign staff");
-
-    const { data: aal2ReopenRes, error: aal2ReopenErr } = await adminClient.rpc("admin_reopen_support", {
-      p_conversation_id: convId,
-    });
-    assert.ifError(aal2ReopenErr);
-    assert.equal(aal2ReopenRes, true, "AAL2 Admin can reopen conversation");
+      const { data: aal2ReopenRes, error: aal2ReopenErr } = await adminSessionClient.rpc("admin_reopen_support", {
+        p_conversation_id: convId,
+      });
+      assert.ifError(aal2ReopenErr);
+      assert.equal(aal2ReopenRes, true, "AAL2 Admin can reopen conversation");
+    } finally {
+      await ephemeral.cleanup();
+    }
   }
 });
 

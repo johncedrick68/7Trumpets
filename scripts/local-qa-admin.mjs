@@ -76,6 +76,7 @@ export async function createEphemeralLocalAdmin({ supabaseUrl, secretKey }) {
     }
 
     return {
+      userId,
       email,
       password,
       factorId: enrollment.id,
