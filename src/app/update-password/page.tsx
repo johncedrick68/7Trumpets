@@ -5,9 +5,24 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { AccountNavigation } from "@/components/account-navigation";
 import { AuthSubmitButton } from "@/components/auth-submit-button";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function UpdatePasswordPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
+  const supabase = await createClient();
+  const { data: identity } = await supabase.auth.getUser();
+  if (!identity.user) redirect("/login?next=/update-password");
+
+  const [{ data: assurance }, { data: factors }] = await Promise.all([
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    supabase.auth.mfa.listFactors(),
+  ]);
+  const requiresMfa = factors?.totp.some((factor) => factor.status === "verified") ?? false;
+  if (requiresMfa && assurance?.currentLevel !== "aal2") {
+    redirect("/mfa/verify?next=%2Fupdate-password");
+  }
+
   return (
     <main className="account-container page-section min-h-screen">
       <header className="mb-8">

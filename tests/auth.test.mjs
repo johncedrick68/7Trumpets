@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { safeAdminRedirectPath, safeCustomerRedirectPath, safeRedirectPath } from "../src/lib/auth/redirect.ts";
+import { safeAdminRedirectPath, safeCustomerRedirectPath, safeMfaRedirectPath, safeRedirectPath } from "../src/lib/auth/redirect.ts";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -28,6 +28,23 @@ test("admin redirects remain inside the Admin route tree", () => {
   assert.strictEqual(safeAdminRedirectPath("/admin/orders"), "/admin/orders");
   assert.strictEqual(safeAdminRedirectPath("/account"), "/admin");
   assert.strictEqual(safeAdminRedirectPath("https://evil.example"), "/admin");
+});
+
+test("MFA redirects allow password recovery but reject unrelated customer routes", () => {
+  assert.strictEqual(safeMfaRedirectPath("/update-password"), "/update-password");
+  assert.strictEqual(safeMfaRedirectPath("/admin/users"), "/admin/users");
+  assert.strictEqual(safeMfaRedirectPath("/account"), "/admin");
+  assert.strictEqual(safeMfaRedirectPath("https://evil.example"), "/admin");
+});
+
+test("password updates elevate MFA-enabled sessions before mutation", async () => {
+  const actions = await read("src/lib/auth/actions.ts");
+  const page = await read("src/app/update-password/page.tsx");
+  const verify = await read("src/app/mfa/verify/page.tsx");
+
+  assert.match(actions, /requiresMfa.*currentLevel !== "aal2".*\/mfa\/verify\?next=%2Fupdate-password/s);
+  assert.match(page, /requiresMfa.*currentLevel !== "aal2".*\/mfa\/verify\?next=%2Fupdate-password/s);
+  assert.match(verify, /safeMfaRedirectPath/);
 });
 
 test("customer redirects cannot enter Admin or MFA route trees", () => {

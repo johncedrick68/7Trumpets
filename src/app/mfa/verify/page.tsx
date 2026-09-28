@@ -3,13 +3,13 @@ import { ShieldCheck } from "lucide-react";
 
 import { AdminMfaForm } from "@/components/admin-mfa-form";
 import { getAdminAuthContext } from "@/lib/admin/auth";
-import { safeAdminRedirectPath } from "@/lib/auth/redirect";
+import { safeMfaRedirectPath } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function MfaVerifyPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const next = safeAdminRedirectPath((await searchParams).next, "/admin");
+  const next = safeMfaRedirectPath((await searchParams).next, "/admin");
   const context = await getAdminAuthContext();
   if (!context) redirect(`/login?next=${encodeURIComponent(`/mfa/verify?next=${next}`)}`);
   if (context.aal === "aal2") redirect(next);

@@ -35,6 +35,13 @@ export function safeAdminRedirectPath(value: string | null | undefined, fallback
   return path === "/admin" || path.startsWith("/admin/") ? path : fallback;
 }
 
+export function safeMfaRedirectPath(value: string | null | undefined, fallback = "/admin") {
+  const path = safeRedirectPath(value, fallback);
+  return path === "/update-password" || path.startsWith("/update-password?")
+    ? path
+    : safeAdminRedirectPath(path, fallback);
+}
+
 export function safeCustomerRedirectPath(value: string | null | undefined, fallback = "/account") {
   const path = safeRedirectPath(value, fallback);
   return path === "/admin" || path.startsWith("/admin/") || path.startsWith("/mfa/")

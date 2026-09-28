@@ -123,6 +123,15 @@ export async function updatePassword(formData: FormData) {
   const { data, error: identityError } = await supabase.auth.getUser();
   if (identityError || !data.user) redirect("/login?next=/update-password");
 
+  const [{ data: assurance }, { data: factors }] = await Promise.all([
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    supabase.auth.mfa.listFactors(),
+  ]);
+  const requiresMfa = factors?.totp.some((factor) => factor.status === "verified") ?? false;
+  if (requiresMfa && assurance?.currentLevel !== "aal2") {
+    redirect("/mfa/verify?next=%2Fupdate-password");
+  }
+
   const { error } = await supabase.auth.updateUser({ password: userPassword });
   if (error) redirect("/update-password?error=update");
 
