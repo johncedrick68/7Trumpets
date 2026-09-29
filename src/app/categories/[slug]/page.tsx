@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCategories, getCategoryBySlug, getProducts } from "@/lib/catalog/queries";
-import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product-card";
+import { CollectionRail } from "@/components/collection-rail";
 
 export const dynamic = "force-dynamic";
 
@@ -22,77 +22,59 @@ export default async function CategoryPage({
   }
 
   const products = await getProducts({ categoryId: category.id });
+  const countLabel = `${products.length} ${products.length === 1 ? "product" : "products"}`;
 
   return (
-    <main id="main-content" tabIndex={-1} className="store-container catalog-page min-h-screen">
-      {/* ── Page Header ─────────────────────────────────────────── */}
-      <header className="catalog-page-header">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-          Collection
-        </p>
-        <h1 className="mt-1.5 text-3xl font-black tracking-tight text-foreground sm:text-4xl md:text-5xl">
-          {category.name}
-        </h1>
+    <main id="main-content" tabIndex={-1} className="store-container catalog-page min-h-screen pt-4 pb-20">
+      {/* ── 1. Page Header ───────────────────────────────────────── */}
+      <header className="mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 border-b border-border pb-3">
+          <div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Collection
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground mt-0.5">
+              {category.name}
+            </h1>
+          </div>
+          <div aria-live="polite" className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            {countLabel}
+          </div>
+        </div>
+
         {category.description && (
-          <p className="mt-2 text-muted-foreground max-w-2xl text-sm leading-relaxed">
+          <p className="mt-2 text-xs text-muted-foreground max-w-2xl leading-relaxed">
             {category.description}
           </p>
         )}
       </header>
 
-      {/* ── Category Pills ───────────────────────────────────────── */}
-      {categories.length > 0 && (
-        <nav aria-label="Collections" className="catalog-rail mb-8">
-          <div
-            className="flex w-full flex-nowrap gap-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            role="group"
-            aria-label="Category filters"
-          >
-            <Link
-              href="/products"
-              className="catalog-rail-link"
-            >
-              All Pieces
-            </Link>
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/categories/${cat.slug}`}
-                className={`catalog-rail-link ${
-                  cat.id === category.id
-                    ? "is-active"
-                    : ""
-                }`}
-                aria-current={cat.id === category.id ? "page" : undefined}
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        </nav>
-      )}
+      {/* ── 2. Collection Rail ────────────────────────────────────── */}
+      <CollectionRail
+        categories={categories}
+        activeSlug={category.slug}
+        baseUrl="/products"
+      />
 
-      {/* ── Result Count ─────────────────────────────────────────── */}
-      <div className="mb-6 font-mono text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-4">
-        {products.length} {products.length === 1 ? "piece" : "pieces"} in {category.name}
-      </div>
-
-      {/* ── Empty State ──────────────────────────────────────────── */}
+      {/* ── 3. Product Grid or Empty State ────────────────────────── */}
       {products.length === 0 ? (
-        <div className="py-20 text-center rounded-xl border border-dashed border-border bg-muted/20 p-8 max-w-lg mx-auto">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4">
+        <div className="py-20 text-center rounded-none border border-dashed border-border p-8 max-w-lg mx-auto">
+          <p className="text-base font-bold text-foreground mb-1">
             No products found in this collection
           </p>
-          <Button asChild variant="outline" className="h-11 px-5 font-mono text-xs uppercase tracking-wider">
-            <Link href="/products">
-              Explore All Drops &rarr;
-            </Link>
-          </Button>
+          <p className="text-xs text-muted-foreground mb-6">
+            This collection is currently being prepared for upcoming releases.
+          </p>
+          <Link
+            href="/products"
+            className="inline-flex items-center justify-center min-h-11 px-5 bg-black text-white font-mono text-xs uppercase tracking-wider hover:bg-neutral-800"
+          >
+            Explore all products
+          </Link>
         </div>
       ) : (
-        /* ── Product Grid ────────────────────────────────────────── */
         <ul
-          className="product-grid grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10 md:grid-cols-3 lg:grid-cols-4"
           aria-label={`Products in ${category.name}`}
         >
           {products.map((product, index) => (

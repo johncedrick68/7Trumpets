@@ -19,22 +19,22 @@ export function ProductCard({
     <article className="product-tile group flex h-full flex-col">
       <Link
         href={`/products/${product.slug}`}
-        className="group flex h-full flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="group flex h-full flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-none"
       >
-        {/* Product image container */}
-        <div className="product-tile-image relative aspect-[4/5] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-900">
+        {/* Product Image Container (1:1 square aspect ratio) */}
+        <div className="product-tile-image relative aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-border">
           <Image
             src={imagePath}
             alt=""
             fill
-            sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 24vw, (min-width: 768px) 31vw, (min-width: 640px) 46vw, 50vw"
+            sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
             priority={priority}
-            className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
 
           {!product.is_available && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/55 p-3">
-              <span className="bg-neutral-950 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-3">
+              <span className="bg-black text-white px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest">
                 Out of Stock
               </span>
             </div>
@@ -42,25 +42,27 @@ export function ProductCard({
         </div>
 
         {/* Product Information */}
-        <div className="product-tile-copy flex flex-1 flex-col justify-between">
+        <div className="product-tile-copy flex flex-1 flex-col justify-between pt-2.5 pb-1">
           <div>
-            {categoryName ? <p className="product-tile-category">{categoryName}</p> : null}
-            <h2 className="product-tile-name">
+            {categoryName ? (
+              <p className="product-tile-category text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-0.5">
+                {categoryName}
+              </p>
+            ) : null}
+            <h2 className="product-tile-name text-xs sm:text-sm font-bold text-foreground leading-snug tracking-tight group-hover:underline underline-offset-4 decoration-1">
               {product.name}
             </h2>
-            <p className="product-tile-price">
+            <p className="product-tile-price font-mono text-xs sm:text-sm font-semibold text-foreground mt-1">
               {formatMinorUnitsToPHP(product.min_price_minor)}
             </p>
           </div>
 
-          {/* Action indicator: Choose Options (clothing requires size selection) vs Out of Stock */}
-          <div className="product-tile-state">
-            <span
-              className={product.is_available ? "" : "opacity-70"}
-            >
+          {/* Action indicator: Choose Options vs Out of Stock */}
+          <div className="product-tile-state mt-2.5 flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-muted-foreground border-t border-border/50 pt-2">
+            <span className={product.is_available ? "text-foreground font-semibold" : "text-muted-foreground"}>
               {product.is_available ? "Choose Options" : "Out of Stock"}
             </span>
-            <span aria-hidden="true" className="transition-transform duration-150 group-hover:translate-x-0.5">
+            <span aria-hidden="true" className="transition-transform duration-150 group-hover:translate-x-1">
               &rarr;
             </span>
           </div>

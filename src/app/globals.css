@@ -719,7 +719,7 @@ main[tabindex="-1"]:focus {
 .predictive-search-thumb {
   position: relative;
   width: 64px;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: var(--bg-subtle);
 }

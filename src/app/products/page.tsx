@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getCategories, getProducts, type Category } from "@/lib/catalog/queries";
-import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product-card";
+import { CollectionRail } from "@/components/collection-rail";
 import { CatalogSearch } from "@/components/catalog-search";
+import { CatalogFilters } from "@/components/catalog-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -45,144 +46,75 @@ export default async function ProductsPage(props: {
     availability: availability,
   });
 
-  // Category name lookup for card eyebrows
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
-  // Result count formatting
-  const countLabel = search
-    ? `${products.length} ${products.length === 1 ? "result" : "results"} for “${search}”`
-    : activeCategory
-    ? `${products.length} ${products.length === 1 ? "piece" : "pieces"} in ${activeCategory.name}`
-    : `${products.length} ${products.length === 1 ? "piece" : "pieces"}`;
+  // Retail product count formatting
+  const countLabel = `${products.length} ${products.length === 1 ? "product" : "products"}`;
 
   return (
-    <main id="main-content" tabIndex={-1} className="store-container catalog-page min-h-screen">
+    <main id="main-content" tabIndex={-1} className="store-container catalog-page min-h-screen pt-4 pb-20">
+      {/* ── 1. Retail Page Header & Search ────────────────────────── */}
+      <header className="mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 border-b border-border pb-3">
+          <div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Collection
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground mt-0.5">
+              {activeCategory ? activeCategory.name : "All Products"}
+            </h1>
+          </div>
+          <div aria-live="polite" className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            {countLabel}
+          </div>
+        </div>
 
-      {/* ── Page Header ─────────────────────────────────────────── */}
-      <header className="catalog-page-header">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-          Shop
-        </p>
-        <h1 className="mt-1.5 text-h1 text-foreground">
-          {activeCategory ? activeCategory.name : "1968 Collection"}
-        </h1>
         {activeCategory?.description && (
-          <p className="mt-2 text-sm text-muted-foreground max-w-2xl leading-relaxed">
+          <p className="mt-2 text-xs text-muted-foreground max-w-2xl leading-relaxed">
             {activeCategory.description}
           </p>
         )}
       </header>
 
-      {/* ── Search Bar ───────────────────────────────────────────── */}
-      <CatalogSearch query={search} category={categorySlug} sort={sort} availability={availability} />
-
-      {/* ── Category Navigation Pills ────────────────────────────── */}
-      <nav aria-label="Catalog collections" className="catalog-rail mb-6">
-        <div
-          className="flex w-full flex-nowrap gap-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          role="group"
-          aria-label="Category filters"
-        >
-          <Link
-            href={buildCatalogUrl({ sort, q: search, availability })}
-            className={`catalog-rail-link ${
-              !categorySlug
-                ? "is-active"
-                : ""
-            }`}
-            aria-current={!categorySlug ? "page" : undefined}
-          >
-            All Pieces
-          </Link>
-          {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              href={buildCatalogUrl({ category: cat.slug, sort, q: search, availability })}
-              className={`catalog-rail-link ${
-                categorySlug === cat.slug
-                  ? "is-active"
-                  : ""
-              }`}
-              aria-current={categorySlug === cat.slug ? "page" : undefined}
-            >
-              {cat.name}
-            </Link>
-          ))}
-        </div>
-      </nav>
-
-      {/* ── Controls Row: Result Count + Filter + Sort ────────────── */}
-      <div className="mb-8 flex flex-col items-stretch gap-4 border-b border-border pb-5 md:flex-row md:items-center md:justify-between">
-        {/* Result Count with polite announcement */}
-        <div aria-live="polite" className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          {countLabel}
-        </div>
-
-        {/* Filter & Sort Controls */}
-        <form
-          method="GET"
-          action="/products"
-          className="flex flex-wrap items-center gap-3 sm:gap-4"
-        >
-          {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
-          {search && <input type="hidden" name="q" value={search} />}
-
-          {/* Availability Filter */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="catalog-availability"
-              name="availability"
-              value="in_stock"
-              defaultChecked={availability === "in_stock"}
-              className="size-4.5 rounded border-border accent-foreground cursor-pointer focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <label
-              htmlFor="catalog-availability"
-              className="font-mono text-[11px] font-bold uppercase tracking-wider text-foreground cursor-pointer select-none"
-            >
-              In stock only
-            </label>
-          </div>
-
-          {/* Sort Selection */}
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="catalog-sort"
-              className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap"
-            >
-              Sort by
-            </label>
-            <select
-              id="catalog-sort"
-              name="sort"
-              defaultValue={sort}
-              className="h-10 rounded-md border border-border bg-background px-3 py-1 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-            >
-              <option value="newest">Newest</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-              <option value="name_asc">Name: A–Z</option>
-            </select>
-          </div>
-
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="h-10 px-4 font-mono text-[11px] uppercase tracking-wider"
-          >
-            Apply
-          </Button>
-        </form>
+      {/* ── 2. Integrated Search Bar ──────────────────────────────── */}
+      <div className="mb-6">
+        <CatalogSearch query={search} category={categorySlug} sort={sort} availability={availability} />
       </div>
 
-      {/* ── Active Filters Bar (when filter or search active) ─────── */}
-      {(search || availability === "in_stock") && (
+      {/* ── 3. Collection Rail ────────────────────────────────────── */}
+      <CollectionRail
+        categories={categories}
+        activeSlug={categorySlug}
+        baseUrl="/products"
+        preserveParams={{ sort, q: search, availability }}
+      />
+
+      {/* ── 4. Retail Filter & Sort Toolbar ───────────────────────── */}
+      <CatalogFilters
+        categorySlug={categorySlug}
+        search={search}
+        sort={sort}
+        availability={availability}
+      />
+
+      {/* ── 5. Active Filters Pills ───────────────────────────────── */}
+      {(search || availability === "in_stock" || categorySlug) && (
         <div className="mb-6 flex flex-wrap items-center gap-2 font-mono text-[11px]">
           <span className="text-muted-foreground uppercase tracking-wider mr-1">Active filters:</span>
+          {categorySlug && activeCategory && (
+            <span className="inline-flex items-center gap-1.5 rounded-none border border-border bg-muted/30 px-2.5 py-1 text-foreground">
+              <span>Category: {activeCategory.name}</span>
+              <Link
+                href={buildCatalogUrl({ sort, q: search, availability })}
+                className="text-muted-foreground hover:text-foreground font-bold"
+                aria-label={`Remove category filter ${activeCategory.name}`}
+              >
+                ✕
+              </Link>
+            </span>
+          )}
           {search && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-none border border-border bg-muted/30 px-2.5 py-1 text-foreground">
               <span>Query: “{search}”</span>
               <Link
                 href={buildCatalogUrl({ category: categorySlug, sort, availability })}
@@ -194,113 +126,98 @@ export default async function ProductsPage(props: {
             </span>
           )}
           {availability === "in_stock" && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-none border border-border bg-muted/30 px-2.5 py-1 text-foreground">
               <span>In stock only</span>
               <Link
                 href={buildCatalogUrl({ category: categorySlug, sort, q: search, availability: "all" })}
                 className="text-muted-foreground hover:text-foreground font-bold"
-                aria-label="Remove in stock availability filter"
+                aria-label="Remove in stock filter"
               >
                 ✕
               </Link>
             </span>
           )}
           <Link
-            href={buildCatalogUrl({ category: categorySlug, sort })}
-            className="text-muted-foreground underline underline-offset-4 hover:text-foreground ml-2"
+            href="/products"
+            className="text-muted-foreground underline underline-offset-4 hover:text-foreground ml-2 uppercase tracking-wider"
           >
             Clear all
           </Link>
         </div>
       )}
 
-      {/* ── Empty States & Product Grid ──────────────────────────── */}
+      {/* ── 6. Product Grid or Empty State ────────────────────────── */}
       {products.length === 0 ? (
-        <div className="py-20 text-center rounded-xl border border-dashed border-border bg-muted/20 p-8 max-w-lg mx-auto">
+        <div className="py-20 text-center rounded-none border border-dashed border-border p-8 max-w-lg mx-auto">
           {search ? (
             <>
-              <p className="text-base font-semibold text-foreground mb-1">
-                No pieces found for “{search}”
+              <p className="text-base font-bold text-foreground mb-1">
+                No products found for “{search}”
               </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Try searching with different terms or check for spelling errors.
+              <p className="text-xs text-muted-foreground mb-6">
+                Check for spelling or try searching for another term.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <Button asChild variant="outline" className="h-11 px-5 font-mono text-xs uppercase tracking-wider">
-                  <Link href={buildCatalogUrl({ category: categorySlug, sort, availability })}>
-                    Clear search
-                  </Link>
-                </Button>
-                <Button asChild className="h-11 px-5 font-mono text-xs uppercase tracking-wider">
-                  <Link href="/products">
-                    Browse all pieces
-                  </Link>
-                </Button>
+                <Link
+                  href={buildCatalogUrl({ category: categorySlug, sort, availability })}
+                  className="inline-flex items-center justify-center min-h-11 px-5 border border-border font-mono text-xs uppercase tracking-wider hover:bg-muted"
+                >
+                  Clear search
+                </Link>
+                <Link
+                  href="/products"
+                  className="inline-flex items-center justify-center min-h-11 px-5 bg-black text-white font-mono text-xs uppercase tracking-wider hover:bg-neutral-800"
+                >
+                  Browse all products
+                </Link>
               </div>
             </>
           ) : availability === "in_stock" ? (
             <>
-              <p className="text-base font-semibold text-foreground mb-1">
+              <p className="text-base font-bold text-foreground mb-1">
                 No in-stock pieces currently match your selection
               </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                All pieces in this view are currently out of stock. You can view all archival releases.
+              <p className="text-xs text-muted-foreground mb-6">
+                All pieces in this view are currently out of stock. You can browse the full archival release catalog.
               </p>
-              <Button asChild className="h-11 px-5 font-mono text-xs uppercase tracking-wider">
-                <Link href={buildCatalogUrl({ category: categorySlug, sort, q: search, availability: "all" })}>
-                  Show all pieces (including out of stock)
-                </Link>
-              </Button>
-            </>
-          ) : activeCategory ? (
-            <>
-              <p className="text-base font-semibold text-foreground mb-1">
-                No pieces currently in {activeCategory.name}
-              </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                This collection is being prepared for upcoming drops. Explore other pieces from our catalog.
-              </p>
-              <Button asChild className="h-11 px-5 font-mono text-xs uppercase tracking-wider">
-                <Link href="/products">
-                  Browse all pieces
-                </Link>
-              </Button>
+              <Link
+                href={buildCatalogUrl({ category: categorySlug, sort, q: search, availability: "all" })}
+                className="inline-flex items-center justify-center min-h-11 px-5 bg-black text-white font-mono text-xs uppercase tracking-wider hover:bg-neutral-800"
+              >
+                Show all products (including out of stock)
+              </Link>
             </>
           ) : (
             <>
-              <p className="text-base font-semibold text-foreground mb-1">
-                No products found
+              <p className="text-base font-bold text-foreground mb-1">
+                No products found in this collection
               </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                No catalog pieces match your current filters.
+              <p className="text-xs text-muted-foreground mb-6">
+                This collection is being prepared for upcoming drops.
               </p>
-              <Button asChild className="h-11 px-5 font-mono text-xs uppercase tracking-wider">
-                <Link href="/products">
-                  Reset filters
-                </Link>
-              </Button>
+              <Link
+                href="/products"
+                className="inline-flex items-center justify-center min-h-11 px-5 bg-black text-white font-mono text-xs uppercase tracking-wider hover:bg-neutral-800"
+              >
+                Browse all products
+              </Link>
             </>
           )}
         </div>
       ) : (
-        /* ── Product Grid ────────────────────────────────────────── */
         <ul
-          className="product-grid grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10 md:grid-cols-3 lg:grid-cols-4"
           aria-label="Products"
         >
-          {products.map((product, index) => {
-            const categoryName = product.category_id ? categoryMap[product.category_id] : null;
-
-            return (
-              <li key={product.id} className="h-full">
-                <ProductCard
-                  product={product}
-                  categoryName={categoryName}
-                  priority={index < 4}
-                />
-              </li>
-            );
-          })}
+          {products.map((product, index) => (
+            <li key={product.id} className="h-full">
+              <ProductCard
+                product={product}
+                categoryName={product.category_id ? categoryMap[product.category_id] : null}
+                priority={index < 4}
+              />
+            </li>
+          ))}
         </ul>
       )}
     </main>
