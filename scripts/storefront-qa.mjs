@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import process from "node:process";
 import axe from "axe-core";
 import { chromium } from "playwright-core";
+import { createTenetsStockFixture } from "./local-qa-tenets-stock.mjs";
 
 const baseUrl = process.env.QA_BASE_URL || "http://localhost:3000";
 const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
@@ -58,7 +59,16 @@ async function checkHorizontalOverflow(page, route, viewport) {
 }
 
 async function main() {
-  const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true });
+  const uiTarget = new URL(baseUrl);
+  assert.ok(uiTarget.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(uiTarget.hostname) && !uiTarget.username && !uiTarget.password, 'Stock QA requires a localhost storefront');
+  const availabilityMarkup = html => (html.match(/<input\b[^>]*>/g) || [])
+    .filter(input => input.includes('name="direct_variant_id"'))
+    .map(input => ({ id: input.match(/id="([^"]+)"/)?.[1], disabled: /\bdisabled(?:=|\s|>)/.test(input) }));
+  const originalHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
+  const originalAvailability = availabilityMarkup(originalHtml);
+  assert.ok(originalAvailability.length > 0, 'Original SSR variant controls must be captured before mutation');
+  const stockFixture = createTenetsStockFixture();
+  let browser;
   const findings = [];
   const keyboardEvidence = [];
   const responsiveEvidence = [];
@@ -66,16 +76,25 @@ async function main() {
   const cartCaseMatrixEvidence = [];
 
   try {
+    browser = await chromium.launch({ executablePath: browserExecutable(), headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     const pageErrors = [];
     page.on("pageerror", (err) => {
       // Log as warning only — writing to stderr causes PowerShell NativeCommandError
-      console.warn("[BROWSER_PAGE_ERROR]", err.message);
+      console.warn("[BROWSER_PAGE_ERROR]", page.url(), err.message);
       pageErrors.push(err.message);
     });
     page.on("console", (msg) => {
-      if (msg.type() === "error") console.warn("[BROWSER_CONSOLE_ERROR]", msg.text());
+      if (msg.type() === "error" || /hydration failed|hydration mismatch|react error #418/i.test(msg.text())) {
+        console.warn("[BROWSER_CONSOLE_ERROR]", page.url(), msg.text());
+        pageErrors.push(msg.text());
+      }
     });
+
+    for (const route of ["/", "/products", "/products/rise-to-defend", "/cart", "/login"]) {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: "load" });
+      await page.waitForTimeout(500);
+    }
 
     // ─────────────────────────────────────────────────────────────
     // 1. Accessibility Scans (Axe) across Storefront & PDP Surfaces
@@ -176,18 +195,11 @@ async function main() {
     await page.keyboard.press("Escape");
     await fullscreenDialog.waitFor({ state: "hidden" });
 
-    // 1N. PDP Out-of-Stock Product State (Simulated via client state)
-    await page.route("**/products/tenets-2*", async (route) => {
-      const response = await route.fetch();
-      let body = await response.text();
-      body = body
-        .replaceAll('"is_available":true', '"is_available":false')
-        .replaceAll('\\"is_available\\":true', '\\"is_available\\":false');
-      await route.fulfill({ response, body, headers: response.headers() });
-    });
+    // 1N. Canonical local database stock fixture: SSR and client share truth.
+    const serverHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
+    assert.match(serverHtml, /Out of Stock/, 'SSR must already render unavailable stock');
     await page.goto(`${baseUrl}/products/tenets-2`, { waitUntil: "domcontentloaded" });
     findings.push(await scan(page, "PDP Out-of-Stock Product State (/products/tenets-2)"));
-    await page.unroute("**/products/tenets-2*");
 
     // 1O. Empty Cart (/cart)
     await page.context().clearCookies();
@@ -458,20 +470,11 @@ async function main() {
     caseMatrixEvidence.push({ case: "C. Unavailable variant handling", details: `Strikethrough and disabled styling verified (found ${unavailableLabelCount})`, result: "PASS" });
 
     // Case D: All variants unavailable / Out of stock handling
-    await page.route("**/products/tenets-2*", async (route) => {
-      const response = await route.fetch();
-      let body = await response.text();
-      body = body
-        .replaceAll('"is_available":true', '"is_available":false')
-        .replaceAll('\\"is_available\\":true', '\\"is_available\\":false');
-      await route.fulfill({ response, body, headers: response.headers() });
-    });
     await page.goto(`${baseUrl}/products/tenets-2`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("text=Out of Stock", { timeout: 5000 });
     const outOfStockVisible = await page.locator("text=Out of Stock").first().isVisible();
     assert.ok(outOfStockVisible, "Case D: Out of stock state must be clearly displayed");
     caseMatrixEvidence.push({ case: "D. All variants unavailable", details: "Out of Stock state cleanly presented", result: "PASS" });
-    await page.unroute("**/products/tenets-2*");
 
     // Case E: Product with multiple images
     await page.goto(`${baseUrl}/products/rise-to-defend`, { waitUntil: "domcontentloaded" });
@@ -620,8 +623,14 @@ async function main() {
     assert.match(checkoutHref, /\/login\?next=(%2F|\/)checkout/, "Case M: Unauthenticated checkout must route to login with next=/checkout");
     cartCaseMatrixEvidence.push({ case: "M. Safe checkout redirect", details: "Guarded link targets /login?next=/checkout", result: "PASS" });
 
+    const hydrationErrors = pageErrors.filter(message => /hydration failed|hydration mismatch|didn't match|react error #418/i.test(message));
+    assert.equal(hydrationErrors.length, 0, `Hydration regressions: ${JSON.stringify(hydrationErrors)}`);
+    assert.equal(pageErrors.length, 0, `Unexpected browser errors: ${JSON.stringify(pageErrors)}`);
   } finally {
-    await browser.close();
+    try { await browser?.close(); } finally { stockFixture.restore(); }
+    const restoredHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
+    assert.deepEqual(availabilityMarkup(restoredHtml), originalAvailability, 'Restored SSR availability must equal original');
+    console.log('LOCAL_STOCK_SSR_RESTORATION: PASS');
   }
 
   // ─────────────────────────────────────────────────────────────

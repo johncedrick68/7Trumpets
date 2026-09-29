@@ -3,8 +3,25 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { assertLocalSupabaseUrl } from "../scripts/local-qa-admin.mjs";
+import { assertLocalCustomerTarget } from "../scripts/local-qa-customer.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("stock QA uses a local snapshot and canonical inventory instead of hydration rewriting", async () => {
+  const helper = await read("scripts/local-qa-tenets-stock.mjs");
+  const runner = await read("scripts/storefront-qa.mjs");
+  assert.match(helper, /assertLocalCustomerTarget\(value\)/);
+  assert.match(helper, /qa-tenets-stock-snapshot\.json/);
+  assert.match(helper, /reserved\+i\.safety_stock/);
+  assert.match(helper, /LOCAL_STOCK_QA_RESTORE_MISMATCH/);
+  assert.match(runner, /finally \{ stockFixture\.restore\(\); \}/);
+  assert.doesNotMatch(runner, /route\.fulfill|replaceAll\([^\n]*is_available/);
+});
+
+test("customer fixture rejects remote and disguised loopback targets", () => {
+  assert.equal(assertLocalCustomerTarget("http://127.0.0.1:54321"), "http://127.0.0.1:54321");
+  for (const url of ["https://x.supabase.co", "http://127.0.0.1:54321/other", "http://user@localhost:54321", "http://localhost:54321?remote=1", "http://localhost:8000"]) assert.throws(() => assertLocalCustomerTarget(url));
+});
 
 test("local QA bootstrap accepts only the known loopback Supabase API", () => {
   assert.equal(assertLocalSupabaseUrl("http://127.0.0.1:54321"), "http://127.0.0.1:54321");
