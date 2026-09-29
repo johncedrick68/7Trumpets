@@ -4,6 +4,7 @@ import process from "node:process";
 import axe from "axe-core";
 import { chromium } from "playwright-core";
 import { createTenetsStockFixture } from "./local-qa-tenets-stock.mjs";
+import { checkoutQa } from "./checkout-qa.mjs";
 
 const baseUrl = process.env.QA_BASE_URL || "http://localhost:3000";
 const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
@@ -59,6 +60,8 @@ async function checkHorizontalOverflow(page, route, viewport) {
 }
 
 async function main() {
+  await checkoutQa(baseUrl);
+  if (process.env.QA_CHECKOUT_ONLY === '1') return;
   const uiTarget = new URL(baseUrl);
   assert.ok(uiTarget.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(uiTarget.hostname) && !uiTarget.username && !uiTarget.password, 'Stock QA requires a localhost storefront');
   const availabilityMarkup = html => (html.match(/<input\b[^>]*>/g) || [])
@@ -67,7 +70,10 @@ async function main() {
   const originalHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
   const originalAvailability = availabilityMarkup(originalHtml);
   assert.ok(originalAvailability.length > 0, 'Original SSR variant controls must be captured before mutation');
-  const stockFixture = createTenetsStockFixture();
+  // Ordinary visual QA must not repeat the one-time inventory mutation.
+  // This opt-in is a safety switch, not standing authorization for writes.
+  const skipStock = process.env.QA_ALLOW_STOCK_FIXTURE !== '1' || process.env.QA_SKIP_STOCK === '1';
+  const stockFixture = skipStock ? { restore() {} } : createTenetsStockFixture();
   let browser;
   const findings = [];
   const keyboardEvidence = [];
@@ -196,10 +202,12 @@ async function main() {
     await fullscreenDialog.waitFor({ state: "hidden" });
 
     // 1N. Canonical local database stock fixture: SSR and client share truth.
-    const serverHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
-    assert.match(serverHtml, /Out of Stock/, 'SSR must already render unavailable stock');
-    await page.goto(`${baseUrl}/products/tenets-2`, { waitUntil: "domcontentloaded" });
-    findings.push(await scan(page, "PDP Out-of-Stock Product State (/products/tenets-2)"));
+    if (!skipStock) {
+      const serverHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
+      assert.match(serverHtml, /Out of Stock/, 'SSR must already render unavailable stock');
+      await page.goto(`${baseUrl}/products/tenets-2`, { waitUntil: "domcontentloaded" });
+      findings.push(await scan(page, "PDP Out-of-Stock Product State (/products/tenets-2)"));
+    }
 
     // 1O. Empty Cart (/cart)
     await page.context().clearCookies();
@@ -470,11 +478,15 @@ async function main() {
     caseMatrixEvidence.push({ case: "C. Unavailable variant handling", details: `Strikethrough and disabled styling verified (found ${unavailableLabelCount})`, result: "PASS" });
 
     // Case D: All variants unavailable / Out of stock handling
-    await page.goto(`${baseUrl}/products/tenets-2`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("text=Out of Stock", { timeout: 5000 });
-    const outOfStockVisible = await page.locator("text=Out of Stock").first().isVisible();
-    assert.ok(outOfStockVisible, "Case D: Out of stock state must be clearly displayed");
-    caseMatrixEvidence.push({ case: "D. All variants unavailable", details: "Out of Stock state cleanly presented", result: "PASS" });
+    if (!skipStock) {
+      await page.goto(`${baseUrl}/products/tenets-2`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("text=Out of Stock", { timeout: 5000 });
+      const outOfStockVisible = await page.locator("text=Out of Stock").first().isVisible();
+      assert.ok(outOfStockVisible, "Case D: Out of stock state must be clearly displayed");
+      caseMatrixEvidence.push({ case: "D. All variants unavailable", details: "Out of Stock state cleanly presented", result: "PASS" });
+    } else {
+      caseMatrixEvidence.push({ case: "D. All variants unavailable", details: "Not rerun: no new stock mutation authorized; see b1adb12 evidence", result: "NOT RUN" });
+    }
 
     // Case E: Product with multiple images
     await page.goto(`${baseUrl}/products/rise-to-defend`, { waitUntil: "domcontentloaded" });
@@ -628,9 +640,11 @@ async function main() {
     assert.equal(pageErrors.length, 0, `Unexpected browser errors: ${JSON.stringify(pageErrors)}`);
   } finally {
     try { await browser?.close(); } finally { stockFixture.restore(); }
-    const restoredHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
-    assert.deepEqual(availabilityMarkup(restoredHtml), originalAvailability, 'Restored SSR availability must equal original');
-    console.log('LOCAL_STOCK_SSR_RESTORATION: PASS');
+    if (!skipStock) {
+      const restoredHtml = await (await fetch(`${baseUrl}/products/tenets-2`)).text();
+      assert.deepEqual(availabilityMarkup(restoredHtml), originalAvailability, 'Restored SSR availability must equal original');
+      console.log('LOCAL_STOCK_SSR_RESTORATION: PASS');
+    }
   }
 
   // ─────────────────────────────────────────────────────────────

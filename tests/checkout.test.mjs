@@ -2,8 +2,65 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { checkoutRenderFixture, checkoutSubmitGuardFixture } from "../scripts/checkout-render-fixtures.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("server-rendered COD quotes allow below/exact limit and disable one centavo above", async () => {
+  for (const [subtotal, disabled] of [[84999, false], [85000, false], [85001, true]]) {
+    const { props, html } = await checkoutRenderFixture({ subtotal });
+    assert.equal(props.quotes[0].totalMinor, subtotal + 15000);
+    assert.equal(props.quotes[0].payments.find(p => p.value === 'COD').disabled, disabled);
+    assert.match(html, /name="payment_method"/);
+  }
+});
+
+test("checkout read failures render operational errors, not empty/default checkout", async () => {
+  for (const option of ['settingsError', 'addressError', 'cartError']) {
+    const { html } = await checkoutRenderFixture({ [option]: true });
+    assert.match(html, /temporarily unavailable/);
+    assert.doesNotMatch(html, /name="payment_method"|PLACE ORDER/);
+  }
+});
+
+test("checkout pending presentation disables CTA and announces progress", async () => {
+  const {html} = await checkoutRenderFixture({pending:true});
+  assert.match(html, /type="submit" disabled=""/);
+  assert.match(html, /PLACING ORDER/);
+  assert.match(html, /aria-live="polite"/);
+});
+
+test("actual checkout submit guard permits first valid intent and blocks duplicate/invalid intent", async () => {
+  const {props} = await checkoutRenderFixture();
+  let blocked=0;
+  const event={preventDefault:()=>blocked++};
+  const submit=checkoutSubmitGuardFixture(props);
+  submit(event); assert.equal(blocked,0);
+  submit(event); assert.equal(blocked,1);
+  const missing=await checkoutRenderFixture({noAddress:true});
+  checkoutSubmitGuardFixture(missing.props)(event); assert.equal(blocked,2);
+});
+
+test("checkout missing address, no eligible payment, and stale stock disable order placement", async () => {
+  for (const options of [{noAddress:true}, {noPayment:true,subtotal:85001}, {staleStock:true}]) {
+    const { html } = await checkoutRenderFixture(options);
+    assert.match(html, /type="submit" disabled=""/);
+  }
+});
+
+test("checkout has native named radios, safe summary and no client financial recalculation", async () => {
+  const { html } = await checkoutRenderFixture();
+  assert.match(html, /<fieldset/);
+  assert.match(html, /<legend>Payment/);
+  assert.match(html, /name="address_id"/);
+  assert.match(html, /name="fulfillment_method"/);
+  assert.match(html, /<dl/);
+  const client = await read('src/app/checkout/checkout-form-client.tsx');
+  assert.doesNotMatch(client, /calculateShippingMinor|cod_max_minor|createServiceClient|SUPABASE_SECRET_KEY/);
+  assert.match(client, /useFormStatus/);
+  assert.match(client, /submitted\.current/);
+  assert.match(client, /errorRef\.current\?\.focus/);
+});
 
 test("checkout action uses trusted database RPC checkout_order and service client", async () => {
   const checkoutAction = await read("src/lib/checkout/actions.ts");

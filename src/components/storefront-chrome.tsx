@@ -55,6 +55,15 @@ export function StorefrontChrome({
   }, [searchOpen]);
 
   if (pathname.startsWith("/admin")) return <>{children}</>;
+  // Checkout alone uses quiet transaction chrome. Other surfaces are unchanged.
+  if (pathname === "/checkout") return <>
+    <a href="#main-content" className="skip-link">Skip to main content</a>
+    <header className="border-b border-neutral-200 bg-white"><div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-3 md:px-8">
+      <Link href="/" className="inline-flex min-h-11 items-center" aria-label="1968 Clothing — Home"><BrandLogo variant="header" priority /></Link>
+      <Link href="/cart" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">Back to Cart</Link>
+    </div></header>
+    {children}
+  </>;
   const isAuthRoute = ["/login", "/signup", "/forgot-password", "/update-password"].includes(pathname);
   const shopLinks =
     footerCategories.length > 0
