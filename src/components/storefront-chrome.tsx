@@ -202,7 +202,7 @@ export function StorefrontChrome({
         </div>
 
         <div className="footer-bottom">
-          <p>© {new Date().getFullYear()} 1968 Clothing. All rights reserved.</p>
+          <p suppressHydrationWarning>© {new Date().getFullYear()} 1968 Clothing. All rights reserved.</p>
           <p>Independent clothing for everyday wear.</p>
         </div>
       </footer>
