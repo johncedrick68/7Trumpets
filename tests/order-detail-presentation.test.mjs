@@ -7,7 +7,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const source = readFileSync(new URL('../src/app/orders/[id]/page.tsx', import.meta.url), 'utf8');
-async function render({ variant = 'Size S', queryError = false, missing = false, authenticated = true } = {}) {
+export async function render({ variant = 'Size S', queryError = false, missing = false, authenticated = true } = {}) {
   const calls = [];
   const order = { id: 'existing-order', user_id: 'owner', order_number: 'ORD-QA', status: 'CONFIRMED', fulfillment_method: 'SHIPMENT', total_minor: 64900, subtotal_minor: 49900, shipping_minor: 15000, placed_at: '2026-09-29T11:00:00Z' };
   const rows = {
@@ -74,4 +74,16 @@ test('one useful H1 and non-sensitive page title; no arbitrary autofocus', async
   assert.match(html, /Order #ORD-QA/);
   assert.equal(metadata.title, 'Order details');
   assert.doesNotMatch(source, /autoFocus|headingRef\.focus/);
+});
+test('confirmed timeline keeps readable future labels and existing stage semantics', async () => {
+  const { html } = await render();
+  for (const name of ['Preparing', 'Shipping', 'Arriving', 'Delivered']) {
+    const label = html.match(new RegExp(`<div class="([^"]*)">${name}</div>`));
+    assert.ok(label, `${name} remains visible progress text`);
+    assert.doesNotMatch(label[1], /text-muted-foreground\/50|opacity-/);
+    assert.match(label[1], /text-muted-foreground/);
+  }
+  assert.match(html, /Order confirmed/);
+  assert.match(html, /text-foreground">Confirmed<\/div>/);
+  assert.match(html, /bg-background text-muted-foreground border-muted/);
 });

@@ -243,7 +243,7 @@ export default async function OrderConfirmationPage({
                       <div className={`text-xs font-bold uppercase tracking-widest ${
                         isCurrent ? "text-foreground" : 
                         isPassed ? "text-muted-foreground" : 
-                        "text-muted-foreground/50"
+                        "text-muted-foreground"
                       }`}>
                         {s.name}
                       </div>
