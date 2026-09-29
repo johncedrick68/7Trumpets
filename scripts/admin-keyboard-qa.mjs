@@ -71,6 +71,7 @@ const routes = [
   "/admin/payments",
   "/admin/returns",
   "/admin/support",
+  "/admin/audit",
   "/admin/settings",
   "/admin/pos",
 ];
@@ -145,6 +146,32 @@ try {
     const focused = await focusedEvidence(page);
     assert.equal(focused?.tag, "textarea", "Composer message input must be focusable");
     evidence.push({ route: "/admin/support · Composer textarea", focus: "operable", ariaLabelled: "PASS" });
+  }
+
+  // 4. Audit Inspection Dialog test
+  await page.goto(`${baseUrl}/admin/audit`, { waitUntil: "domcontentloaded" });
+  const inspectTrigger = page.getByRole("button", { name: /inspect/i }).first();
+  if (await inspectTrigger.isVisible()) {
+    await inspectTrigger.focus();
+    await page.keyboard.press("Enter");
+    const inspectDialog = page.getByRole("dialog");
+    await inspectDialog.waitFor({ state: "visible" });
+    assert.ok(await inspectDialog.evaluate((node) => node.contains(document.activeElement)), "Audit dialog must receive focus");
+    await page.keyboard.press("Escape");
+    await inspectDialog.waitFor({ state: "hidden" });
+    assert.ok(await inspectTrigger.evaluate((node) => node === document.activeElement), "Audit dialog close must return focus to trigger");
+    evidence.push({ route: "/admin/audit · Inspection Dialog", enter: "opens", escape: "closes", focusReturn: "PASS" });
+  }
+
+  // 5. Settings Form test
+  await page.goto(`${baseUrl}/admin/settings`, { waitUntil: "domcontentloaded" });
+  const annInput = page.locator("#ann-text");
+  if (await annInput.isVisible()) {
+    await annInput.focus();
+    const focused = await focusedEvidence(page);
+    assert.equal(focused?.tag, "input", "Settings announcement input must be focusable");
+    assert.ok(focused?.focusIndicator, "Settings input must have visible focus indicator");
+    evidence.push({ route: "/admin/settings · Form Input", focus: "operable", focusIndicator: "PASS" });
   }
 
   console.log(JSON.stringify(evidence, null, 2));

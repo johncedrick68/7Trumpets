@@ -1,18 +1,26 @@
 import { notFound } from "next/navigation";
-import { ShieldAlert, Users, XCircle, CheckCircle2, Mail, Clock, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ShieldAlert, Users, Mail, ShieldCheck, Clock, XCircle } from "lucide-react";
 
 import { requireAdminAal2 } from "@/lib/admin/auth";
-import { manageUserRole } from "@/lib/admin/actions";
 import { revokeStaffInvitation } from "@/lib/staff/actions";
 import { logServerError } from "@/lib/server-log";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import {
+  AdminTableContainer,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableHead,
+  AdminTableCell,
+  AdminEmptyState,
+} from "@/components/admin/admin-table";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StaffInviteDialog, ResetMfaDialog } from "@/components/admin/staff-invite-dialog";
+import { RoleRevokeDialog } from "@/components/admin/role-revoke-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +36,7 @@ export default async function AdminUsersPage({
 }) {
   const adminCtx = await requireAdminAal2("/admin/users");
 
-  // Super admin only access
+  // Super admin only access — preserve intentional 404 for ordinary admins
   if (adminCtx.role !== "super_admin") {
     notFound();
   }
@@ -43,15 +51,15 @@ export default async function AdminUsersPage({
     logServerError("admin.roles.list", "database_failure");
     throw new Error("ADMIN_ROLES_UNAVAILABLE");
   }
-  const roleList = userRoles || [];
+  const roleList = (userRoles || []) as Array<{ user_id: string; role: string; created_at: string }>;
 
-  // Count active super admins
+  // Count active super admins to enforce last-super-admin protection
   const superAdminCount = roleList.filter(
-    (r: { role: string }) => r.role === "super_admin"
+    (r) => r.role === "super_admin"
   ).length;
 
   // 2. Fetch profiles for staff users
-  const userIds = roleList.map((r: { user_id: string }) => r.user_id);
+  const userIds = roleList.map((r) => r.user_id);
   const { data: profiles } = userIds.length > 0
     ? await supabase.from("profiles").select("id, display_name, phone").in("id", userIds)
     : { data: [] };
@@ -74,37 +82,46 @@ export default async function AdminUsersPage({
     .from("staff_invitations")
     .select("*")
     .order("created_at", { ascending: false });
-  const inviteList = invitations || [];
+  const inviteList = (invitations || []) as Array<{
+    id: string;
+    email: string;
+    full_name: string;
+    requested_role: string;
+    status: string;
+    created_at: string;
+    expires_at: string;
+  }>;
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight mb-1">Staff & Onboarding Governance</h1>
-          <p className="text-muted-foreground text-xs max-w-2xl">
-            Super Administrator privilege management, team onboarding invitations, individual MFA lifecycle, and role assignments.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <StaffInviteDialog disabled={adminCtx.aal !== "aal2"} />
-        </div>
-      </header>
+      <AdminPageHeader
+        title="Staff & Team Governance"
+        description="Super Administrator privilege management, role delegations, individual MFA lifecycle, and staff onboarding invitations."
+        actions={<StaffInviteDialog disabled={adminCtx.aal !== "aal2"} />}
+      />
 
       {adminCtx.aal !== "aal2" && (
-        <Alert variant="destructive">
-          <ShieldAlert className="h-4 w-4" />
-          <AlertTitle>AAL2 MFA Verification Required</AlertTitle>
-          <AlertDescription className="text-xs">
-            Your current session is <strong>{adminCtx.aal.toUpperCase()}</strong>. Role mutations and staff invitations strictly require active AAL2 re-authentication.
-          </AlertDescription>
-        </Alert>
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive"
+        >
+          <ShieldAlert className="size-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">AAL2 MFA Verification Required</p>
+            <p className="mt-0.5 text-muted-foreground">
+              Your current session level is <strong>{adminCtx.aal.toUpperCase()}</strong>. Role mutations and staff invitations strictly require active AAL2 re-authentication.
+            </p>
+          </div>
+        </div>
       )}
 
       {notice && (
-        <div className="p-3 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400 flex items-center gap-2 text-xs">
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          <span>
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300"
+        >
+          <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="font-medium">
             {notice === "role_updated" && "Role mutation completed and logged."}
             {notice === "invitation_sent" && "Staff onboarding invitation recorded and dispatched."}
             {notice === "invitation_revoked" && "Staff invitation was successfully revoked."}
@@ -114,181 +131,212 @@ export default async function AdminUsersPage({
       )}
 
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 text-destructive border border-destructive/20 flex items-center gap-2 text-xs">
-          <XCircle className="w-4 h-4 flex-shrink-0" />
-          <span>Error: {error}</span>
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-300"
+        >
+          <XCircle className="size-4 shrink-0 text-rose-600 dark:text-rose-400" />
+          <span className="font-medium">Error: {error}</span>
         </div>
       )}
 
-      {/* Active Staff Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Users className="w-4 h-4" /> Active Staff Accounts
-                <Badge variant="secondary" className="font-mono text-xs">{roleList.length}</Badge>
-              </CardTitle>
-              <CardDescription className="text-xs mt-0.5">
-                Staff members authorized for operational access. MFA is enforced on administrative routes.
-              </CardDescription>
-            </div>
+      {/* ── Section 1: Active Staff Accounts ─────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+              <Users className="size-4 text-muted-foreground" />
+              Active Staff Accounts
+              <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-muted-foreground">
+                {roleList.length}
+              </span>
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Authorized team members with operational permissions. MFA is mandatory on administrative surfaces.
+            </p>
           </div>
-        </CardHeader>
+        </div>
 
-        {roleList.length === 0 ? (
-          <CardContent className="text-center py-10 text-xs text-muted-foreground border-t border-dashed">
-            No active staff roles assigned.
-          </CardContent>
-        ) : (
-          <div className="border-t overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-xs">
-                  <TableHead>Staff Member</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>MFA Status</TableHead>
-                  <TableHead>Assigned</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roleList.map((ur: { user_id: string; role: string; created_at: string }) => {
+        <AdminTableContainer>
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableRow>
+                <AdminTableHead className="w-[280px]">Staff Member</AdminTableHead>
+                <AdminTableHead className="w-[160px]">Assigned Role</AdminTableHead>
+                <AdminTableHead className="w-[180px]">MFA Security</AdminTableHead>
+                <AdminTableHead className="w-[140px]">Assigned Date</AdminTableHead>
+                <AdminTableHead className="text-right">Actions</AdminTableHead>
+              </AdminTableRow>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {roleList.length === 0 ? (
+                <AdminTableRow>
+                  <AdminTableCell colSpan={5} className="p-0">
+                    <AdminEmptyState
+                      icon={Users}
+                      title="No active staff accounts"
+                      description="No administrative staff roles are currently assigned in PostgreSQL."
+                    />
+                  </AdminTableCell>
+                </AdminTableRow>
+              ) : (
+                roleList.map((ur) => {
                   const prof = profileMap.get(ur.user_id);
                   const isMfaEnrolled = mfaMap.get(ur.user_id) ?? false;
                   const isLastSuperAdmin = ur.role === "super_admin" && superAdminCount <= 1;
 
                   return (
-                    <TableRow key={`${ur.user_id}-${ur.role}`} className="text-xs">
-                      <TableCell>
-                        <div className="font-medium">
-                          {prof?.display_name || "Staff Member"}
+                    <AdminTableRow key={`${ur.user_id}-${ur.role}`}>
+                      <AdminTableCell>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-xs text-foreground">
+                            {prof?.display_name || "Staff Member"}
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground truncate">
+                            {ur.user_id}
+                          </p>
                         </div>
-                        <div className="font-mono text-[10px] text-muted-foreground">
-                          {ur.user_id}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={ur.role === "super_admin" ? "default" : ur.role === "admin" ? "secondary" : "outline"}
-                          className="uppercase text-[10px]"
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        <StatusBadge
+                          variant={
+                            ur.role === "super_admin"
+                              ? "info"
+                              : "neutral"
+                          }
+                          dot={false}
                         >
-                          {ur.role.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
+                          {ur.role.replace(/_/g, " ").toUpperCase()}
+                        </StatusBadge>
+                      </AdminTableCell>
+                      <AdminTableCell>
                         {isMfaEnrolled ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                            <ShieldCheck className="w-3.5 h-3.5" /> Enrolled (AAL2)
+                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            <ShieldCheck className="size-3.5" />
+                            <span>Enrolled (AAL2)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                            <Clock className="w-3.5 h-3.5" /> Pending Enrollment
+                          <span className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                            <Clock className="size-3.5" />
+                            <span>Pending Enrollment</span>
                           </span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap text-[11px]">
-                        {new Date(ur.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
+                      </AdminTableCell>
+                      <AdminTableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(ur.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </AdminTableCell>
+                      <AdminTableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <ResetMfaDialog
                             userId={ur.user_id}
                             displayName={prof?.display_name || "Staff Member"}
                             disabled={adminCtx.aal !== "aal2"}
                           />
-
-                          {isLastSuperAdmin ? (
-                            <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed">
-                              Protected
-                            </Badge>
-                          ) : (
-                            <form action={manageUserRole}>
-                              <input type="hidden" name="target_user_id" value={ur.user_id} />
-                              <input type="hidden" name="target_role" value={ur.role} />
-                              <input type="hidden" name="assign" value="false" />
-                              <Button
-                                type="submit"
-                                variant="destructive"
-                                size="sm"
-                                disabled={adminCtx.aal !== "aal2"}
-                                className="h-8 text-xs"
-                              >
-                                Revoke
-                              </Button>
-                            </form>
-                          )}
+                          <RoleRevokeDialog
+                            userId={ur.user_id}
+                            displayName={prof?.display_name || "Staff Member"}
+                            currentRole={ur.role}
+                            disabled={adminCtx.aal !== "aal2"}
+                            isLastSuperAdmin={isLastSuperAdmin}
+                          />
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </AdminTableCell>
+                    </AdminTableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
+                })
+              )}
+            </AdminTableBody>
+          </AdminTable>
+        </AdminTableContainer>
+      </div>
+
+      {/* ── Section 2: Pending Onboarding Invitations ───────────── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+              <Mail className="size-4 text-muted-foreground" />
+              Pending Team Invitations
+              <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-muted-foreground">
+                {inviteList.length}
+              </span>
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Secure onboarding invitation links sent to staff. Links expire in 7 days.
+            </p>
           </div>
-        )}
-      </Card>
+        </div>
 
-      {/* Pending Invitations Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Mail className="w-4 h-4" /> Pending & Recent Invitations
-            <Badge variant="secondary" className="font-mono text-xs">{inviteList.length}</Badge>
-          </CardTitle>
-          <CardDescription className="text-xs mt-0.5">
-            Onboarding invitations sent to team members. Valid for 7 days from creation.
-          </CardDescription>
-        </CardHeader>
-
-        {inviteList.length === 0 ? (
-          <CardContent className="text-center py-8 text-xs text-muted-foreground border-t border-dashed">
-            No invitations currently tracked.
-          </CardContent>
-        ) : (
-          <div className="border-t overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-xs">
-                  <TableHead>Recipient</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Sent At</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inviteList.map((inv) => (
-                  <TableRow key={inv.id} className="text-xs">
-                    <TableCell>
-                      <div className="font-medium">{inv.full_name}</div>
-                      <div className="text-[11px] text-muted-foreground font-mono">{inv.email}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="uppercase text-[10px]">
-                        {inv.requested_role.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
+        <AdminTableContainer>
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableRow>
+                <AdminTableHead className="w-[280px]">Recipient</AdminTableHead>
+                <AdminTableHead className="w-[160px]">Requested Role</AdminTableHead>
+                <AdminTableHead className="w-[140px]">Status</AdminTableHead>
+                <AdminTableHead className="w-[140px]">Sent Date</AdminTableHead>
+                <AdminTableHead className="w-[140px]">Expires</AdminTableHead>
+                <AdminTableHead className="text-right">Action</AdminTableHead>
+              </AdminTableRow>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {inviteList.length === 0 ? (
+                <AdminTableRow>
+                  <AdminTableCell colSpan={6} className="p-0">
+                    <AdminEmptyState
+                      icon={Mail}
+                      title="No pending invitations"
+                      description="There are no active staff onboarding invitations currently awaiting acceptance."
+                    />
+                  </AdminTableCell>
+                </AdminTableRow>
+              ) : (
+                inviteList.map((inv) => (
+                  <AdminTableRow key={inv.id}>
+                    <AdminTableCell>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-xs text-foreground">{inv.full_name}</p>
+                        <p className="font-mono text-[11px] text-muted-foreground truncate">{inv.email}</p>
+                      </div>
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      <StatusBadge variant="neutral" dot={false}>
+                        {inv.requested_role.replace(/_/g, " ").toUpperCase()}
+                      </StatusBadge>
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      <StatusBadge
                         variant={
-                          inv.status === "ACCEPTED" ? "default" :
-                          inv.status === "PENDING" ? "secondary" :
-                          inv.status === "REVOKED" ? "destructive" : "outline"
+                          inv.status === "ACCEPTED"
+                            ? "success"
+                            : inv.status === "PENDING"
+                            ? "warning"
+                            : "danger"
                         }
-                        className="text-[10px]"
+                        dot
                       >
                         {inv.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-[11px]">
-                      {new Date(inv.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-[11px]">
-                      {new Date(inv.expires_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
+                      </StatusBadge>
+                    </AdminTableCell>
+                    <AdminTableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(inv.created_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </AdminTableCell>
+                    <AdminTableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(inv.expires_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </AdminTableCell>
+                    <AdminTableCell className="text-right">
                       {inv.status === "PENDING" && (
                         <form action={revokeStaffInvitation}>
                           <input type="hidden" name="invitation_id" value={inv.id} />
@@ -297,20 +345,20 @@ export default async function AdminUsersPage({
                             variant="ghost"
                             size="sm"
                             disabled={adminCtx.aal !== "aal2"}
-                            className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                            className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/20"
                           >
                             Revoke
                           </Button>
                         </form>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </Card>
+                    </AdminTableCell>
+                  </AdminTableRow>
+                ))
+              )}
+            </AdminTableBody>
+          </AdminTable>
+        </AdminTableContainer>
+      </div>
     </div>
   );
 }
