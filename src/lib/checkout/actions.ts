@@ -113,11 +113,13 @@ export async function processCheckout(formData: FormData) {
     fulfillmentSettings,
   );
 
-  // MANUAL_GCASH expires in 2 hours (120 minutes); COD expires_at is null
+  // This required RPC argument must be present in JSON even for COD/pickup.
+  // undefined is omitted by JSON.stringify and prevents PostgREST resolution.
+  // MANUAL_GCASH expires in 2 hours (120 minutes); other methods send null.
   const gcashExpiresAt =
     paymentMethod === "MANUAL_GCASH"
       ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
-      : undefined;
+      : null;
 
   // 4. Execute atomic RPC via service role client
   const serviceClient = createServiceClient();

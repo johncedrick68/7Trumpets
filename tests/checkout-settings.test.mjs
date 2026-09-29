@@ -39,11 +39,12 @@ test('privileged client remains server-only and cookie independent', () => {
   assert.doesNotMatch(client, /cookies\(|getSession|setSession/);
 });
 
-function actionHarness({ authenticated = true, configurationFailure = false } = {}) {
+function actionHarness({ authenticated = true, configurationFailure = false, gcashEnabled = false } = {}) {
   const calls = [];
   const user = { id: 'canonical-customer', email: 'customer@example.test' };
   const configuration = validateCheckoutSettings(rows());
   configuration.fulfillment.shipping_fee_minor = 500;
+  configuration.payment.gcash_enabled = gcashEnabled;
   const sessionClient = {
     auth: { getClaims: async () => ({ data: { claims: authenticated ? { sub: user.id } : {} } }), getUser: async () => ({ data: { user } }) },
     rpc: async () => ({ data: true, error: null }),
@@ -83,6 +84,27 @@ test('unauthenticated server action never uses privileged client', async () => {
   const { action, calls, form } = actionHarness({ authenticated: false });
   await assert.rejects(action(form), /\/login/);
   assert.ok(!calls.some(call => call.privileged));
+});
+
+test('COD transport includes required explicit null GCash expiry for PostgREST overload resolution', async () => {
+  const { action, calls, form } = actionHarness();
+  await assert.rejects(action(form), /\/orders\/confirmed-order/);
+  const payload = calls.find(call => call.name === 'checkout_order').payload;
+  // Supabase sends JSON: undefined disappears, but this RPC argument has no SQL
+  // default. A COD call must send null rather than omit the required argument.
+  const wire = JSON.parse(JSON.stringify(payload));
+  assert.ok(Object.hasOwn(wire, 'p_gcash_expires_at'));
+  assert.equal(wire.p_gcash_expires_at, null);
+});
+
+test('GCash transport includes a real two-hour expiry', async () => {
+  const { action, calls, form } = actionHarness({ gcashEnabled: true });
+  form.set('payment_method', 'MANUAL_GCASH');
+  const started = Date.now();
+  await assert.rejects(action(form), /\/orders\/confirmed-order/);
+  const wire = JSON.parse(JSON.stringify(calls.find(call => call.name === 'checkout_order').payload));
+  const expires = Date.parse(wire.p_gcash_expires_at);
+  assert.ok(expires >= started + 2 * 60 * 60 * 1000 && expires <= Date.now() + 2 * 60 * 60 * 1000);
 });
 test('settings failure prevents privileged checkout and cart cleanup', async () => {
   const { action, calls, form } = actionHarness({ configurationFailure: true });

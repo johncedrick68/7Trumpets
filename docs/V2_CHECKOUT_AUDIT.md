@@ -1,5 +1,16 @@
 # Phase 4 — checkout visual and UX rebuild
 
+## Subsequent rendered UAT checkpoint
+
+The one authorized COD submission failed without creating an order. GCash was
+not attempted because testing stopped on the defect. Non-GCash RPC expiry was
+being omitted by JSON; the narrow repair sends the required explicit null.
+Case O remains NOT PASS and V2 Checkout is NOT COMPLETE pending freshly
+authorized rendered COD retest and the still-unperformed GCash checkout.
+See [rendered UAT evidence and repair](V2_CHECKOUT_RENDERED_UAT.md). The visual
+baseline and historical gate counts below remain evidence for their checkpoint,
+not a claim that successful transaction UAT has passed.
+
 Scope: `rebuild/1968-v2`, checkout presentation only. Security baseline
 `2a5a0d1` and canonical stock/live-session evidence `b1adb12` are preserved.
 The checkout action, shipping helper, settings contract, RPCs, migrations,
