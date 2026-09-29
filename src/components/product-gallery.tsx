@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
   const [api, setApi] = useState<CarouselApi>();
   const [viewerOpen, setViewerOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const select = useCallback((index: number) => {
     setSelected(index);
@@ -46,8 +47,12 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
               <CarouselItem key={image.id} className="pl-0">
                 <button
                   type="button"
-                  onClick={() => { setSelected(index); setViewerOpen(true); }}
-                  className="relative block aspect-[4/5] w-full overflow-hidden rounded-xl border border-border/80 bg-neutral-100 dark:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={(e) => {
+                    lastTriggerRef.current = e.currentTarget;
+                    setSelected(index);
+                    setViewerOpen(true);
+                  }}
+                  className="relative block aspect-[4/5] w-full overflow-hidden rounded-none border border-border bg-neutral-100 dark:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground cursor-zoom-in"
                   aria-label={`Open image ${index + 1} of ${images.length} in full screen viewer`}
                 >
                   <Image
@@ -58,7 +63,7 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
                     sizes="(max-width: 1023px) calc(100vw - 2rem), 1px"
                     className="object-cover"
                   />
-                  <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-3 py-1 font-mono text-xs font-semibold shadow-sm">
+                  <span className="absolute bottom-3 right-3 rounded-none bg-black text-white px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider">
                     {index + 1} / {images.length}
                   </span>
                 </button>
@@ -67,8 +72,8 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
           </CarouselContent>
         </Carousel>
         {images.length > 1 && (
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Swipe to see all {images.length} images
+          <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Swipe or use arrows to view {images.length} images
           </p>
         )}
       </div>
@@ -77,8 +82,11 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
       <div className="hidden lg:block space-y-3">
         <button
           type="button"
-          onClick={() => setViewerOpen(true)}
-          className="group relative block aspect-[4/5] w-full overflow-hidden rounded-xl border border-border/80 bg-neutral-100 dark:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={(e) => {
+            lastTriggerRef.current = e.currentTarget;
+            setViewerOpen(true);
+          }}
+          className="group relative block aspect-[4/5] w-full overflow-hidden rounded-none border border-border bg-neutral-100 dark:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground cursor-zoom-in"
           aria-label={`Open image ${selected + 1} of ${images.length} in full screen viewer`}
         >
           <Image
@@ -89,14 +97,14 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
             sizes="(min-width: 1024px) 55vw, 100vw"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
           />
-          <span className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 font-mono text-xs font-semibold shadow-sm">
-            <Maximize2 className="size-3.5" aria-hidden="true" />
+          <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-none bg-black text-white px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider">
+            <Maximize2 className="size-3" aria-hidden="true" />
             <span>{selected + 1} / {images.length}</span>
           </span>
         </button>
 
         {images.length > 1 && (
-          <div className="grid grid-cols-5 gap-3" role="group" aria-label="Choose product image">
+          <div className="grid grid-cols-5 gap-2.5" role="group" aria-label="Choose product image">
             {images.map((image, index) => (
               <button
                 key={image.id}
@@ -105,10 +113,10 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
                 aria-label={`View image ${index + 1} of ${images.length}`}
                 onClick={() => select(index)}
                 className={cn(
-                  "relative aspect-[4/5] min-h-[44px] overflow-hidden rounded-lg border bg-neutral-100 dark:bg-neutral-900 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "relative aspect-[4/5] min-h-[44px] overflow-hidden rounded-none border bg-neutral-100 dark:bg-neutral-900 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground cursor-pointer",
                   selected === index
-                    ? "border-foreground ring-2 ring-foreground"
-                    : "border-border hover:border-foreground/60 opacity-80 hover:opacity-100"
+                    ? "border-foreground ring-1 ring-foreground opacity-100"
+                    : "border-border hover:border-foreground/60 opacity-70 hover:opacity-100"
                 )}
               >
                 <Image
@@ -128,11 +136,15 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
       {/* ── Accessible Fullscreen Viewer Dialog ─────────────── */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
         <DialogContent
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            lastTriggerRef.current?.focus();
+          }}
           onKeyDown={(event) => {
             if (event.key === "ArrowLeft") select((selected - 1 + images.length) % images.length);
             if (event.key === "ArrowRight") select((selected + 1) % images.length);
           }}
-          className="h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-6xl overflow-hidden border-0 bg-neutral-950 p-0 text-white sm:max-w-6xl"
+          className="h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-6xl overflow-hidden rounded-none border border-border bg-black p-0 text-white sm:max-w-6xl"
         >
           <DialogTitle className="sr-only">{productName} image viewer</DialogTitle>
           <DialogDescription className="sr-only">
@@ -149,25 +161,25 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
               />
             </div>
           </div>
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/75 p-2 shadow-lg backdrop-blur-xs">
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-none border border-white/20 bg-black/90 p-2 shadow-lg backdrop-blur-xs">
             <Button
               type="button"
               size="icon"
               variant="secondary"
               onClick={() => select((selected - 1 + images.length) % images.length)}
               aria-label="Previous image"
-              className="size-11"
+              className="size-11 rounded-none border border-white/20 bg-neutral-900 text-white hover:bg-neutral-800"
             >
               <ChevronLeft className="size-5" />
             </Button>
-            <span className="min-w-14 text-center font-mono text-xs">{selected + 1} / {images.length}</span>
+            <span className="min-w-14 text-center font-mono text-xs text-white">{selected + 1} / {images.length}</span>
             <Button
               type="button"
               size="icon"
               variant="secondary"
               onClick={() => select((selected + 1) % images.length)}
               aria-label="Next image"
-              className="size-11"
+              className="size-11 rounded-none border border-white/20 bg-neutral-900 text-white hover:bg-neutral-800"
             >
               <ChevronRight className="size-5" />
             </Button>
@@ -179,7 +191,7 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
               disabled={zoom <= 1}
               onClick={() => setZoom((value) => Math.max(1, value - 0.5))}
               aria-label="Zoom out"
-              className="size-11"
+              className="size-11 rounded-none border border-white/20 bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-40"
             >
               <Minus className="size-4" />
             </Button>
@@ -190,7 +202,7 @@ export function ProductGallery({ images, productName }: { images: GalleryImage[]
               disabled={zoom >= 3}
               onClick={() => setZoom((value) => Math.min(3, value + 0.5))}
               aria-label="Zoom in"
-              className="size-11"
+              className="size-11 rounded-none border border-white/20 bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-40"
             >
               <Plus className="size-4" />
             </Button>

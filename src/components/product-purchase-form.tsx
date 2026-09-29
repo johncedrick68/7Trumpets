@@ -78,6 +78,9 @@ export function ProductPurchaseForm({
           : null)
       : (variants.find((v) => v.id === directVariantId) ?? null);
 
+  // Determine if all variants are out of stock
+  const isAllOutOfStock = variants.length > 0 && variants.every((v) => !v.is_available);
+
   // Selected size label for feedback and display
   const selectedSizeLabel =
     options.length > 0
@@ -146,19 +149,17 @@ export function ProductPurchaseForm({
               className="space-y-3"
               aria-describedby={validationError ? "size-validation-error" : undefined}
             >
-              <legend className="flex items-center justify-between w-full text-sm font-semibold text-foreground">
+              <legend className="flex items-center justify-between w-full font-mono text-xs uppercase tracking-wider text-foreground">
                 <span className="flex items-center gap-1.5">
-                  <span>{option.name}</span>
-                  {selectedValueObj && (
-                    <span className="font-normal text-muted-foreground">
-                      — {selectedValueObj.value}
-                    </span>
-                  )}
+                  <span className="font-bold">{option.name}:</span>
+                  <span className="text-muted-foreground">
+                    {selectedValueObj ? selectedValueObj.value : "Choose"}
+                  </span>
                 </span>
                 {isSizeOption && <SizeChartDialog />}
               </legend>
 
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-2">
                 {option.values.map((val) => {
                   const isSelected = selectedValue === val.id;
 
@@ -176,12 +177,12 @@ export function ProductPurchaseForm({
                       key={val.id}
                       htmlFor={`option-${option.id}-${val.id}`}
                       className={cn(
-                        "relative min-w-[50px] h-11 px-4 rounded-md border text-sm font-semibold transition-all flex items-center justify-center select-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                        "relative min-w-[52px] h-11 px-3.5 rounded-none border font-mono text-xs uppercase tracking-wider font-bold transition-colors flex items-center justify-center select-none focus-within:ring-1 focus-within:ring-foreground",
                         !isAvailable
-                          ? "cursor-not-allowed border-border/60 bg-muted/40 text-muted-foreground line-through opacity-50"
+                          ? "cursor-not-allowed border-border/50 bg-neutral-100 text-muted-foreground line-through opacity-50"
                           : isSelected
-                          ? "bg-neutral-950 text-white border-neutral-950 shadow-xs cursor-pointer dark:bg-white dark:text-neutral-950"
-                          : "bg-background text-foreground border-border hover:border-foreground cursor-pointer"
+                          ? "bg-black text-white border-black cursor-pointer dark:bg-white dark:text-black"
+                          : "bg-background text-foreground border-border hover:border-black cursor-pointer"
                       )}
                     >
                       <input
@@ -214,19 +215,17 @@ export function ProductPurchaseForm({
           className="space-y-3"
           aria-describedby={validationError ? "size-validation-error" : undefined}
         >
-          <legend className="flex items-center justify-between w-full text-sm font-semibold text-foreground">
+          <legend className="flex items-center justify-between w-full font-mono text-xs uppercase tracking-wider text-foreground">
             <span className="flex items-center gap-1.5">
-              <span>Select Size</span>
-              {activeVariant && (
-                <span className="font-normal text-muted-foreground">
-                  — {activeVariant.name || activeVariant.sku}
-                </span>
-              )}
+              <span className="font-bold">Size:</span>
+              <span className="text-muted-foreground">
+                {activeVariant ? (activeVariant.name || activeVariant.sku).replace(/^size\s+/i, "") : "Choose"}
+              </span>
             </span>
             <SizeChartDialog />
           </legend>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap gap-2">
             {variants.map((v) => {
               const isSelected = activeVariant?.id === v.id;
               const displayLabel = (v.name || v.sku).replace(/^size\s+/i, "");
@@ -239,12 +238,12 @@ export function ProductPurchaseForm({
                   key={v.id}
                   htmlFor={`variant-${v.id}`}
                   className={cn(
-                    "relative min-w-[50px] h-11 px-4 rounded-md border text-sm font-semibold transition-all flex items-center justify-center select-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                    "relative min-w-[52px] h-11 px-3.5 rounded-none border font-mono text-xs uppercase tracking-wider font-bold transition-colors flex items-center justify-center select-none focus-within:ring-1 focus-within:ring-foreground",
                     !isAvailable
-                      ? "cursor-not-allowed border-border/60 bg-muted/40 text-muted-foreground line-through opacity-50"
+                      ? "cursor-not-allowed border-border/50 bg-neutral-100 text-muted-foreground line-through opacity-50"
                       : isSelected
-                      ? "bg-neutral-950 text-white border-neutral-950 shadow-xs cursor-pointer dark:bg-white dark:text-neutral-950"
-                      : "bg-background text-foreground border-border hover:border-foreground cursor-pointer"
+                      ? "bg-black text-white border-black cursor-pointer dark:bg-white dark:text-black"
+                      : "bg-background text-foreground border-border hover:border-black cursor-pointer"
                   )}
                 >
                   <input
@@ -276,25 +275,25 @@ export function ProductPurchaseForm({
           id="size-validation-error"
           role="alert"
           aria-live="polite"
-          className="flex items-center gap-2.5 rounded-md border border-red-300 bg-red-50 p-3 text-xs font-semibold text-red-900 dark:border-red-800 dark:bg-red-950/70 dark:text-red-200"
+          className="flex items-center gap-2.5 rounded-none border border-black/20 bg-neutral-100 dark:bg-neutral-900 p-3 font-mono text-xs text-foreground"
         >
-          <AlertCircle className="size-4 shrink-0 text-red-700 dark:text-red-400" aria-hidden="true" />
+          <AlertCircle className="size-4 shrink-0 text-foreground" aria-hidden="true" />
           <span>{validationError}</span>
         </div>
       )}
 
       {/* ── 3. Quantity Stepper ─────────────────────────────────── */}
       <div className="space-y-2 pt-1">
-        <label htmlFor="quantity-input" className="text-sm font-semibold text-foreground">
+        <label htmlFor="quantity-input" className="block font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Quantity
         </label>
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center rounded-md border border-border bg-background">
+          <div className="inline-flex items-center rounded-none border border-border bg-background">
             <button
               type="button"
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
               disabled={quantity <= 1 || (activeVariant !== null && !activeVariant.is_available)}
-              className="size-11 flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              className="size-11 flex items-center justify-center text-foreground hover:bg-neutral-100 disabled:opacity-30 disabled:pointer-events-none transition-colors rounded-none cursor-pointer"
               aria-label="Decrease quantity"
             >
               <Minus className="size-4" aria-hidden="true" />
@@ -302,7 +301,7 @@ export function ProductPurchaseForm({
 
             <span
               aria-live="polite"
-              className="w-12 text-center font-mono text-sm font-bold text-foreground select-none"
+              className="w-12 text-center font-mono text-xs font-bold text-foreground select-none"
             >
               {quantity}
             </span>
@@ -311,7 +310,7 @@ export function ProductPurchaseForm({
               type="button"
               onClick={() => setQuantity((q) => q + 1)}
               disabled={activeVariant !== null && !activeVariant.is_available}
-              className="size-11 flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              className="size-11 flex items-center justify-center text-foreground hover:bg-neutral-100 disabled:opacity-30 disabled:pointer-events-none transition-colors rounded-none cursor-pointer"
               aria-label="Increase quantity"
             >
               <Plus className="size-4" aria-hidden="true" />
@@ -329,18 +328,25 @@ export function ProductPurchaseForm({
       {/* ── 4. Stock State Feedback ─────────────────────────────── */}
       <div
         aria-live="polite"
-        className="flex items-center gap-1.5 text-xs text-muted-foreground min-h-5"
+        className="flex items-center gap-2 text-xs font-mono min-h-5"
       >
-        {activeVariant?.is_available ? (
-          <>
+        {isAllOutOfStock ? (
+          <span className="text-muted-foreground uppercase tracking-wider text-[11px] font-semibold">
+            Out of stock — all sizes sold out
+          </span>
+        ) : activeVariant?.is_available ? (
+          <span className="text-foreground font-semibold flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
             <Check className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
-            <span className="text-foreground font-semibold">In stock</span>
-            <span className="font-mono text-muted-foreground">· SKU: {activeVariant.sku}</span>
-          </>
+            In stock
+          </span>
         ) : activeVariant ? (
-          <span className="text-muted-foreground font-medium">Out of stock in selected size</span>
+          <span className="text-muted-foreground uppercase tracking-wider text-[11px]">
+            Out of stock in selected size
+          </span>
         ) : (
-          <span className="text-muted-foreground">Select your size to view stock and purchase</span>
+          <span className="text-muted-foreground uppercase tracking-wider text-[11px]">
+            Select size to view availability
+          </span>
         )}
       </div>
 
@@ -348,9 +354,8 @@ export function ProductPurchaseForm({
       <div>
         <Button
           type="submit"
-          disabled={activeVariant !== null && !activeVariant.is_available}
-          size="lg"
-          className="w-full font-bold h-13 rounded-md text-sm bg-neutral-950 text-white hover:bg-neutral-800 disabled:opacity-40 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer min-h-[44px] dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
+          disabled={isAllOutOfStock || (activeVariant !== null && !activeVariant.is_available)}
+          className="w-full font-mono text-xs uppercase tracking-wider font-bold h-12 rounded-none bg-black text-white hover:bg-neutral-800 disabled:opacity-40 transition-colors flex items-center justify-center gap-2 cursor-pointer min-h-[48px] dark:bg-white dark:text-black dark:hover:bg-neutral-200"
         >
           <ShoppingBag className="size-4 shrink-0" aria-hidden="true" />
           <span>
@@ -358,6 +363,8 @@ export function ProductPurchaseForm({
               ? "Adding to Bag…"
               : isAdded
               ? "Added to Bag ✓"
+              : isAllOutOfStock
+              ? "Out of Stock"
               : !activeVariant
               ? "Select a Size"
               : !activeVariant.is_available
@@ -372,38 +379,39 @@ export function ProductPurchaseForm({
         <div
           role="status"
           aria-live="polite"
-          className="rounded-lg border border-border bg-neutral-100 dark:bg-neutral-900 p-4 transition-all"
+          className="rounded-none border border-border bg-neutral-50 dark:bg-neutral-900 p-4 transition-all space-y-3"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <Check className="size-4 text-foreground shrink-0" aria-hidden="true" />
-              <p className="text-sm font-medium text-foreground">
-                <span className="font-semibold">{feedback.productName}</span>
-                {feedback.sizeLabel && <> (Size {feedback.sizeLabel})</>} added to your bag.
+              <p className="text-xs font-mono uppercase tracking-wider text-foreground">
+                <span className="font-bold">{feedback.productName}</span>
+                {feedback.sizeLabel && <> ({feedback.sizeLabel})</>} added to your bag.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setFeedback(null)}
-              className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-wider p-1"
+              className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-wider p-1 cursor-pointer"
               aria-label="Dismiss notification"
             >
               ✕
             </button>
           </div>
-          <div className="mt-3 flex items-center gap-3">
-            <Button asChild size="sm" className="h-9 px-4 font-mono text-xs uppercase tracking-wider">
-              <Link href="/cart">View Bag ({feedback.quantity}) &rarr;</Link>
-            </Button>
-            <Button
+          <div className="flex items-center gap-3">
+            <Link
+              href="/cart"
+              className="inline-flex items-center justify-center h-10 px-4 rounded-none bg-black text-white hover:bg-neutral-800 font-mono text-xs uppercase tracking-wider font-bold transition-colors"
+            >
+              View Bag ({feedback.quantity}) &rarr;
+            </Link>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => setFeedback(null)}
-              className="h-9 px-4 font-mono text-xs uppercase tracking-wider"
+              className="inline-flex items-center justify-center h-10 px-4 rounded-none border border-border bg-background text-foreground hover:bg-neutral-100 font-mono text-xs uppercase tracking-wider transition-colors cursor-pointer"
             >
               Continue Shopping
-            </Button>
+            </button>
           </div>
         </div>
       )}

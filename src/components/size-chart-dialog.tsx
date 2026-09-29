@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Ruler } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -25,20 +24,19 @@ export function SizeChartDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
+        <button
           ref={triggerRef}
           type="button"
-          variant="link"
-          className="min-h-11 w-fit px-2 font-mono text-xs uppercase tracking-wider"
+          className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground min-h-[44px] cursor-pointer"
           aria-haspopup="dialog"
         >
-          <Ruler className="mr-1.5 size-3.5" aria-hidden="true" />
+          <Ruler className="size-3.5" aria-hidden="true" />
           Size Guide
-        </Button>
+        </button>
       </DialogTrigger>
 
       <DialogContent
-        className="flex max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-[56rem] flex-col overflow-hidden p-0"
+        className="flex max-h-[calc(100svh-1rem)] w-[calc(100%-1rem)] max-w-[56rem] flex-col overflow-hidden rounded-none border border-border bg-background p-0"
         aria-describedby="size-guide-desc"
         onCloseAutoFocus={() => triggerRef.current?.focus()}
       >
@@ -65,7 +63,7 @@ export function SizeChartDialog() {
             </h3>
 
             {/* Garment illustration */}
-            <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
+            <div className="mb-6 overflow-hidden rounded-none border border-border bg-muted">
               <Image
                 src="/images/size-guide-diagram.svg"
                 alt="Diagram showing how to measure shirt length (shoulder to hem) and width (pit to pit)"
@@ -101,13 +99,13 @@ export function SizeChartDialog() {
               >
                 T-Shirt Measurements
               </h3>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded border border-border">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-none border border-border">
                 Inches
               </span>
             </div>
 
             {/* Accessible table */}
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="overflow-x-auto rounded-none border border-border">
               <table className="w-full text-sm">
                 <caption className="sr-only">1968 Clothing T-Shirt Measurements in Inches</caption>
                 <thead>
@@ -157,7 +155,7 @@ export function SizeChartDialog() {
           {/* SIZING / FABRIC NOTE */}
           <section
             aria-labelledby="dialog-fit-note-heading"
-            className="rounded-lg border border-border/60 bg-muted/30 px-5 py-4"
+            className="rounded-none border border-border/60 bg-muted/30 px-5 py-4"
           >
             <h3
               id="dialog-fit-note-heading"
