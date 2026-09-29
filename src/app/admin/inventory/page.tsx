@@ -12,6 +12,11 @@ import {
   type InventoryCategory,
 } from "@/components/admin/inventory-workspace";
 import { relationToOne, relationToMany } from "@/lib/data/relations";
+import {
+  calculateAvailableStock,
+  isInventoryOutOfStock,
+  isInventoryLowStock,
+} from "@/lib/inventory/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -124,10 +129,9 @@ export default async function AdminInventoryPage(props: PageProps) {
     const onHand = Number(inventory?.on_hand ?? 0);
     const reserved = Number(inventory?.reserved ?? 0);
     const safetyStock = Number(inventory?.safety_stock ?? 0);
-    // Authoritative available stock calculation: on_hand - reserved - safety_stock
-    const available = Math.max(0, onHand - reserved - safetyStock);
-    const isOutOfStock = available <= 0;
-    const isLowStock = available > 0 && available <= safetyStock;
+    const available = calculateAvailableStock(inventory);
+    const isOutOfStock = isInventoryOutOfStock(inventory);
+    const isLowStock = isInventoryLowStock(inventory);
 
     return {
       id: v.id,

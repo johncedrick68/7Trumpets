@@ -9,6 +9,11 @@ import {
   Layers,
 } from "lucide-react";
 import { formatMinorUnitsToPHP, productImageUrl } from "@/lib/catalog/queries";
+import {
+  calculateAvailableStock,
+  isInventoryOutOfStock,
+  isInventoryLowStock,
+} from "@/lib/inventory/stock";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -133,20 +138,15 @@ export function CatalogWorkspace({ products, categories }: CatalogWorkspaceProps
 
       // 3. Stock metrics
       const totalAvailable = p.product_variants.reduce((sum, v) => {
-        const inv = v.inventory;
-        return sum + (inv ? Math.max(0, inv.on_hand - inv.reserved) : 0);
+        return sum + calculateAvailableStock(v.inventory);
       }, 0);
 
       const hasLowStock = p.product_variants.some((v) => {
-        const inv = v.inventory;
-        if (!inv) return false;
-        const avail = inv.on_hand - inv.reserved;
-        return avail > 0 && avail <= inv.safety_stock;
+        return isInventoryLowStock(v.inventory);
       });
 
       const hasOutOfStock = p.product_variants.length > 0 && p.product_variants.some((v) => {
-        const inv = v.inventory;
-        return !inv || inv.on_hand - inv.reserved <= 0;
+        return isInventoryOutOfStock(v.inventory);
       });
 
       if (selectedStock === "out_of_stock" && !hasOutOfStock) {
@@ -285,22 +285,17 @@ export function CatalogWorkspace({ products, categories }: CatalogWorkspaceProps
 
                 // Aggregate stock numbers
                 const totalAvailable = product.product_variants.reduce((sum, v) => {
-                  const inv = v.inventory;
-                  return sum + (inv ? Math.max(0, inv.on_hand - inv.reserved) : 0);
+                  return sum + calculateAvailableStock(v.inventory);
                 }, 0);
 
                 const hasLowStock = product.product_variants.some((v) => {
-                  const inv = v.inventory;
-                  if (!inv) return false;
-                  const avail = inv.on_hand - inv.reserved;
-                  return avail > 0 && avail <= inv.safety_stock;
+                  return isInventoryLowStock(v.inventory);
                 });
 
                 const hasOutOfStock =
                   product.product_variants.length > 0 &&
                   product.product_variants.some((v) => {
-                    const inv = v.inventory;
-                    return !inv || inv.on_hand - inv.reserved <= 0;
+                    return isInventoryOutOfStock(v.inventory);
                   });
 
                 // Calculate price range
@@ -471,10 +466,9 @@ export function CatalogWorkspace({ products, categories }: CatalogWorkspaceProps
                                       const inv = variant.inventory;
                                       const onHand = inv?.on_hand ?? 0;
                                       const reserved = inv?.reserved ?? 0;
-                                      const safety = inv?.safety_stock ?? 0;
-                                      const available = onHand - reserved;
-                                      const isOut = available <= 0;
-                                      const isLow = available > 0 && available <= safety;
+                                      const available = calculateAvailableStock(inv);
+                                      const isOut = isInventoryOutOfStock(inv);
+                                      const isLow = isInventoryLowStock(inv);
 
                                       return (
                                         <tr key={variant.id} className="hover:bg-muted/30 transition-colors">

@@ -19,6 +19,11 @@ import {
 
 import { getAdminAuthContext } from "@/lib/admin/auth";
 import {
+  calculateAvailableStock,
+  isInventoryOutOfStock,
+  isInventoryLowStock,
+} from "@/lib/inventory/stock";
+import {
   aggregateProducts,
   buildDailyRevenue,
   percentChange,
@@ -220,10 +225,8 @@ export default async function AdminDashboardPage() {
     };
   });
 
-  const lowStock = inventory.filter(
-    (row) => row.on_hand - row.reserved > 0 && row.on_hand - row.reserved <= row.safety_stock
-  );
-  const outOfStock = inventory.filter((row) => row.on_hand - row.reserved <= 0);
+  const lowStock = inventory.filter((row) => isInventoryLowStock(row));
+  const outOfStock = inventory.filter((row) => isInventoryOutOfStock(row));
 
   const pendingCount = pendingRes.count ?? 0;
   const returnsCount = returnsRes.count ?? 0;
@@ -477,8 +480,8 @@ export default async function AdminDashboardPage() {
           <CardContent className="space-y-3">
             {[...outOfStock, ...lowStock].slice(0, 5).map((row) => {
               const variant = row.product_variants;
-              const available = row.on_hand - row.reserved;
-              const isOut = available <= 0;
+              const available = calculateAvailableStock(row);
+              const isOut = isInventoryOutOfStock(row);
               return (
                 <div
                   key={row.variant_id}

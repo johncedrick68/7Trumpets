@@ -7,6 +7,11 @@ import { getAdminAuthContext } from "@/lib/admin/auth";
 import { formatMinorUnitsToPHP, productImageUrl } from "@/lib/catalog/queries";
 import { logServerError } from "@/lib/server-log";
 import { createServiceClient } from "@/lib/supabase/server";
+import {
+  calculateAvailableStock,
+  isInventoryOutOfStock,
+  isInventoryLowStock,
+} from "@/lib/inventory/stock";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,22 +234,17 @@ export default async function AdminCatalogOverviewPage(props: {
 
                 // Aggregate stock numbers
                 const totalAvailable = product.product_variants.reduce((sum, v) => {
-                  const inv = v.inventory;
-                  return sum + (inv ? Math.max(0, inv.on_hand - inv.reserved) : 0);
+                  return sum + calculateAvailableStock(v.inventory);
                 }, 0);
 
                 const hasLowStock = product.product_variants.some((v) => {
-                  const inv = v.inventory;
-                  if (!inv) return false;
-                  const avail = inv.on_hand - inv.reserved;
-                  return avail > 0 && avail <= inv.safety_stock;
+                  return isInventoryLowStock(v.inventory);
                 });
 
                 const hasOutOfStock =
                   product.product_variants.length > 0 &&
                   product.product_variants.some((v) => {
-                    const inv = v.inventory;
-                    return !inv || inv.on_hand - inv.reserved <= 0;
+                    return isInventoryOutOfStock(v.inventory);
                   });
 
                 // Calculate price range
