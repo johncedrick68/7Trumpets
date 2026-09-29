@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCustomerAddresses } from "@/lib/addresses/actions";
 import { getOrCreateCart } from "@/lib/cart/actions";
 import { processCheckout } from "@/lib/checkout/actions";
-import { getStoreSetting } from "@/lib/settings/queries";
+import { loadCheckoutSettings } from "@/lib/checkout/settings";
 import { CheckoutFormClient } from "./checkout-form-client";
 
 export const dynamic = "force-dynamic";
@@ -21,18 +21,15 @@ export default async function CheckoutPage({
     redirect("/login?next=/checkout");
   }
 
-  const [cart, addresses, params, fulfillmentSettings, paymentSettings] = await Promise.all([
+  const settings = await loadCheckoutSettings().catch(() => null);
+  if (!settings) {
+    return <main id="main-content" tabIndex={-1} className="transaction-container page-section"><h1 className="text-h1">Checkout unavailable</h1><p role="alert">We couldn&apos;t load checkout options right now. Please try again.</p><a href="/checkout" className="underline">Try again</a></main>;
+  }
+  const { fulfillment: fulfillmentSettings, payment: paymentSettings } = settings;
+  const [cart, addresses, params] = await Promise.all([
     getOrCreateCart(),
     getCustomerAddresses(),
     searchParams,
-    getStoreSetting<{ shipping_fee_minor: number; free_shipping_threshold_minor?: number; allow_store_pickup: boolean; pickup_address?: string }>(
-      "fulfillment",
-      { shipping_fee_minor: 15000, free_shipping_threshold_minor: 350000, allow_store_pickup: true }
-    ),
-    getStoreSetting<{ gcash_number: string; gcash_account_name: string; gcash_qr_path?: string }>(
-      "payment",
-      { gcash_number: "0917 196 8000", gcash_account_name: "1968 CLOTHING PH", gcash_qr_path: "/images/gcash-merchant-qr.svg" }
-    ),
   ]);
 
   if (!cart || cart.items.length === 0) {
@@ -61,6 +58,8 @@ export default async function CheckoutPage({
       </header>
 
       {/* Error banners */}
+      {params.error === "configuration_unavailable" && <p role="alert">We couldn&apos;t load checkout options right now. Please try again.</p>}
+      {params.error === "cod_limit_exceeded" && <p role="alert">Cash on Delivery is unavailable for this order total. Please select GCash.</p>}
       {params.error === "missing_fields" && (
         <div className="mb-6 p-4 text-sm text-red-800 bg-red-50 rounded-md border border-red-200" role="alert">
           Please select a delivery address or authorized pickup profile.

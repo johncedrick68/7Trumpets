@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { formatMinorUnitsToPHP } from "@/lib/money";
 import { calculateShippingMinor } from "@/lib/checkout/shipping";
+import type { CheckoutSettings } from "@/lib/checkout/settings-contract";
 
 export interface CheckoutFormClientProps {
   cart: {
@@ -36,17 +37,8 @@ export interface CheckoutFormClientProps {
     is_default?: boolean;
     label?: string | null;
   }>;
-  fulfillmentSettings?: {
-    shipping_fee_minor?: number;
-    free_shipping_threshold_minor?: number;
-    allow_store_pickup?: boolean;
-    pickup_address?: string;
-  };
-  paymentSettings?: {
-    gcash_number?: string;
-    gcash_account_name?: string;
-    gcash_qr_path?: string;
-  };
+  fulfillmentSettings: CheckoutSettings["fulfillment"];
+  paymentSettings: CheckoutSettings["payment"];
 }
 
 export function CheckoutFormClient({
@@ -56,19 +48,19 @@ export function CheckoutFormClient({
   paymentSettings,
 }: CheckoutFormClientProps) {
   const [fulfillmentMethod, setFulfillmentMethod] = useState<"SHIPMENT" | "STORE_PICKUP">("SHIPMENT");
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "CASH" | "MANUAL_GCASH">("COD");
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "CASH" | "MANUAL_GCASH">(paymentSettings.cod_enabled ? "COD" : "MANUAL_GCASH");
   const [selectedAddressId, setSelectedAddressId] = useState<string>(
     addresses.find((a) => a.is_default)?.id || addresses[0]?.id || ""
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const shippingMinor = calculateShippingMinor(cart.subtotal_minor, fulfillmentMethod, fulfillmentSettings ?? {});
+  const shippingMinor = calculateShippingMinor(cart.subtotal_minor, fulfillmentMethod, fulfillmentSettings);
   const grandTotalMinor = cart.subtotal_minor + shippingMinor;
 
-  const gcashNumber = paymentSettings?.gcash_number || "0917 196 8000";
-  const gcashName = paymentSettings?.gcash_account_name || "1968 CLOTHING PH";
-  const gcashQrPath = paymentSettings?.gcash_qr_path || "/images/gcash-merchant-qr.svg";
-  const pickupAddress = fulfillmentSettings?.pickup_address || "1968 Flagship Store, Makati City";
+  const gcashNumber = paymentSettings.gcash_number;
+  const gcashName = paymentSettings.gcash_account_name;
+  const gcashQrPath = paymentSettings.gcash_qr_path;
+  const pickupAddress = fulfillmentSettings.pickup_address;
 
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId) || addresses[0];
 
@@ -80,7 +72,7 @@ export function CheckoutFormClient({
       }
     } else {
       if (paymentMethod === "CASH") {
-        setPaymentMethod("COD");
+        setPaymentMethod(paymentSettings.cod_enabled ? "COD" : "MANUAL_GCASH");
       }
     }
   };
@@ -141,6 +133,7 @@ export function CheckoutFormClient({
                 <button
                   type="button"
                   onClick={() => handleFulfillmentChange("STORE_PICKUP")}
+                  disabled={!fulfillmentSettings.allow_store_pickup}
                   className={`relative flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer ${
                     fulfillmentMethod === "STORE_PICKUP"
                       ? "border-primary bg-primary/5 shadow-xs"
@@ -295,6 +288,7 @@ export function CheckoutFormClient({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
+              {(!paymentSettings.cod_enabled || grandTotalMinor > paymentSettings.cod_max_minor) && fulfillmentMethod === "SHIPMENT" && <p role="status">Cash on Delivery is unavailable for this order. Please select GCash if available.</p>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {fulfillmentMethod === "STORE_PICKUP" ? (
                   <>
@@ -331,6 +325,7 @@ export function CheckoutFormClient({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("MANUAL_GCASH")}
+                      disabled={!paymentSettings.gcash_enabled}
                       className={`relative flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer ${
                         paymentMethod === "MANUAL_GCASH"
                           ? "border-primary bg-primary/5 shadow-xs"
@@ -362,6 +357,7 @@ export function CheckoutFormClient({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("COD")}
+                      disabled={!paymentSettings.cod_enabled || grandTotalMinor > paymentSettings.cod_max_minor}
                       className={`relative flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer ${
                         paymentMethod === "COD"
                           ? "border-primary bg-primary/5 shadow-xs"
@@ -391,6 +387,7 @@ export function CheckoutFormClient({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("MANUAL_GCASH")}
+                      disabled={!paymentSettings.gcash_enabled}
                       className={`relative flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer ${
                         paymentMethod === "MANUAL_GCASH"
                           ? "border-primary bg-primary/5 shadow-xs"
@@ -436,7 +433,7 @@ export function CheckoutFormClient({
                   <p className="text-[11px] font-mono text-center text-muted-foreground font-semibold uppercase tracking-wider">
                     Account Name: {gcashName}
                   </p>
-                  <div className="mx-auto w-full max-w-44 rounded-lg border bg-white p-3"><Image src={gcashQrPath} alt="GCash payment QR code" width={176} height={176} className="h-auto w-full" /></div>
+                  {gcashQrPath && <div className="mx-auto w-full max-w-44 rounded-lg border bg-white p-3"><Image src={gcashQrPath} alt="GCash payment QR code" width={176} height={176} className="h-auto w-full" /></div>}
                   <Separator className="my-2" />
                   <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside leading-relaxed">
                     <li>Confirm order below to reserve inventory for 2 hours.</li>

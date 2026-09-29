@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getOrCreateCart } from "@/lib/cart/actions";
 import { logServerError } from "@/lib/server-log";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { getStoreSetting } from "@/lib/settings/queries";
+import { loadCheckoutSettings } from "@/lib/checkout/settings";
 import { calculateShippingMinor } from "@/lib/checkout/shipping";
 
 export async function processCheckout(formData: FormData) {
@@ -48,6 +48,15 @@ export async function processCheckout(formData: FormData) {
   const userEmail = userData?.user?.email;
   if (!userEmail) {
     redirect("/login?next=/checkout");
+  }
+
+  if (userData.user?.id !== userId) redirect("/login?next=/checkout");
+  const settings = await loadCheckoutSettings().catch(() => null);
+  if (!settings) redirect("/checkout?error=configuration_unavailable");
+  if ((fulfillmentMethod === "STORE_PICKUP" && !settings.fulfillment.allow_store_pickup)
+      || (paymentMethod === "COD" && !settings.payment.cod_enabled)
+      || (paymentMethod === "MANUAL_GCASH" && !settings.payment.gcash_enabled)) {
+    redirect("/checkout?error=invalid_payment_method");
   }
 
   const { data: checkoutAllowed, error: throttleError } = await supabase.rpc(
@@ -97,10 +106,7 @@ export async function processCheckout(formData: FormData) {
   };
 
   // Re-read the trusted setting during submission; browser totals are never authoritative.
-  const fulfillmentSettings = await getStoreSetting<{ shipping_fee_minor: number; free_shipping_threshold_minor?: number }>(
-    "fulfillment",
-    { shipping_fee_minor: 15000, free_shipping_threshold_minor: 350000 },
-  );
+  const fulfillmentSettings = settings.fulfillment;
   const shippingMinor = calculateShippingMinor(
     cart.subtotal_minor,
     fulfillmentMethod as "SHIPMENT" | "STORE_PICKUP",
@@ -128,6 +134,9 @@ export async function processCheckout(formData: FormData) {
   });
 
   if (rpcError || !order) {
+    if (rpcError?.message === "CHECKOUT_CONFIGURATION_UNAVAILABLE") redirect("/checkout?error=configuration_unavailable");
+    if (rpcError?.message === "COD_LIMIT_EXCEEDED") redirect("/checkout?error=cod_limit_exceeded");
+    if (rpcError?.message === "CHECKOUT_PAYMENT_UNAVAILABLE") redirect("/checkout?error=invalid_payment_method");
     redirect("/checkout?error=checkout_failed");
   }
 

@@ -1355,9 +1355,8 @@ select extensions.throws_ok(
   '42501', 'permission denied for table audit_logs', 'customer cannot write audit logs'
 );
 
--- The later authenticated checkout boundary deliberately grants this canonical
--- operation to signed-in customers while retaining server-side actor checks.
-select extensions.lives_ok(
+-- Checkout now requires the protected backend invocation, not a browser JWT.
+select extensions.throws_ok(
   $$
     select public.checkout_order(
       '11111111-1111-1111-1111-111111111111', 'browser-checkout',
@@ -1367,7 +1366,7 @@ select extensions.lives_ok(
       null
     )
   $$,
-  'authenticated customer can execute the reviewed checkout boundary'
+  '42501', null, 'authenticated customer cannot execute backend-only checkout'
 );
 
 select extensions.throws_ok(
@@ -1814,7 +1813,7 @@ select extensions.set_eq(
     ('public.list_expired_gcash_payments'),
     ('public.close_expired_gcash_payment'),
     ('public.add_authenticated_cart_item'),
-    ('public.checkout_order'), ('public.cancel_order'),
+    ('public.cancel_order'),
     ('public.get_public_variant_availability'),
     ('public.open_register_session'), ('public.close_register_session'),
     ('public.create_pos_sale'), ('public.admin_settle_pickup_payment'),

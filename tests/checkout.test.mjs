@@ -17,7 +17,7 @@ test("checkout action uses trusted database RPC checkout_order and service clien
   assert.match(checkoutAction, /p_payment_method/);
   assert.match(checkoutAction, /p_fulfillment_method/);
   assert.match(checkoutAction, /p_delivery/);
-  assert.match(checkoutAction, /getStoreSetting/);
+  assert.match(checkoutAction, /loadCheckoutSettings/);
   assert.doesNotMatch(checkoutAction, /\.from\("orders"\)\s*\.update\(\{ fulfillment_method/);
 
   // Assert no browser-provided financial or pricing overrides
