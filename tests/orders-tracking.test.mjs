@@ -219,3 +219,4 @@ test("GCash proof submission compensates by removing newly uploaded object if da
   assert.match(actions, /\.remove\(\[storagePath\]\)/);
   assert.doesNotMatch(actions, /\.remove\(\[.*oldReceipt.*\]\)/);
 });
+import './order-detail-presentation.test.mjs';

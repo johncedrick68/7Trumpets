@@ -15,6 +15,7 @@ import { CancelOrderDialog } from "@/components/cancel-order-dialog";
 import { ExternalLink, Store, Truck, MessageSquare } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Order details" };
 
 export default async function OrderConfirmationPage({
   params,
@@ -291,12 +292,12 @@ export default async function OrderConfirmationPage({
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-sm mb-1">{item.product_name}</h3>
                         {item.variant_name && (
-                          <div className="text-[10px] font-mono uppercase text-muted-foreground mb-1">
+                          <div className="text-sm text-muted-foreground mb-1">
                             {item.variant_name}
                           </div>
                         )}
                         <p className="text-[11px] font-mono text-muted-foreground">
-                          SKU: {item.sku} · Qty: {item.quantity}
+                          Qty: {item.quantity}
                         </p>
                       </div>
                       <span className="font-mono font-bold text-sm shrink-0">
