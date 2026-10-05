@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" role="img" aria-labelledby="title desc">
+  <title id="title">T-shirt measurement diagram</title>
+  <desc id="desc">A T-shirt outline with vertical length and horizontal width measurement arrows.</desc>
+  <rect width="900" height="620" fill="#f5f5f4"/>
+  <path d="M312 123 393 82c14 29 100 29 114 0l81 41 111 65-59 111-84-42v253H344V257l-84 42-59-111 111-65Z" fill="#151515" stroke="#050505" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M393 82c7 42 107 42 114 0" fill="none" stroke="#44403c" stroke-width="12"/>
+  <g fill="none" stroke="#fafafa" stroke-width="5">
+    <path d="M368 132v340"/>
+    <path d="m368 112-12 24h24Z" fill="#fafafa" stroke="none"/>
+    <path d="m368 492-12-24h24Z" fill="#fafafa" stroke="none"/>
+    <path d="M328 302h244"/>
+    <path d="m308 302 24-12v24Z" fill="#fafafa" stroke="none"/>
+    <path d="m592 302-24-12v24Z" fill="#fafafa" stroke="none"/>
+  </g>
+  <g fill="#fafafa" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" letter-spacing="2">
+    <text x="383" y="170">LENGTH</text>
+    <text x="405" y="290">WIDTH</text>
+  </g>
+</svg>
